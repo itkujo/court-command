@@ -1,0 +1,13 @@
+# .gitignore
+.env
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+__debug_bin*
+vendor/
+tmp/
+.DS_Store
+backend/db/generated/
