@@ -3,20 +3,16 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
-	"github.com/court-command/court-command/handler"
 	"github.com/court-command/court-command/session"
 )
 
-type sessionContextKey struct{}
-
 // SessionData returns the session data from the request context, or nil if not authenticated.
+// This is a convenience wrapper around session.SessionData.
 func SessionData(ctx context.Context) *session.Data {
-	if data, ok := ctx.Value(sessionContextKey{}).(*session.Data); ok {
-		return data
-	}
-	return nil
+	return session.SessionData(ctx)
 }
 
 // RequireAuth is a middleware that requires a valid session cookie.
@@ -26,21 +22,21 @@ func RequireAuth(store *session.Store) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie(session.SessionCookieName)
 			if err != nil {
-				handler.Unauthorized(w, "authentication required")
+				writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 				return
 			}
 
 			data, err := store.Get(r.Context(), cookie.Value)
 			if err != nil {
-				handler.InternalError(w, "session lookup failed")
+				writeError(w, http.StatusInternalServerError, "internal_error", "session lookup failed")
 				return
 			}
 			if data == nil {
-				handler.Unauthorized(w, "session expired or invalid")
+				writeError(w, http.StatusUnauthorized, "unauthorized", "session expired or invalid")
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), sessionContextKey{}, data)
+			ctx := session.SetSessionData(r.Context(), data)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -57,16 +53,29 @@ func RequireRole(roles ...string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			data := SessionData(r.Context())
 			if data == nil {
-				handler.Unauthorized(w, "authentication required")
+				writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 				return
 			}
 
 			if !roleSet[data.Role] {
-				handler.Forbidden(w, "insufficient permissions")
+				writeError(w, http.StatusForbidden, "forbidden", "insufficient permissions")
 				return
 			}
 
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// writeError writes a structured JSON error response.
+// This is a local helper to avoid importing the handler package (which would create a cycle).
+func writeError(w http.ResponseWriter, status int, code, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"error": map[string]interface{}{
+			"code":    code,
+			"message": message,
+		},
+	})
 }
