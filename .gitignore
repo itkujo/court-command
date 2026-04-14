@@ -11,3 +11,4 @@ vendor/
 tmp/
 .DS_Store
 backend/db/generated/
+backend/court-command
