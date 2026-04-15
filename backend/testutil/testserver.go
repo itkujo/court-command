@@ -33,7 +33,7 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	authService := service.NewAuthService(pool, store)
 	playerService := service.NewPlayerService(queries)
 	teamService := service.NewTeamService(queries)
-	orgService := service.NewOrganizationService(queries)
+	orgService := service.NewOrganizationService(queries, pool)
 	venueService := service.NewVenueService(queries)
 
 	authHandler := handler.NewAuthHandler(authService, false)

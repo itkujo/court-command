@@ -93,7 +93,7 @@ func (h *TeamHandler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 
 	team, err := h.teamService.CreateTeam(r.Context(), params)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, "CREATE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *TeamHandler) GetTeam(w http.ResponseWriter, r *http.Request) {
 
 	team, err := h.teamService.GetTeam(r.Context(), teamID)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -123,7 +123,7 @@ func (h *TeamHandler) GetTeamBySlug(w http.ResponseWriter, r *http.Request) {
 
 	team, err := h.teamService.GetTeamBySlug(r.Context(), slug)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -177,7 +177,7 @@ func (h *TeamHandler) UpdateTeam(w http.ResponseWriter, r *http.Request) {
 
 	team, err := h.teamService.UpdateTeam(r.Context(), teamID, params)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, "UPDATE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -199,7 +199,7 @@ func (h *TeamHandler) DeleteTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.teamService.DeleteTeam(r.Context(), teamID); err != nil {
-		WriteError(w, http.StatusInternalServerError, "DELETE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -212,7 +212,7 @@ func (h *TeamHandler) ListTeams(w http.ResponseWriter, r *http.Request) {
 
 	teams, total, err := h.teamService.ListTeams(r.Context(), limit, offset)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -247,7 +247,7 @@ func (h *TeamHandler) SearchTeams(w http.ResponseWriter, r *http.Request) {
 
 	teams, total, err := h.teamService.SearchTeams(r.Context(), params)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "SEARCH_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -264,7 +264,7 @@ func (h *TeamHandler) GetRoster(w http.ResponseWriter, r *http.Request) {
 
 	roster, err := h.teamService.GetRoster(r.Context(), teamID)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "ROSTER_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -312,7 +312,7 @@ func (h *TeamHandler) AddPlayerToTeam(w http.ResponseWriter, r *http.Request) {
 
 	entry, err := h.teamService.AddPlayerToTeam(r.Context(), teamID, body.PlayerID, body.Role, jerseyNumber)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, "ADD_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -340,7 +340,7 @@ func (h *TeamHandler) RemovePlayerFromTeam(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := h.teamService.RemovePlayerFromTeam(r.Context(), teamID, playerID); err != nil {
-		WriteError(w, http.StatusInternalServerError, "REMOVE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 

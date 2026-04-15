@@ -3,7 +3,10 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+
+	"github.com/court-command/court-command/service"
 )
 
 // ErrorResponse is the structured error format returned by all API endpoints.
@@ -105,6 +108,27 @@ func Conflict(w http.ResponseWriter, message string) {
 // InternalError writes a 500 error response.
 func InternalError(w http.ResponseWriter, message string) {
 	WriteError(w, http.StatusInternalServerError, "internal_error", message)
+}
+
+// HandleServiceError maps service-layer typed errors to HTTP responses.
+func HandleServiceError(w http.ResponseWriter, err error) {
+	var valErr *service.ValidationError
+	var notFoundErr *service.NotFoundError
+	var conflictErr *service.ConflictError
+	var forbiddenErr *service.ForbiddenError
+
+	switch {
+	case errors.As(err, &valErr):
+		WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", valErr.Message)
+	case errors.As(err, &notFoundErr):
+		WriteError(w, http.StatusNotFound, "NOT_FOUND", notFoundErr.Message)
+	case errors.As(err, &conflictErr):
+		WriteError(w, http.StatusConflict, "CONFLICT", conflictErr.Message)
+	case errors.As(err, &forbiddenErr):
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", forbiddenErr.Message)
+	default:
+		WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error")
+	}
 }
 
 // DecodeJSON reads and decodes a JSON request body into the given target.

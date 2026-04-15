@@ -104,6 +104,7 @@ func (s *TeamService) CreateTeam(ctx context.Context, params generated.CreateTea
 	params.Slug = generateSlug(params.Name)
 
 	// Check for slug collision and append number if needed
+	slugFound := false
 	for i := 0; i < 100; i++ {
 		candidate := params.Slug
 		if i > 0 {
@@ -115,8 +116,12 @@ func (s *TeamService) CreateTeam(ctx context.Context, params generated.CreateTea
 		}
 		if count == 0 {
 			params.Slug = candidate
+			slugFound = true
 			break
 		}
+	}
+	if !slugFound {
+		return TeamResponse{}, &ConflictError{Message: "unable to generate unique slug, try a different name"}
 	}
 
 	team, err := s.queries.CreateTeam(ctx, params)

@@ -20,7 +20,6 @@ func NewPlayerService(queries *generated.Queries) *PlayerService {
 
 // PlayerProfileResponse is the public representation of a player profile.
 type PlayerProfileResponse struct {
-	ID              int64   `json:"id"`
 	PublicID        string  `json:"public_id"`
 	Email           *string `json:"email,omitempty"`
 	FirstName       string  `json:"first_name"`
@@ -57,7 +56,6 @@ type PrivatePlayerProfileResponse struct {
 // toPublicProfile converts a database user row to a public profile response.
 func toPublicProfile(u generated.User) PlayerProfileResponse {
 	return PlayerProfileResponse{
-		ID:              u.ID,
 		PublicID:        u.PublicID,
 		FirstName:       u.FirstName,
 		LastName:        u.LastName,
@@ -105,7 +103,7 @@ func toPrivateProfile(u generated.User) PrivatePlayerProfileResponse {
 func (s *PlayerService) GetProfile(ctx context.Context, playerID int64, requesterID int64, requesterRole string) (interface{}, error) {
 	user, err := s.queries.GetPlayerProfile(ctx, playerID)
 	if err != nil {
-		return nil, fmt.Errorf("player not found")
+		return nil, &NotFoundError{Message: "player not found"}
 	}
 
 	isSelf := requesterID == user.ID
@@ -118,7 +116,6 @@ func (s *PlayerService) GetProfile(ctx context.Context, playerID int64, requeste
 	if user.IsProfileHidden {
 		// Return minimal info for hidden profiles
 		return PlayerProfileResponse{
-			ID:        user.ID,
 			PublicID:  user.PublicID,
 			FirstName: user.FirstName,
 			LastName:  user.LastName,
@@ -132,7 +129,7 @@ func (s *PlayerService) GetProfile(ctx context.Context, playerID int64, requeste
 func (s *PlayerService) GetProfileByPublicID(ctx context.Context, publicID string, requesterID int64, requesterRole string) (interface{}, error) {
 	user, err := s.queries.GetPlayerByPublicID(ctx, publicID)
 	if err != nil {
-		return nil, fmt.Errorf("player not found")
+		return nil, &NotFoundError{Message: "player not found"}
 	}
 
 	return s.GetProfile(ctx, user.ID, requesterID, requesterRole)
@@ -178,7 +175,6 @@ func (s *PlayerService) SearchPlayers(ctx context.Context, params generated.Sear
 	for i, p := range players {
 		if p.IsProfileHidden {
 			profiles[i] = PlayerProfileResponse{
-				ID:        p.ID,
 				PublicID:  p.PublicID,
 				FirstName: p.FirstName,
 				LastName:  p.LastName,

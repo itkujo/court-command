@@ -42,6 +42,7 @@ func New(cfg *Config) chi.Router {
 	r.Use(chimw.CleanPath)
 	r.Use(chimw.Timeout(60 * time.Second))
 	r.Use(middleware.CORS(cfg.AllowedOrigins))
+	r.Use(middleware.MaxBodySize(1 << 20)) // 1 MB default limit
 
 	// API v1 routes
 	r.Route("/api/v1", func(r chi.Router) {

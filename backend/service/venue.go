@@ -193,6 +193,7 @@ func (s *VenueService) CreateVenue(ctx context.Context, params generated.CreateV
 	baseSlug := generateSlug(params.Name)
 	params.Slug = baseSlug
 
+	slugFound := false
 	for i := 0; i < 100; i++ {
 		candidate := baseSlug
 		if i > 0 {
@@ -204,8 +205,12 @@ func (s *VenueService) CreateVenue(ctx context.Context, params generated.CreateV
 		}
 		if count == 0 {
 			params.Slug = candidate
+			slugFound = true
 			break
 		}
+	}
+	if !slugFound {
+		return VenueResponse{}, &ConflictError{Message: "unable to generate unique slug, try a different name"}
 	}
 
 	venue, err := s.queries.CreateVenue(ctx, params)
@@ -380,6 +385,7 @@ func (s *VenueService) CreateCourt(ctx context.Context, params generated.CreateC
 	}
 
 	// Check slug collision (venue-scoped or global)
+	slugFound := false
 	for i := 0; i < 100; i++ {
 		candidate := baseSlug
 		if i > 0 {
@@ -402,8 +408,12 @@ func (s *VenueService) CreateCourt(ctx context.Context, params generated.CreateC
 		}
 		if count == 0 {
 			params.Slug = candidate
+			slugFound = true
 			break
 		}
+	}
+	if !slugFound {
+		return CourtResponse{}, &ConflictError{Message: "unable to generate unique slug, try a different name"}
 	}
 
 	court, err := s.queries.CreateCourt(ctx, params)

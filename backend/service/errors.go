@@ -48,3 +48,17 @@ func NewNotFound(msg string) error {
 func NewConflict(msg string) error {
 	return &ConflictError{Message: msg}
 }
+
+// ForbiddenError represents an authorization failure (403).
+type ForbiddenError struct {
+	Message string
+}
+
+func (e *ForbiddenError) Error() string {
+	return e.Message
+}
+
+// NewForbidden creates a new ForbiddenError.
+func NewForbidden(msg string) error {
+	return &ForbiddenError{Message: msg}
+}

@@ -3,7 +3,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strconv"
 
@@ -462,20 +461,7 @@ func (h *VenueHandler) CreateCourtForVenue(w http.ResponseWriter, r *http.Reques
 	Created(w, court)
 }
 
-// handleServiceError maps service-layer errors to HTTP responses.
+// handleServiceError is a local alias for HandleServiceError for backward compatibility.
 func handleServiceError(w http.ResponseWriter, err error) {
-	var valErr *service.ValidationError
-	var notFoundErr *service.NotFoundError
-	var conflictErr *service.ConflictError
-
-	switch {
-	case errors.As(err, &valErr):
-		WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", valErr.Message)
-	case errors.As(err, &notFoundErr):
-		WriteError(w, http.StatusNotFound, "NOT_FOUND", notFoundErr.Message)
-	case errors.As(err, &conflictErr):
-		WriteError(w, http.StatusConflict, "CONFLICT", conflictErr.Message)
-	default:
-		WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error")
-	}
+	HandleServiceError(w, err)
 }

@@ -105,7 +105,7 @@ func (h *OrgHandler) CreateOrg(w http.ResponseWriter, r *http.Request) {
 
 	org, err := h.orgService.CreateOrg(r.Context(), params)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, "CREATE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -122,7 +122,7 @@ func (h *OrgHandler) GetOrg(w http.ResponseWriter, r *http.Request) {
 
 	org, err := h.orgService.GetOrg(r.Context(), orgID)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -135,7 +135,7 @@ func (h *OrgHandler) GetOrgBySlug(w http.ResponseWriter, r *http.Request) {
 
 	org, err := h.orgService.GetOrgBySlug(r.Context(), slug)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -198,7 +198,7 @@ func (h *OrgHandler) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 
 	org, err := h.orgService.UpdateOrg(r.Context(), orgID, sess.UserID, sess.Role, params)
 	if err != nil {
-		WriteError(w, http.StatusForbidden, "UPDATE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -220,7 +220,7 @@ func (h *OrgHandler) DeleteOrg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.orgService.DeleteOrg(r.Context(), orgID, sess.UserID, sess.Role); err != nil {
-		WriteError(w, http.StatusForbidden, "DELETE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -233,7 +233,7 @@ func (h *OrgHandler) ListOrgs(w http.ResponseWriter, r *http.Request) {
 
 	orgs, total, err := h.orgService.ListOrgs(r.Context(), limit, offset)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -250,7 +250,7 @@ func (h *OrgHandler) GetMembers(w http.ResponseWriter, r *http.Request) {
 
 	members, err := h.orgService.GetMembers(r.Context(), orgID)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "MEMBERS_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -292,7 +292,7 @@ func (h *OrgHandler) AddMember(w http.ResponseWriter, r *http.Request) {
 
 	member, err := h.orgService.AddMember(r.Context(), orgID, body.PlayerID, body.Role, sess.UserID, sess.Role)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, "ADD_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -320,7 +320,7 @@ func (h *OrgHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.orgService.RemoveMember(r.Context(), orgID, playerID, sess.UserID, sess.Role); err != nil {
-		WriteError(w, http.StatusForbidden, "REMOVE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -358,7 +358,7 @@ func (h *OrgHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) {
 
 	member, err := h.orgService.UpdateMemberRole(r.Context(), orgID, playerID, body.Role, sess.UserID, sess.Role)
 	if err != nil {
-		WriteError(w, http.StatusForbidden, "UPDATE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -380,7 +380,7 @@ func (h *OrgHandler) LeaveSelf(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.orgService.RemoveMember(r.Context(), orgID, sess.UserID, sess.UserID, sess.Role); err != nil {
-		WriteError(w, http.StatusInternalServerError, "LEAVE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -402,7 +402,7 @@ func (h *OrgHandler) BlockOrg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.orgService.BlockOrg(r.Context(), sess.UserID, orgID); err != nil {
-		WriteError(w, http.StatusInternalServerError, "BLOCK_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -424,7 +424,7 @@ func (h *OrgHandler) UnblockOrg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.orgService.UnblockOrg(r.Context(), sess.UserID, orgID); err != nil {
-		WriteError(w, http.StatusInternalServerError, "UNBLOCK_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 

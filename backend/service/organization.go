@@ -3,10 +3,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/court-command/court-command/db/generated"
 )
@@ -14,11 +17,12 @@ import (
 // OrganizationService handles organization business logic.
 type OrganizationService struct {
 	queries *generated.Queries
+	pool    *pgxpool.Pool
 }
 
 // NewOrganizationService creates a new OrganizationService.
-func NewOrganizationService(queries *generated.Queries) *OrganizationService {
-	return &OrganizationService{queries: queries}
+func NewOrganizationService(queries *generated.Queries, pool *pgxpool.Pool) *OrganizationService {
+	return &OrganizationService{queries: queries, pool: pool}
 }
 
 // OrgResponse is the public representation of an organization.
@@ -87,6 +91,7 @@ func (s *OrganizationService) CreateOrg(ctx context.Context, params generated.Cr
 	params.Slug = generateSlug(params.Name)
 
 	// Check for slug collision
+	slugFound := false
 	for i := 0; i < 100; i++ {
 		candidate := params.Slug
 		if i > 0 {
@@ -98,23 +103,39 @@ func (s *OrganizationService) CreateOrg(ctx context.Context, params generated.Cr
 		}
 		if count == 0 {
 			params.Slug = candidate
+			slugFound = true
 			break
 		}
 	}
+	if !slugFound {
+		return OrgResponse{}, &ConflictError{Message: "unable to generate unique slug, try a different name"}
+	}
 
-	org, err := s.queries.CreateOrganization(ctx, params)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return OrgResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	txQueries := s.queries.WithTx(tx)
+
+	org, err := txQueries.CreateOrganization(ctx, params)
 	if err != nil {
 		return OrgResponse{}, fmt.Errorf("failed to create organization: %w", err)
 	}
 
 	// Add creator as admin member
-	_, err = s.queries.AddMemberToOrg(ctx, generated.AddMemberToOrgParams{
+	_, err = txQueries.AddMemberToOrg(ctx, generated.AddMemberToOrgParams{
 		OrgID:    org.ID,
 		PlayerID: params.CreatedByUserID,
 		Role:     "admin",
 	})
 	if err != nil {
 		return OrgResponse{}, fmt.Errorf("failed to add creator as admin: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return OrgResponse{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return toOrgResponse(org), nil
@@ -305,23 +326,35 @@ func (s *OrganizationService) UpdateMemberRole(ctx context.Context, orgID, playe
 
 // BlockOrg allows a player to block an organization from adding them.
 func (s *OrganizationService) BlockOrg(ctx context.Context, playerID, orgID int64) error {
-	// Remove membership first if it exists
-	_ = s.queries.RemoveMemberFromOrg(ctx, generated.RemoveMemberFromOrgParams{
+	// Remove membership first if it exists (ignore "not found" since they may not be a member)
+	if err := s.queries.RemoveMemberFromOrg(ctx, generated.RemoveMemberFromOrgParams{
 		OrgID:    orgID,
 		PlayerID: playerID,
-	})
+	}); err != nil {
+		// RemoveMemberFromOrg uses :exec, so no rows affected is not an error.
+		// Only fail on actual DB errors.
+		return fmt.Errorf("failed to remove membership: %w", err)
+	}
 
 	// Deactivate roster entries
-	_ = s.queries.DeactivatePlayerRostersForOrg(ctx, generated.DeactivatePlayerRostersForOrgParams{
+	if err := s.queries.DeactivatePlayerRostersForOrg(ctx, generated.DeactivatePlayerRostersForOrgParams{
 		PlayerID: playerID,
 		OrgID:    pgtype.Int8{Int64: orgID, Valid: true},
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to deactivate roster entries: %w", err)
+	}
 
 	_, err := s.queries.BlockOrg(ctx, generated.BlockOrgParams{
 		PlayerID: playerID,
 		OrgID:    orgID,
 	})
 	if err != nil {
+		// BlockOrg uses ON CONFLICT DO NOTHING RETURNING * with :one.
+		// If already blocked, no row is returned and pgx returns ErrNoRows.
+		// Treat this as idempotent success.
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
 		return fmt.Errorf("failed to block organization: %w", err)
 	}
 
@@ -347,7 +380,7 @@ func (s *OrganizationService) requireOrgAdmin(ctx context.Context, orgID, reques
 		PlayerID: requesterID,
 	})
 	if err != nil || role != "admin" {
-		return &ValidationError{Message: "you must be an organization admin to perform this action"}
+		return &ForbiddenError{Message: "you must be an organization admin to perform this action"}
 	}
 
 	return nil

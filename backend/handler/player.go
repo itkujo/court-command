@@ -48,7 +48,7 @@ func (h *PlayerHandler) GetMyProfile(w http.ResponseWriter, r *http.Request) {
 
 	profile, err := h.playerService.GetProfile(r.Context(), data.UserID, data.UserID, data.Role)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -131,7 +131,7 @@ func (h *PlayerHandler) UpdateMyProfile(w http.ResponseWriter, r *http.Request) 
 
 	profile, err := h.playerService.UpdateProfile(r.Context(), data.UserID, params)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "UPDATE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -148,7 +148,7 @@ func (h *PlayerHandler) AcceptWaiver(w http.ResponseWriter, r *http.Request) {
 
 	profile, err := h.playerService.AcceptWaiver(r.Context(), data.UserID)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "WAIVER_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -172,7 +172,7 @@ func (h *PlayerHandler) GetPlayer(w http.ResponseWriter, r *http.Request) {
 
 	profile, err := h.playerService.GetProfile(r.Context(), playerID, data.UserID, data.Role)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -191,7 +191,7 @@ func (h *PlayerHandler) GetPlayerByPublicID(w http.ResponseWriter, r *http.Reque
 
 	profile, err := h.playerService.GetProfileByPublicID(r.Context(), publicID, data.UserID, data.Role)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -247,7 +247,7 @@ func (h *PlayerHandler) SearchPlayers(w http.ResponseWriter, r *http.Request) {
 
 	profiles, total, err := h.playerService.SearchPlayers(r.Context(), params)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "SEARCH_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 

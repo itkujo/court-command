@@ -59,7 +59,7 @@ func main() {
 	authService := service.NewAuthService(pool, sessionStore)
 	playerService := service.NewPlayerService(queries)
 	teamService := service.NewTeamService(queries)
-	orgService := service.NewOrganizationService(queries)
+	orgService := service.NewOrganizationService(queries, pool)
 	venueService := service.NewVenueService(queries)
 
 	secureCookie := !cfg.IsDevelopment()
