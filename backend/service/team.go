@@ -4,7 +4,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -77,19 +76,6 @@ func toTeamResponse(t generated.Team) TeamResponse {
 	}
 
 	return resp
-}
-
-// generateSlug creates a URL-safe slug from a name.
-var slugRegexp = regexp.MustCompile(`[^a-z0-9]+`)
-
-func generateSlug(name string) string {
-	slug := strings.ToLower(name)
-	slug = slugRegexp.ReplaceAllString(slug, "-")
-	slug = strings.Trim(slug, "-")
-	if slug == "" {
-		slug = "team"
-	}
-	return slug
 }
 
 // CreateTeam creates a new team.
