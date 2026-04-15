@@ -10,6 +10,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Court struct {
+	ID              int64              `json:"id"`
+	Name            string             `json:"name"`
+	Slug            string             `json:"slug"`
+	VenueID         pgtype.Int8        `json:"venue_id"`
+	SurfaceType     *string            `json:"surface_type"`
+	IsShowCourt     bool               `json:"is_show_court"`
+	IsActive        bool               `json:"is_active"`
+	IsTemporary     bool               `json:"is_temporary"`
+	SortOrder       int32              `json:"sort_order"`
+	Notes           *string            `json:"notes"`
+	StreamUrl       *string            `json:"stream_url"`
+	StreamType      *string            `json:"stream_type"`
+	StreamIsLive    bool               `json:"stream_is_live"`
+	StreamTitle     *string            `json:"stream_title"`
+	CreatedByUserID pgtype.Int8        `json:"created_by_user_id"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type OrgBlock struct {
 	ID        int64     `json:"id"`
 	PlayerID  int64     `json:"player_id"`
@@ -113,4 +134,37 @@ type User struct {
 	MedicalNotes          *string            `json:"medical_notes"`
 	WaiverAcceptedAt      pgtype.Timestamptz `json:"waiver_accepted_at"`
 	IsProfileHidden       bool               `json:"is_profile_hidden"`
+}
+
+type Venue struct {
+	ID              int64              `json:"id"`
+	Name            string             `json:"name"`
+	Slug            string             `json:"slug"`
+	Status          string             `json:"status"`
+	AddressLine1    *string            `json:"address_line_1"`
+	AddressLine2    *string            `json:"address_line_2"`
+	City            *string            `json:"city"`
+	StateProvince   *string            `json:"state_province"`
+	Country         *string            `json:"country"`
+	PostalCode      *string            `json:"postal_code"`
+	Latitude        pgtype.Float8      `json:"latitude"`
+	Longitude       pgtype.Float8      `json:"longitude"`
+	Timezone        *string            `json:"timezone"`
+	WebsiteUrl      *string            `json:"website_url"`
+	ContactEmail    *string            `json:"contact_email"`
+	ContactPhone    *string            `json:"contact_phone"`
+	LogoUrl         *string            `json:"logo_url"`
+	PhotoUrl        *string            `json:"photo_url"`
+	VenueMapUrl     *string            `json:"venue_map_url"`
+	Description     *string            `json:"description"`
+	SurfaceTypes    []byte             `json:"surface_types"`
+	Amenities       []byte             `json:"amenities"`
+	OrgID           pgtype.Int8        `json:"org_id"`
+	ManagedByUserID pgtype.Int8        `json:"managed_by_user_id"`
+	Bio             *string            `json:"bio"`
+	Notes           *string            `json:"notes"`
+	CreatedByUserID int64              `json:"created_by_user_id"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 }
