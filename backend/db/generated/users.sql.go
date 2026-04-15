@@ -51,7 +51,7 @@ INSERT INTO users (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7
 )
-RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden
 `
 
 type CreateUserParams struct {
@@ -91,12 +91,29 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Gender,
+		&i.Handedness,
+		&i.AvatarUrl,
+		&i.Bio,
+		&i.City,
+		&i.StateProvince,
+		&i.Country,
+		&i.Phone,
+		&i.PaddleBrand,
+		&i.PaddleModel,
+		&i.DuprID,
+		&i.VairID,
+		&i.EmergencyContactName,
+		&i.EmergencyContactPhone,
+		&i.MedicalNotes,
+		&i.WaiverAcceptedAt,
+		&i.IsProfileHidden,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden FROM users
 WHERE email = $1 AND deleted_at IS NULL
 `
 
@@ -118,12 +135,29 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email *string) (User, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Gender,
+		&i.Handedness,
+		&i.AvatarUrl,
+		&i.Bio,
+		&i.City,
+		&i.StateProvince,
+		&i.Country,
+		&i.Phone,
+		&i.PaddleBrand,
+		&i.PaddleModel,
+		&i.DuprID,
+		&i.VairID,
+		&i.EmergencyContactName,
+		&i.EmergencyContactPhone,
+		&i.MedicalNotes,
+		&i.WaiverAcceptedAt,
+		&i.IsProfileHidden,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden FROM users
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -145,12 +179,29 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Gender,
+		&i.Handedness,
+		&i.AvatarUrl,
+		&i.Bio,
+		&i.City,
+		&i.StateProvince,
+		&i.Country,
+		&i.Phone,
+		&i.PaddleBrand,
+		&i.PaddleModel,
+		&i.DuprID,
+		&i.VairID,
+		&i.EmergencyContactName,
+		&i.EmergencyContactPhone,
+		&i.MedicalNotes,
+		&i.WaiverAcceptedAt,
+		&i.IsProfileHidden,
 	)
 	return i, err
 }
 
 const getUserByPublicID = `-- name: GetUserByPublicID :one
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden FROM users
 WHERE public_id = $1 AND deleted_at IS NULL
 `
 
@@ -172,12 +223,29 @@ func (q *Queries) GetUserByPublicID(ctx context.Context, publicID string) (User,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Gender,
+		&i.Handedness,
+		&i.AvatarUrl,
+		&i.Bio,
+		&i.City,
+		&i.StateProvince,
+		&i.Country,
+		&i.Phone,
+		&i.PaddleBrand,
+		&i.PaddleModel,
+		&i.DuprID,
+		&i.VairID,
+		&i.EmergencyContactName,
+		&i.EmergencyContactPhone,
+		&i.MedicalNotes,
+		&i.WaiverAcceptedAt,
+		&i.IsProfileHidden,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden FROM users
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
@@ -212,6 +280,23 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.Gender,
+			&i.Handedness,
+			&i.AvatarUrl,
+			&i.Bio,
+			&i.City,
+			&i.StateProvince,
+			&i.Country,
+			&i.Phone,
+			&i.PaddleBrand,
+			&i.PaddleModel,
+			&i.DuprID,
+			&i.VairID,
+			&i.EmergencyContactName,
+			&i.EmergencyContactPhone,
+			&i.MedicalNotes,
+			&i.WaiverAcceptedAt,
+			&i.IsProfileHidden,
 		); err != nil {
 			return nil, err
 		}
@@ -242,7 +327,7 @@ UPDATE users SET
     display_name = COALESCE($4, display_name),
     updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden
 `
 
 type UpdateUserParams struct {
@@ -275,6 +360,23 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Gender,
+		&i.Handedness,
+		&i.AvatarUrl,
+		&i.Bio,
+		&i.City,
+		&i.StateProvince,
+		&i.Country,
+		&i.Phone,
+		&i.PaddleBrand,
+		&i.PaddleModel,
+		&i.DuprID,
+		&i.VairID,
+		&i.EmergencyContactName,
+		&i.EmergencyContactPhone,
+		&i.MedicalNotes,
+		&i.WaiverAcceptedAt,
+		&i.IsProfileHidden,
 	)
 	return i, err
 }
@@ -284,7 +386,7 @@ UPDATE users SET
     status = $2,
     updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden
 `
 
 type UpdateUserStatusParams struct {
@@ -310,6 +412,23 @@ func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusPara
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Gender,
+		&i.Handedness,
+		&i.AvatarUrl,
+		&i.Bio,
+		&i.City,
+		&i.StateProvince,
+		&i.Country,
+		&i.Phone,
+		&i.PaddleBrand,
+		&i.PaddleModel,
+		&i.DuprID,
+		&i.VairID,
+		&i.EmergencyContactName,
+		&i.EmergencyContactPhone,
+		&i.MedicalNotes,
+		&i.WaiverAcceptedAt,
+		&i.IsProfileHidden,
 	)
 	return i, err
 }
