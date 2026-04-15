@@ -1,0 +1,11 @@
+<svg width="220" height="48" viewBox="0 0 220 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- First C (cyan, full opacity) -->
+  <path d="M18 6 C10 6, 4 12, 4 20 C4 28, 10 34, 18 34" stroke="#22d3ee" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Second C (dark for light backgrounds) -->
+  <path d="M22 6 C30 6, 36 12, 36 20 C36 28, 30 34, 22 34" stroke="#0f172a" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Net/divider line -->
+  <line x1="20" y1="3" x2="20" y2="37" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.3"/>
+  <!-- Wordmark -->
+  <text x="46" y="22" font-family="system-ui,-apple-system,sans-serif" font-size="15" font-weight="700" fill="#0f172a">Court</text>
+  <text x="46" y="37" font-family="system-ui,-apple-system,sans-serif" font-size="15" font-weight="700" fill="#22d3ee">Command</text>
+</svg>

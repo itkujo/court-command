@@ -12,3 +12,4 @@ tmp/
 .DS_Store
 backend/court-command
 uploads/
+.superpowers/
