@@ -1,9 +1,7 @@
 -- +goose Up
-CREATE SEQUENCE IF NOT EXISTS public_id_seq START 10000;
-
 CREATE TABLE leagues (
     id              BIGSERIAL PRIMARY KEY,
-    public_id       TEXT NOT NULL DEFAULT 'CC-' || nextval('public_id_seq')::TEXT,
+    public_id       TEXT NOT NULL DEFAULT 'CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'),
     name            TEXT NOT NULL,
     slug            TEXT NOT NULL UNIQUE,
     status          TEXT NOT NULL DEFAULT 'draft'
@@ -35,4 +33,3 @@ CREATE INDEX idx_leagues_deleted_at ON leagues(id) WHERE deleted_at IS NOT NULL;
 
 -- +goose Down
 DROP TABLE IF EXISTS leagues;
-DROP SEQUENCE IF EXISTS public_id_seq;

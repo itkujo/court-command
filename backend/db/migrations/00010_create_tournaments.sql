@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE tournaments (
     id                  BIGSERIAL PRIMARY KEY,
-    public_id           TEXT NOT NULL DEFAULT 'CC-' || nextval('public_id_seq')::TEXT,
+    public_id           TEXT NOT NULL DEFAULT 'CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'),
     name                TEXT NOT NULL,
     slug                TEXT NOT NULL UNIQUE,
     status              TEXT NOT NULL DEFAULT 'draft'
