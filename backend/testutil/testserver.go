@@ -82,6 +82,11 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	bracketHandler := handler.NewBracketHandler(bracketService)
 	courtQueueHandler := handler.NewCourtQueueHandler(courtQueueService)
 
+	// Phase 4E services + handlers
+	matchSeriesService := service.NewMatchSeriesService(queries, pool, nil)
+	matchSeriesHandler := handler.NewMatchSeriesHandler(matchSeriesService)
+	quickMatchHandler := handler.NewQuickMatchHandler(matchService)
+
 	r := router.New(&router.Config{
 		DB:             pool,
 		SessionStore:   store,
@@ -114,6 +119,10 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 		// Phase 4D
 		BracketHandler:    bracketHandler,
 		CourtQueueHandler: courtQueueHandler,
+
+		// Phase 4E
+		MatchSeriesHandler: matchSeriesHandler,
+		QuickMatchHandler:  quickMatchHandler,
 	})
 
 	ts := httptest.NewServer(r)

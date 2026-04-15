@@ -71,7 +71,7 @@ INSERT INTO matches (
     $27, $28, $29, $30,
     $31, $32
 )
-RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
 `
 
 type CreateMatchParams struct {
@@ -194,6 +194,215 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
+	)
+	return i, err
+}
+
+const createQuickMatch = `-- name: CreateQuickMatch :one
+INSERT INTO matches (
+    created_by_user_id, match_type, status,
+    games_per_set, sets_to_win, points_to_win, win_by,
+    max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at,
+    expires_at
+) VALUES (
+    $1, 'quick', 'scheduled',
+    $2, $3, $4, $5,
+    $6, $7, $8, $9, $10,
+    $11
+)
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
+`
+
+type CreateQuickMatchParams struct {
+	CreatedByUserID    int64              `json:"created_by_user_id"`
+	GamesPerSet        int32              `json:"games_per_set"`
+	SetsToWin          int32              `json:"sets_to_win"`
+	PointsToWin        int32              `json:"points_to_win"`
+	WinBy              int32              `json:"win_by"`
+	MaxPoints          pgtype.Int4        `json:"max_points"`
+	RallyScoring       bool               `json:"rally_scoring"`
+	TimeoutsPerGame    int32              `json:"timeouts_per_game"`
+	TimeoutDurationSec int32              `json:"timeout_duration_sec"`
+	FreezeAt           pgtype.Int4        `json:"freeze_at"`
+	ExpiresAt          pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) CreateQuickMatch(ctx context.Context, arg CreateQuickMatchParams) (Match, error) {
+	row := q.db.QueryRow(ctx, createQuickMatch,
+		arg.CreatedByUserID,
+		arg.GamesPerSet,
+		arg.SetsToWin,
+		arg.PointsToWin,
+		arg.WinBy,
+		arg.MaxPoints,
+		arg.RallyScoring,
+		arg.TimeoutsPerGame,
+		arg.TimeoutDurationSec,
+		arg.FreezeAt,
+		arg.ExpiresAt,
+	)
+	var i Match
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.TournamentID,
+		&i.DivisionID,
+		&i.PodID,
+		&i.CourtID,
+		&i.CreatedByUserID,
+		&i.MatchType,
+		&i.Round,
+		&i.RoundName,
+		&i.MatchNumber,
+		&i.Team1ID,
+		&i.Team2ID,
+		&i.Team1Seed,
+		&i.Team2Seed,
+		&i.ScoringPresetID,
+		&i.GamesPerSet,
+		&i.SetsToWin,
+		&i.PointsToWin,
+		&i.WinBy,
+		&i.MaxPoints,
+		&i.RallyScoring,
+		&i.TimeoutsPerGame,
+		&i.TimeoutDurationSec,
+		&i.FreezeAt,
+		&i.Team1Score,
+		&i.Team2Score,
+		&i.CurrentSet,
+		&i.CurrentGame,
+		&i.ServingTeam,
+		&i.ServerNumber,
+		&i.SetScores,
+		&i.Status,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.WinnerTeamID,
+		&i.LoserTeamID,
+		&i.WinReason,
+		&i.NextMatchID,
+		&i.NextMatchSlot,
+		&i.LoserNextMatchID,
+		&i.LoserNextMatchSlot,
+		&i.RefereeUserID,
+		&i.Notes,
+		&i.ExpiresAt,
+		&i.ScheduledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.MatchSeriesID,
+	)
+	return i, err
+}
+
+const createSeriesChildMatch = `-- name: CreateSeriesChildMatch :one
+INSERT INTO matches (
+    match_series_id, division_id, pod_id, created_by_user_id,
+    match_type, match_number, status,
+    team1_id, team2_id,
+    games_per_set, sets_to_win, points_to_win, win_by,
+    max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at
+) VALUES (
+    $1, $2, $3, $4,
+    'tournament', $5, 'scheduled',
+    $6, $7,
+    $8, $9, $10, $11,
+    $12, $13, $14, $15, $16
+)
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
+`
+
+type CreateSeriesChildMatchParams struct {
+	MatchSeriesID      pgtype.Int8 `json:"match_series_id"`
+	DivisionID         pgtype.Int8 `json:"division_id"`
+	PodID              pgtype.Int8 `json:"pod_id"`
+	CreatedByUserID    int64       `json:"created_by_user_id"`
+	MatchNumber        pgtype.Int4 `json:"match_number"`
+	Team1ID            pgtype.Int8 `json:"team1_id"`
+	Team2ID            pgtype.Int8 `json:"team2_id"`
+	GamesPerSet        int32       `json:"games_per_set"`
+	SetsToWin          int32       `json:"sets_to_win"`
+	PointsToWin        int32       `json:"points_to_win"`
+	WinBy              int32       `json:"win_by"`
+	MaxPoints          pgtype.Int4 `json:"max_points"`
+	RallyScoring       bool        `json:"rally_scoring"`
+	TimeoutsPerGame    int32       `json:"timeouts_per_game"`
+	TimeoutDurationSec int32       `json:"timeout_duration_sec"`
+	FreezeAt           pgtype.Int4 `json:"freeze_at"`
+}
+
+func (q *Queries) CreateSeriesChildMatch(ctx context.Context, arg CreateSeriesChildMatchParams) (Match, error) {
+	row := q.db.QueryRow(ctx, createSeriesChildMatch,
+		arg.MatchSeriesID,
+		arg.DivisionID,
+		arg.PodID,
+		arg.CreatedByUserID,
+		arg.MatchNumber,
+		arg.Team1ID,
+		arg.Team2ID,
+		arg.GamesPerSet,
+		arg.SetsToWin,
+		arg.PointsToWin,
+		arg.WinBy,
+		arg.MaxPoints,
+		arg.RallyScoring,
+		arg.TimeoutsPerGame,
+		arg.TimeoutDurationSec,
+		arg.FreezeAt,
+	)
+	var i Match
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.TournamentID,
+		&i.DivisionID,
+		&i.PodID,
+		&i.CourtID,
+		&i.CreatedByUserID,
+		&i.MatchType,
+		&i.Round,
+		&i.RoundName,
+		&i.MatchNumber,
+		&i.Team1ID,
+		&i.Team2ID,
+		&i.Team1Seed,
+		&i.Team2Seed,
+		&i.ScoringPresetID,
+		&i.GamesPerSet,
+		&i.SetsToWin,
+		&i.PointsToWin,
+		&i.WinBy,
+		&i.MaxPoints,
+		&i.RallyScoring,
+		&i.TimeoutsPerGame,
+		&i.TimeoutDurationSec,
+		&i.FreezeAt,
+		&i.Team1Score,
+		&i.Team2Score,
+		&i.CurrentSet,
+		&i.CurrentGame,
+		&i.ServingTeam,
+		&i.ServerNumber,
+		&i.SetScores,
+		&i.Status,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.WinnerTeamID,
+		&i.LoserTeamID,
+		&i.WinReason,
+		&i.NextMatchID,
+		&i.NextMatchSlot,
+		&i.LoserNextMatchID,
+		&i.LoserNextMatchSlot,
+		&i.RefereeUserID,
+		&i.Notes,
+		&i.ExpiresAt,
+		&i.ScheduledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
@@ -211,8 +420,19 @@ func (q *Queries) DeleteExpiredQuickMatches(ctx context.Context) error {
 	return err
 }
 
+const deleteQuickMatchByID = `-- name: DeleteQuickMatchByID :exec
+DELETE FROM matches
+WHERE id = $1
+  AND match_type = 'quick'
+`
+
+func (q *Queries) DeleteQuickMatchByID(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteQuickMatchByID, id)
+	return err
+}
+
 const getActiveMatchOnCourt = `-- name: GetActiveMatchOnCourt :one
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
 WHERE court_id = $1
   AND status IN ('warmup', 'in_progress', 'paused')
 ORDER BY created_at
@@ -271,12 +491,13 @@ func (q *Queries) GetActiveMatchOnCourt(ctx context.Context, courtID pgtype.Int8
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
 
 const getMatch = `-- name: GetMatch :one
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches WHERE id = $1
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches WHERE id = $1
 `
 
 func (q *Queries) GetMatch(ctx context.Context, id int64) (Match, error) {
@@ -331,12 +552,13 @@ func (q *Queries) GetMatch(ctx context.Context, id int64) (Match, error) {
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
 
 const getMatchByPublicID = `-- name: GetMatchByPublicID :one
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches WHERE public_id = $1
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches WHERE public_id = $1
 `
 
 func (q *Queries) GetMatchByPublicID(ctx context.Context, publicID string) (Match, error) {
@@ -391,12 +613,13 @@ func (q *Queries) GetMatchByPublicID(ctx context.Context, publicID string) (Matc
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
 
 const getMatchByPublicIDForUpdate = `-- name: GetMatchByPublicIDForUpdate :one
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches WHERE public_id = $1 FOR UPDATE
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches WHERE public_id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetMatchByPublicIDForUpdate(ctx context.Context, publicID string) (Match, error) {
@@ -451,12 +674,13 @@ func (q *Queries) GetMatchByPublicIDForUpdate(ctx context.Context, publicID stri
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
 
 const getMatchForUpdate = `-- name: GetMatchForUpdate :one
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches WHERE id = $1 FOR UPDATE
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetMatchForUpdate(ctx context.Context, id int64) (Match, error) {
@@ -511,12 +735,176 @@ func (q *Queries) GetMatchForUpdate(ctx context.Context, id int64) (Match, error
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
 
+const listActiveQuickMatches = `-- name: ListActiveQuickMatches :many
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
+WHERE match_type = 'quick'
+  AND status IN ('scheduled', 'warmup', 'in_progress', 'paused')
+  AND created_by_user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListActiveQuickMatchesParams struct {
+	CreatedByUserID int64 `json:"created_by_user_id"`
+	Limit           int32 `json:"limit"`
+	Offset          int32 `json:"offset"`
+}
+
+func (q *Queries) ListActiveQuickMatches(ctx context.Context, arg ListActiveQuickMatchesParams) ([]Match, error) {
+	rows, err := q.db.Query(ctx, listActiveQuickMatches, arg.CreatedByUserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Match{}
+	for rows.Next() {
+		var i Match
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.TournamentID,
+			&i.DivisionID,
+			&i.PodID,
+			&i.CourtID,
+			&i.CreatedByUserID,
+			&i.MatchType,
+			&i.Round,
+			&i.RoundName,
+			&i.MatchNumber,
+			&i.Team1ID,
+			&i.Team2ID,
+			&i.Team1Seed,
+			&i.Team2Seed,
+			&i.ScoringPresetID,
+			&i.GamesPerSet,
+			&i.SetsToWin,
+			&i.PointsToWin,
+			&i.WinBy,
+			&i.MaxPoints,
+			&i.RallyScoring,
+			&i.TimeoutsPerGame,
+			&i.TimeoutDurationSec,
+			&i.FreezeAt,
+			&i.Team1Score,
+			&i.Team2Score,
+			&i.CurrentSet,
+			&i.CurrentGame,
+			&i.ServingTeam,
+			&i.ServerNumber,
+			&i.SetScores,
+			&i.Status,
+			&i.StartedAt,
+			&i.CompletedAt,
+			&i.WinnerTeamID,
+			&i.LoserTeamID,
+			&i.WinReason,
+			&i.NextMatchID,
+			&i.NextMatchSlot,
+			&i.LoserNextMatchID,
+			&i.LoserNextMatchSlot,
+			&i.RefereeUserID,
+			&i.Notes,
+			&i.ExpiresAt,
+			&i.ScheduledAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.MatchSeriesID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExpiredQuickMatches = `-- name: ListExpiredQuickMatches :many
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
+WHERE match_type = 'quick'
+  AND expires_at IS NOT NULL
+  AND expires_at < now()
+  AND status = 'scheduled'
+`
+
+func (q *Queries) ListExpiredQuickMatches(ctx context.Context) ([]Match, error) {
+	rows, err := q.db.Query(ctx, listExpiredQuickMatches)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Match{}
+	for rows.Next() {
+		var i Match
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.TournamentID,
+			&i.DivisionID,
+			&i.PodID,
+			&i.CourtID,
+			&i.CreatedByUserID,
+			&i.MatchType,
+			&i.Round,
+			&i.RoundName,
+			&i.MatchNumber,
+			&i.Team1ID,
+			&i.Team2ID,
+			&i.Team1Seed,
+			&i.Team2Seed,
+			&i.ScoringPresetID,
+			&i.GamesPerSet,
+			&i.SetsToWin,
+			&i.PointsToWin,
+			&i.WinBy,
+			&i.MaxPoints,
+			&i.RallyScoring,
+			&i.TimeoutsPerGame,
+			&i.TimeoutDurationSec,
+			&i.FreezeAt,
+			&i.Team1Score,
+			&i.Team2Score,
+			&i.CurrentSet,
+			&i.CurrentGame,
+			&i.ServingTeam,
+			&i.ServerNumber,
+			&i.SetScores,
+			&i.Status,
+			&i.StartedAt,
+			&i.CompletedAt,
+			&i.WinnerTeamID,
+			&i.LoserTeamID,
+			&i.WinReason,
+			&i.NextMatchID,
+			&i.NextMatchSlot,
+			&i.LoserNextMatchID,
+			&i.LoserNextMatchSlot,
+			&i.RefereeUserID,
+			&i.Notes,
+			&i.ExpiresAt,
+			&i.ScheduledAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.MatchSeriesID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMatchesByCourt = `-- name: ListMatchesByCourt :many
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
 WHERE court_id = $1
 ORDER BY scheduled_at NULLS LAST, created_at
 LIMIT $2 OFFSET $3
@@ -586,6 +974,7 @@ func (q *Queries) ListMatchesByCourt(ctx context.Context, arg ListMatchesByCourt
 			&i.ScheduledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MatchSeriesID,
 		); err != nil {
 			return nil, err
 		}
@@ -598,7 +987,7 @@ func (q *Queries) ListMatchesByCourt(ctx context.Context, arg ListMatchesByCourt
 }
 
 const listMatchesByCourtActive = `-- name: ListMatchesByCourtActive :many
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
 WHERE court_id = $1
   AND status IN ('warmup', 'in_progress', 'paused')
 ORDER BY created_at
@@ -662,6 +1051,7 @@ func (q *Queries) ListMatchesByCourtActive(ctx context.Context, courtID pgtype.I
 			&i.ScheduledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MatchSeriesID,
 		); err != nil {
 			return nil, err
 		}
@@ -674,7 +1064,7 @@ func (q *Queries) ListMatchesByCourtActive(ctx context.Context, courtID pgtype.I
 }
 
 const listMatchesByDivision = `-- name: ListMatchesByDivision :many
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
 WHERE division_id = $1
 ORDER BY round, match_number
 LIMIT $2 OFFSET $3
@@ -744,6 +1134,7 @@ func (q *Queries) ListMatchesByDivision(ctx context.Context, arg ListMatchesByDi
 			&i.ScheduledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MatchSeriesID,
 		); err != nil {
 			return nil, err
 		}
@@ -756,7 +1147,7 @@ func (q *Queries) ListMatchesByDivision(ctx context.Context, arg ListMatchesByDi
 }
 
 const listMatchesByLoserNextMatch = `-- name: ListMatchesByLoserNextMatch :many
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
 WHERE loser_next_match_id = $1
 ORDER BY loser_next_match_slot
 `
@@ -819,6 +1210,7 @@ func (q *Queries) ListMatchesByLoserNextMatch(ctx context.Context, loserNextMatc
 			&i.ScheduledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MatchSeriesID,
 		); err != nil {
 			return nil, err
 		}
@@ -831,7 +1223,7 @@ func (q *Queries) ListMatchesByLoserNextMatch(ctx context.Context, loserNextMatc
 }
 
 const listMatchesByNextMatch = `-- name: ListMatchesByNextMatch :many
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
 WHERE next_match_id = $1
 ORDER BY next_match_slot
 `
@@ -894,6 +1286,7 @@ func (q *Queries) ListMatchesByNextMatch(ctx context.Context, nextMatchID pgtype
 			&i.ScheduledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MatchSeriesID,
 		); err != nil {
 			return nil, err
 		}
@@ -906,7 +1299,7 @@ func (q *Queries) ListMatchesByNextMatch(ctx context.Context, nextMatchID pgtype
 }
 
 const listMatchesByPod = `-- name: ListMatchesByPod :many
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
 WHERE pod_id = $1
 ORDER BY round, match_number
 LIMIT $2 OFFSET $3
@@ -976,6 +1369,7 @@ func (q *Queries) ListMatchesByPod(ctx context.Context, arg ListMatchesByPodPara
 			&i.ScheduledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MatchSeriesID,
 		); err != nil {
 			return nil, err
 		}
@@ -988,7 +1382,7 @@ func (q *Queries) ListMatchesByPod(ctx context.Context, arg ListMatchesByPodPara
 }
 
 const listMatchesByTeam = `-- name: ListMatchesByTeam :many
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
 WHERE team1_id = $1 OR team2_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -1058,6 +1452,7 @@ func (q *Queries) ListMatchesByTeam(ctx context.Context, arg ListMatchesByTeamPa
 			&i.ScheduledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MatchSeriesID,
 		); err != nil {
 			return nil, err
 		}
@@ -1070,7 +1465,7 @@ func (q *Queries) ListMatchesByTeam(ctx context.Context, arg ListMatchesByTeamPa
 }
 
 const listMatchesByTournament = `-- name: ListMatchesByTournament :many
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
 WHERE tournament_id = $1
 ORDER BY round, match_number
 LIMIT $2 OFFSET $3
@@ -1140,6 +1535,7 @@ func (q *Queries) ListMatchesByTournament(ctx context.Context, arg ListMatchesBy
 			&i.ScheduledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MatchSeriesID,
 		); err != nil {
 			return nil, err
 		}
@@ -1152,7 +1548,7 @@ func (q *Queries) ListMatchesByTournament(ctx context.Context, arg ListMatchesBy
 }
 
 const listQuickMatches = `-- name: ListQuickMatches :many
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at FROM matches
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
 WHERE match_type = 'quick'
   AND created_by_user_id = $1
 ORDER BY created_at DESC
@@ -1223,6 +1619,91 @@ func (q *Queries) ListQuickMatches(ctx context.Context, arg ListQuickMatchesPara
 			&i.ScheduledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MatchSeriesID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuickMatchesByUser = `-- name: ListQuickMatchesByUser :many
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
+WHERE match_type = 'quick'
+  AND created_by_user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListQuickMatchesByUserParams struct {
+	CreatedByUserID int64 `json:"created_by_user_id"`
+	Limit           int32 `json:"limit"`
+	Offset          int32 `json:"offset"`
+}
+
+func (q *Queries) ListQuickMatchesByUser(ctx context.Context, arg ListQuickMatchesByUserParams) ([]Match, error) {
+	rows, err := q.db.Query(ctx, listQuickMatchesByUser, arg.CreatedByUserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Match{}
+	for rows.Next() {
+		var i Match
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.TournamentID,
+			&i.DivisionID,
+			&i.PodID,
+			&i.CourtID,
+			&i.CreatedByUserID,
+			&i.MatchType,
+			&i.Round,
+			&i.RoundName,
+			&i.MatchNumber,
+			&i.Team1ID,
+			&i.Team2ID,
+			&i.Team1Seed,
+			&i.Team2Seed,
+			&i.ScoringPresetID,
+			&i.GamesPerSet,
+			&i.SetsToWin,
+			&i.PointsToWin,
+			&i.WinBy,
+			&i.MaxPoints,
+			&i.RallyScoring,
+			&i.TimeoutsPerGame,
+			&i.TimeoutDurationSec,
+			&i.FreezeAt,
+			&i.Team1Score,
+			&i.Team2Score,
+			&i.CurrentSet,
+			&i.CurrentGame,
+			&i.ServingTeam,
+			&i.ServerNumber,
+			&i.SetScores,
+			&i.Status,
+			&i.StartedAt,
+			&i.CompletedAt,
+			&i.WinnerTeamID,
+			&i.LoserTeamID,
+			&i.WinReason,
+			&i.NextMatchID,
+			&i.NextMatchSlot,
+			&i.LoserNextMatchID,
+			&i.LoserNextMatchSlot,
+			&i.RefereeUserID,
+			&i.Notes,
+			&i.ExpiresAt,
+			&i.ScheduledAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.MatchSeriesID,
 		); err != nil {
 			return nil, err
 		}
@@ -1242,7 +1723,7 @@ UPDATE matches SET
     loser_next_match_slot = $5,
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
 `
 
 type UpdateMatchBracketWiringParams struct {
@@ -1311,6 +1792,7 @@ func (q *Queries) UpdateMatchBracketWiring(ctx context.Context, arg UpdateMatchB
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
@@ -1320,7 +1802,7 @@ UPDATE matches SET
     court_id = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
 `
 
 type UpdateMatchCourtParams struct {
@@ -1380,6 +1862,7 @@ func (q *Queries) UpdateMatchCourt(ctx context.Context, arg UpdateMatchCourtPara
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
@@ -1389,7 +1872,7 @@ UPDATE matches SET
     notes = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
 `
 
 type UpdateMatchNotesParams struct {
@@ -1449,6 +1932,7 @@ func (q *Queries) UpdateMatchNotes(ctx context.Context, arg UpdateMatchNotesPara
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
@@ -1458,7 +1942,7 @@ UPDATE matches SET
     referee_user_id = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
 `
 
 type UpdateMatchRefereeParams struct {
@@ -1518,6 +2002,7 @@ func (q *Queries) UpdateMatchReferee(ctx context.Context, arg UpdateMatchReferee
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
@@ -1531,7 +2016,7 @@ UPDATE matches SET
     completed_at = now(),
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
 `
 
 type UpdateMatchResultParams struct {
@@ -1598,6 +2083,7 @@ func (q *Queries) UpdateMatchResult(ctx context.Context, arg UpdateMatchResultPa
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
@@ -1613,7 +2099,7 @@ UPDATE matches SET
     set_scores = $8,
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
 `
 
 type UpdateMatchScoringParams struct {
@@ -1688,6 +2174,7 @@ func (q *Queries) UpdateMatchScoring(ctx context.Context, arg UpdateMatchScoring
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
@@ -1705,7 +2192,7 @@ UPDATE matches SET
     freeze_at = $10,
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
 `
 
 type UpdateMatchScoringConfigParams struct {
@@ -1784,6 +2271,77 @@ func (q *Queries) UpdateMatchScoringConfig(ctx context.Context, arg UpdateMatchS
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
+	)
+	return i, err
+}
+
+const updateMatchSeriesID = `-- name: UpdateMatchSeriesID :one
+UPDATE matches SET
+    match_series_id = $2,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
+`
+
+type UpdateMatchSeriesIDParams struct {
+	ID            int64       `json:"id"`
+	MatchSeriesID pgtype.Int8 `json:"match_series_id"`
+}
+
+func (q *Queries) UpdateMatchSeriesID(ctx context.Context, arg UpdateMatchSeriesIDParams) (Match, error) {
+	row := q.db.QueryRow(ctx, updateMatchSeriesID, arg.ID, arg.MatchSeriesID)
+	var i Match
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.TournamentID,
+		&i.DivisionID,
+		&i.PodID,
+		&i.CourtID,
+		&i.CreatedByUserID,
+		&i.MatchType,
+		&i.Round,
+		&i.RoundName,
+		&i.MatchNumber,
+		&i.Team1ID,
+		&i.Team2ID,
+		&i.Team1Seed,
+		&i.Team2Seed,
+		&i.ScoringPresetID,
+		&i.GamesPerSet,
+		&i.SetsToWin,
+		&i.PointsToWin,
+		&i.WinBy,
+		&i.MaxPoints,
+		&i.RallyScoring,
+		&i.TimeoutsPerGame,
+		&i.TimeoutDurationSec,
+		&i.FreezeAt,
+		&i.Team1Score,
+		&i.Team2Score,
+		&i.CurrentSet,
+		&i.CurrentGame,
+		&i.ServingTeam,
+		&i.ServerNumber,
+		&i.SetScores,
+		&i.Status,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.WinnerTeamID,
+		&i.LoserTeamID,
+		&i.WinReason,
+		&i.NextMatchID,
+		&i.NextMatchSlot,
+		&i.LoserNextMatchID,
+		&i.LoserNextMatchSlot,
+		&i.RefereeUserID,
+		&i.Notes,
+		&i.ExpiresAt,
+		&i.ScheduledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
@@ -1794,7 +2352,7 @@ UPDATE matches SET
     started_at = now(),
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
 `
 
 func (q *Queries) UpdateMatchStarted(ctx context.Context, id int64) (Match, error) {
@@ -1849,6 +2407,7 @@ func (q *Queries) UpdateMatchStarted(ctx context.Context, id int64) (Match, erro
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
@@ -1858,7 +2417,7 @@ UPDATE matches SET
     status = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
 `
 
 type UpdateMatchStatusParams struct {
@@ -1918,6 +2477,7 @@ func (q *Queries) UpdateMatchStatus(ctx context.Context, arg UpdateMatchStatusPa
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }
@@ -1930,7 +2490,7 @@ UPDATE matches SET
     team2_seed = $5,
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at
+RETURNING id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id
 `
 
 type UpdateMatchTeamsParams struct {
@@ -1999,6 +2559,7 @@ func (q *Queries) UpdateMatchTeams(ctx context.Context, arg UpdateMatchTeamsPara
 		&i.ScheduledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MatchSeriesID,
 	)
 	return i, err
 }

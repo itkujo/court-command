@@ -48,6 +48,10 @@ type Config struct {
 	BracketHandler    *handler.BracketHandler
 	CourtQueueHandler *handler.CourtQueueHandler
 
+	// Phase 4E handlers
+	MatchSeriesHandler *handler.MatchSeriesHandler
+	QuickMatchHandler  *handler.QuickMatchHandler
+
 	// Phase 4C: WebSocket
 	WSHandler chi.Router
 }
@@ -199,6 +203,25 @@ func New(cfg *Config) chi.Router {
 		r.Route("/teams/{teamID}/matches", func(r chi.Router) {
 			r.Use(middleware.RequireAuth(cfg.SessionStore))
 			r.Mount("/", cfg.MatchHandler.TeamRoutes())
+		})
+
+		// --- Phase 4E routes ---
+
+		// Match series (authenticated)
+		r.Route("/match-series", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.MatchSeriesHandler.Routes())
+		})
+
+		// Division-scoped match series
+		r.Route("/divisions/{divisionID}/match-series", func(r chi.Router) {
+			r.Mount("/", cfg.MatchSeriesHandler.DivisionRoutes())
+		})
+
+		// Quick matches (authenticated)
+		r.Route("/quick-matches", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.QuickMatchHandler.Routes())
 		})
 	})
 

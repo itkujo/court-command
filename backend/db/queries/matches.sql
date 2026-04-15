@@ -204,3 +204,67 @@ ORDER BY next_match_slot;
 SELECT * FROM matches
 WHERE loser_next_match_id = $1
 ORDER BY loser_next_match_slot;
+
+-- name: CreateQuickMatch :one
+INSERT INTO matches (
+    created_by_user_id, match_type, status,
+    games_per_set, sets_to_win, points_to_win, win_by,
+    max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at,
+    expires_at
+) VALUES (
+    $1, 'quick', 'scheduled',
+    $2, $3, $4, $5,
+    $6, $7, $8, $9, $10,
+    $11
+)
+RETURNING *;
+
+-- name: ListExpiredQuickMatches :many
+SELECT * FROM matches
+WHERE match_type = 'quick'
+  AND expires_at IS NOT NULL
+  AND expires_at < now()
+  AND status = 'scheduled';
+
+-- name: DeleteQuickMatchByID :exec
+DELETE FROM matches
+WHERE id = $1
+  AND match_type = 'quick';
+
+-- name: ListActiveQuickMatches :many
+SELECT * FROM matches
+WHERE match_type = 'quick'
+  AND status IN ('scheduled', 'warmup', 'in_progress', 'paused')
+  AND created_by_user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: ListQuickMatchesByUser :many
+SELECT * FROM matches
+WHERE match_type = 'quick'
+  AND created_by_user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: CreateSeriesChildMatch :one
+INSERT INTO matches (
+    match_series_id, division_id, pod_id, created_by_user_id,
+    match_type, match_number, status,
+    team1_id, team2_id,
+    games_per_set, sets_to_win, points_to_win, win_by,
+    max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at
+) VALUES (
+    $1, $2, $3, $4,
+    'tournament', $5, 'scheduled',
+    $6, $7,
+    $8, $9, $10, $11,
+    $12, $13, $14, $15, $16
+)
+RETURNING *;
+
+-- name: UpdateMatchSeriesID :one
+UPDATE matches SET
+    match_series_id = $2,
+    updated_at = now()
+WHERE id = $1
+RETURNING *;

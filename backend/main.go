@@ -14,6 +14,7 @@ import (
 	"github.com/court-command/court-command/db"
 	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/handler"
+	"github.com/court-command/court-command/jobs"
 	"github.com/court-command/court-command/pubsub"
 	"github.com/court-command/court-command/router"
 	"github.com/court-command/court-command/service"
@@ -114,8 +115,16 @@ func main() {
 	bracketHandler := handler.NewBracketHandler(bracketService)
 	courtQueueHandler := handler.NewCourtQueueHandler(courtQueueService)
 
+	// Phase 4E services + handlers
+	matchSeriesService := service.NewMatchSeriesService(queries, pool, ps)
+	matchSeriesHandler := handler.NewMatchSeriesHandler(matchSeriesService)
+	quickMatchHandler := handler.NewQuickMatchHandler(matchService)
+
 	// Phase 4C: WebSocket handler
 	wsHandler := ws.NewHandler(ps, logger)
+
+	// Start background jobs
+	jobs.StartQuickMatchCleanup(ctx, matchService, logger)
 
 	r := router.New(&router.Config{
 		DB:             pool,
@@ -149,6 +158,10 @@ func main() {
 		// Phase 4D
 		BracketHandler:    bracketHandler,
 		CourtQueueHandler: courtQueueHandler,
+
+		// Phase 4E
+		MatchSeriesHandler: matchSeriesHandler,
+		QuickMatchHandler:  quickMatchHandler,
 
 		// Phase 4C
 		WSHandler: wsHandler.Routes(),
