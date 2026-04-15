@@ -10,6 +10,36 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Team struct {
+	ID             int64              `json:"id"`
+	Name           string             `json:"name"`
+	ShortName      string             `json:"short_name"`
+	Slug           string             `json:"slug"`
+	LogoUrl        *string            `json:"logo_url"`
+	PrimaryColor   *string            `json:"primary_color"`
+	SecondaryColor *string            `json:"secondary_color"`
+	OrgID          pgtype.Int8        `json:"org_id"`
+	City           *string            `json:"city"`
+	FoundedYear    pgtype.Int4        `json:"founded_year"`
+	Bio            *string            `json:"bio"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type TeamRoster struct {
+	ID           int64              `json:"id"`
+	TeamID       int64              `json:"team_id"`
+	PlayerID     int64              `json:"player_id"`
+	Role         string             `json:"role"`
+	JerseyNumber pgtype.Int4        `json:"jersey_number"`
+	JoinedAt     time.Time          `json:"joined_at"`
+	LeftAt       pgtype.Timestamptz `json:"left_at"`
+	Status       string             `json:"status"`
+	CreatedAt    time.Time          `json:"created_at"`
+	UpdatedAt    time.Time          `json:"updated_at"`
+}
+
 type User struct {
 	ID                    int64              `json:"id"`
 	PublicID              string             `json:"public_id"`
