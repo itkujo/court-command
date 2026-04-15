@@ -43,6 +43,9 @@ type Config struct {
 	// Phase 4A handlers
 	ScoringPresetHandler *handler.ScoringPresetHandler
 	MatchHandler         *handler.MatchHandler
+
+	// Phase 4C: WebSocket
+	WSHandler chi.Router
 }
 
 // New creates a chi.Router with all middleware and routes mounted.
@@ -181,6 +184,11 @@ func New(cfg *Config) chi.Router {
 			r.Mount("/", cfg.MatchHandler.TeamRoutes())
 		})
 	})
+
+	// WebSocket routes (outside API versioning — protocol is inherently versioned)
+	if cfg.WSHandler != nil {
+		r.Mount("/ws", cfg.WSHandler)
+	}
 
 	return r
 }

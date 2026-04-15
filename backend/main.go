@@ -18,6 +18,7 @@ import (
 	"github.com/court-command/court-command/router"
 	"github.com/court-command/court-command/service"
 	"github.com/court-command/court-command/session"
+	"github.com/court-command/court-command/ws"
 )
 
 func main() {
@@ -105,6 +106,9 @@ func main() {
 	scoringPresetHandler := handler.NewScoringPresetHandler(scoringPresetService)
 	matchHandler := handler.NewMatchHandler(matchService)
 
+	// Phase 4C: WebSocket handler
+	wsHandler := ws.NewHandler(ps, logger)
+
 	r := router.New(&router.Config{
 		DB:             pool,
 		SessionStore:   sessionStore,
@@ -133,6 +137,9 @@ func main() {
 		// Phase 4A
 		ScoringPresetHandler: scoringPresetHandler,
 		MatchHandler:         matchHandler,
+
+		// Phase 4C
+		WSHandler: wsHandler.Routes(),
 	})
 
 	srv := &http.Server{
