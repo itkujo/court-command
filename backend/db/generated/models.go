@@ -10,6 +10,47 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type OrgBlock struct {
+	ID        int64     `json:"id"`
+	PlayerID  int64     `json:"player_id"`
+	OrgID     int64     `json:"org_id"`
+	BlockedAt time.Time `json:"blocked_at"`
+}
+
+type OrgMembership struct {
+	ID        int64              `json:"id"`
+	OrgID     int64              `json:"org_id"`
+	PlayerID  int64              `json:"player_id"`
+	Role      string             `json:"role"`
+	JoinedAt  time.Time          `json:"joined_at"`
+	LeftAt    pgtype.Timestamptz `json:"left_at"`
+	Status    string             `json:"status"`
+	CreatedAt time.Time          `json:"created_at"`
+	UpdatedAt time.Time          `json:"updated_at"`
+}
+
+type Organization struct {
+	ID              int64              `json:"id"`
+	Name            string             `json:"name"`
+	Slug            string             `json:"slug"`
+	LogoUrl         *string            `json:"logo_url"`
+	PrimaryColor    *string            `json:"primary_color"`
+	SecondaryColor  *string            `json:"secondary_color"`
+	WebsiteUrl      *string            `json:"website_url"`
+	ContactEmail    *string            `json:"contact_email"`
+	ContactPhone    *string            `json:"contact_phone"`
+	City            *string            `json:"city"`
+	StateProvince   *string            `json:"state_province"`
+	Country         *string            `json:"country"`
+	Bio             *string            `json:"bio"`
+	FoundedYear     pgtype.Int4        `json:"founded_year"`
+	SocialLinks     []byte             `json:"social_links"`
+	CreatedByUserID int64              `json:"created_by_user_id"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type Team struct {
 	ID             int64              `json:"id"`
 	Name           string             `json:"name"`
