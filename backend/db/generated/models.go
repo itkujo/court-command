@@ -10,6 +10,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Announcement struct {
+	ID              int64              `json:"id"`
+	TournamentID    pgtype.Int8        `json:"tournament_id"`
+	LeagueID        pgtype.Int8        `json:"league_id"`
+	DivisionID      pgtype.Int8        `json:"division_id"`
+	Title           string             `json:"title"`
+	Body            string             `json:"body"`
+	IsPinned        pgtype.Bool        `json:"is_pinned"`
+	CreatedByUserID int64              `json:"created_by_user_id"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type Court struct {
 	ID              int64              `json:"id"`
 	Name            string             `json:"name"`
@@ -29,6 +43,111 @@ type Court struct {
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type Division struct {
+	ID                  int64              `json:"id"`
+	TournamentID        int64              `json:"tournament_id"`
+	Name                string             `json:"name"`
+	Slug                string             `json:"slug"`
+	Format              string             `json:"format"`
+	GenderRestriction   *string            `json:"gender_restriction"`
+	AgeRestriction      []byte             `json:"age_restriction"`
+	SkillMin            pgtype.Float8      `json:"skill_min"`
+	SkillMax            pgtype.Float8      `json:"skill_max"`
+	RatingSystem        *string            `json:"rating_system"`
+	BracketFormat       string             `json:"bracket_format"`
+	ScoringFormat       *string            `json:"scoring_format"`
+	MaxTeams            pgtype.Int4        `json:"max_teams"`
+	MaxRosterSize       pgtype.Int4        `json:"max_roster_size"`
+	EntryFeeAmount      pgtype.Numeric     `json:"entry_fee_amount"`
+	EntryFeeCurrency    *string            `json:"entry_fee_currency"`
+	CheckInOpen         pgtype.Bool        `json:"check_in_open"`
+	AllowSelfCheckIn    pgtype.Bool        `json:"allow_self_check_in"`
+	Status              string             `json:"status"`
+	SeedMethod          *string            `json:"seed_method"`
+	SortOrder           pgtype.Int4        `json:"sort_order"`
+	Notes               *string            `json:"notes"`
+	AutoApprove         pgtype.Bool        `json:"auto_approve"`
+	RegistrationMode    *string            `json:"registration_mode"`
+	AutoPromoteWaitlist pgtype.Bool        `json:"auto_promote_waitlist"`
+	GrandFinalsReset    pgtype.Bool        `json:"grand_finals_reset"`
+	AdvancementCount    pgtype.Int4        `json:"advancement_count"`
+	CurrentPhase        *string            `json:"current_phase"`
+	ReportToDupr        pgtype.Bool        `json:"report_to_dupr"`
+	ReportToVair        pgtype.Bool        `json:"report_to_vair"`
+	AllowRefPlayerAdd   pgtype.Bool        `json:"allow_ref_player_add"`
+	CreatedAt           time.Time          `json:"created_at"`
+	UpdatedAt           time.Time          `json:"updated_at"`
+	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type DivisionTemplate struct {
+	ID                  int64              `json:"id"`
+	LeagueID            int64              `json:"league_id"`
+	Name                string             `json:"name"`
+	Format              string             `json:"format"`
+	GenderRestriction   *string            `json:"gender_restriction"`
+	AgeRestriction      []byte             `json:"age_restriction"`
+	SkillMin            pgtype.Float8      `json:"skill_min"`
+	SkillMax            pgtype.Float8      `json:"skill_max"`
+	RatingSystem        *string            `json:"rating_system"`
+	BracketFormat       string             `json:"bracket_format"`
+	ScoringFormat       *string            `json:"scoring_format"`
+	MaxTeams            pgtype.Int4        `json:"max_teams"`
+	MaxRosterSize       pgtype.Int4        `json:"max_roster_size"`
+	EntryFeeAmount      pgtype.Numeric     `json:"entry_fee_amount"`
+	EntryFeeCurrency    *string            `json:"entry_fee_currency"`
+	SeedMethod          *string            `json:"seed_method"`
+	RegistrationMode    *string            `json:"registration_mode"`
+	AutoApprove         pgtype.Bool        `json:"auto_approve"`
+	AutoPromoteWaitlist pgtype.Bool        `json:"auto_promote_waitlist"`
+	GrandFinalsReset    pgtype.Bool        `json:"grand_finals_reset"`
+	AdvancementCount    pgtype.Int4        `json:"advancement_count"`
+	AllowSelfCheckIn    pgtype.Bool        `json:"allow_self_check_in"`
+	AllowRefPlayerAdd   pgtype.Bool        `json:"allow_ref_player_add"`
+	ReportToDupr        pgtype.Bool        `json:"report_to_dupr"`
+	ReportToVair        pgtype.Bool        `json:"report_to_vair"`
+	SortOrder           pgtype.Int4        `json:"sort_order"`
+	Notes               *string            `json:"notes"`
+	CreatedAt           time.Time          `json:"created_at"`
+	UpdatedAt           time.Time          `json:"updated_at"`
+	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type League struct {
+	ID               int64              `json:"id"`
+	PublicID         string             `json:"public_id"`
+	Name             string             `json:"name"`
+	Slug             string             `json:"slug"`
+	Status           string             `json:"status"`
+	LogoUrl          *string            `json:"logo_url"`
+	BannerUrl        *string            `json:"banner_url"`
+	Description      *string            `json:"description"`
+	WebsiteUrl       *string            `json:"website_url"`
+	ContactEmail     *string            `json:"contact_email"`
+	ContactPhone     *string            `json:"contact_phone"`
+	City             *string            `json:"city"`
+	StateProvince    *string            `json:"state_province"`
+	Country          *string            `json:"country"`
+	RulesDocumentUrl *string            `json:"rules_document_url"`
+	SocialLinks      []byte             `json:"social_links"`
+	SponsorInfo      []byte             `json:"sponsor_info"`
+	Notes            *string            `json:"notes"`
+	CreatedByUserID  int64              `json:"created_by_user_id"`
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type LeagueRegistration struct {
+	ID           int64              `json:"id"`
+	LeagueID     int64              `json:"league_id"`
+	OrgID        int64              `json:"org_id"`
+	Status       string             `json:"status"`
+	RegisteredAt time.Time          `json:"registered_at"`
+	ApprovedAt   pgtype.Timestamptz `json:"approved_at"`
+	Notes        *string            `json:"notes"`
 }
 
 type OrgBlock struct {
@@ -72,6 +191,62 @@ type Organization struct {
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type Pod struct {
+	ID         int64              `json:"id"`
+	DivisionID int64              `json:"division_id"`
+	Name       string             `json:"name"`
+	SortOrder  pgtype.Int4        `json:"sort_order"`
+	CreatedAt  time.Time          `json:"created_at"`
+	UpdatedAt  time.Time          `json:"updated_at"`
+	DeletedAt  pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type Registration struct {
+	ID                 int64              `json:"id"`
+	DivisionID         int64              `json:"division_id"`
+	TeamID             pgtype.Int8        `json:"team_id"`
+	PlayerID           pgtype.Int8        `json:"player_id"`
+	RegisteredByUserID int64              `json:"registered_by_user_id"`
+	Status             string             `json:"status"`
+	Seed               pgtype.Int4        `json:"seed"`
+	FinalPlacement     pgtype.Int4        `json:"final_placement"`
+	RegistrationNotes  *string            `json:"registration_notes"`
+	AdminNotes         *string            `json:"admin_notes"`
+	SeekingPartner     pgtype.Bool        `json:"seeking_partner"`
+	RegisteredAt       time.Time          `json:"registered_at"`
+	ApprovedAt         pgtype.Timestamptz `json:"approved_at"`
+	WithdrawnAt        pgtype.Timestamptz `json:"withdrawn_at"`
+	CheckedInAt        pgtype.Timestamptz `json:"checked_in_at"`
+}
+
+type Season struct {
+	ID                         int64              `json:"id"`
+	Name                       string             `json:"name"`
+	Slug                       string             `json:"slug"`
+	LeagueID                   int64              `json:"league_id"`
+	Status                     string             `json:"status"`
+	StartDate                  pgtype.Date        `json:"start_date"`
+	EndDate                    pgtype.Date        `json:"end_date"`
+	Description                *string            `json:"description"`
+	Notes                      *string            `json:"notes"`
+	RosterConfirmationDeadline pgtype.Timestamptz `json:"roster_confirmation_deadline"`
+	StandingsMethod            *string            `json:"standings_method"`
+	StandingsConfig            []byte             `json:"standings_config"`
+	CreatedAt                  time.Time          `json:"created_at"`
+	UpdatedAt                  time.Time          `json:"updated_at"`
+	DeletedAt                  pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type SeasonConfirmation struct {
+	ID          int64              `json:"id"`
+	SeasonID    int64              `json:"season_id"`
+	TeamID      int64              `json:"team_id"`
+	DivisionID  int64              `json:"division_id"`
+	Confirmed   pgtype.Bool        `json:"confirmed"`
+	ConfirmedAt pgtype.Timestamptz `json:"confirmed_at"`
+	Deadline    time.Time          `json:"deadline"`
+}
+
 type Team struct {
 	ID             int64              `json:"id"`
 	Name           string             `json:"name"`
@@ -100,6 +275,39 @@ type TeamRoster struct {
 	Status       string             `json:"status"`
 	CreatedAt    time.Time          `json:"created_at"`
 	UpdatedAt    time.Time          `json:"updated_at"`
+}
+
+type Tournament struct {
+	ID                  int64              `json:"id"`
+	PublicID            string             `json:"public_id"`
+	Name                string             `json:"name"`
+	Slug                string             `json:"slug"`
+	Status              string             `json:"status"`
+	StartDate           time.Time          `json:"start_date"`
+	EndDate             time.Time          `json:"end_date"`
+	VenueID             pgtype.Int8        `json:"venue_id"`
+	LeagueID            pgtype.Int8        `json:"league_id"`
+	SeasonID            pgtype.Int8        `json:"season_id"`
+	Description         *string            `json:"description"`
+	LogoUrl             *string            `json:"logo_url"`
+	BannerUrl           *string            `json:"banner_url"`
+	ContactEmail        *string            `json:"contact_email"`
+	ContactPhone        *string            `json:"contact_phone"`
+	WebsiteUrl          *string            `json:"website_url"`
+	RegistrationOpenAt  pgtype.Timestamptz `json:"registration_open_at"`
+	RegistrationCloseAt pgtype.Timestamptz `json:"registration_close_at"`
+	MaxParticipants     pgtype.Int4        `json:"max_participants"`
+	RulesDocumentUrl    *string            `json:"rules_document_url"`
+	CancellationReason  *string            `json:"cancellation_reason"`
+	SocialLinks         []byte             `json:"social_links"`
+	Notes               *string            `json:"notes"`
+	SponsorInfo         []byte             `json:"sponsor_info"`
+	ShowRegistrations   pgtype.Bool        `json:"show_registrations"`
+	CreatedByUserID     int64              `json:"created_by_user_id"`
+	TdUserID            pgtype.Int8        `json:"td_user_id"`
+	CreatedAt           time.Time          `json:"created_at"`
+	UpdatedAt           time.Time          `json:"updated_at"`
+	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type User struct {
