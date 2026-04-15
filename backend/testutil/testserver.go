@@ -50,6 +50,10 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	scoringPresetService := service.NewScoringPresetService(queries)
 	matchService := service.NewMatchService(queries, pool, nil)
 
+	// Phase 4D services
+	bracketService := service.NewBracketService(queries, pool)
+	courtQueueService := service.NewCourtQueueService(queries, nil)
+
 	// Phase 1+2 handlers
 	authHandler := handler.NewAuthHandler(authService, false)
 	healthHandler := handler.NewHealthHandler(pool, store.Client())
@@ -73,6 +77,10 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	// Phase 4A handlers
 	scoringPresetHandler := handler.NewScoringPresetHandler(scoringPresetService)
 	matchHandler := handler.NewMatchHandler(matchService)
+
+	// Phase 4D handlers
+	bracketHandler := handler.NewBracketHandler(bracketService)
+	courtQueueHandler := handler.NewCourtQueueHandler(courtQueueService)
 
 	r := router.New(&router.Config{
 		DB:             pool,
@@ -102,6 +110,10 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 		// Phase 4A
 		ScoringPresetHandler: scoringPresetHandler,
 		MatchHandler:         matchHandler,
+
+		// Phase 4D
+		BracketHandler:    bracketHandler,
+		CourtQueueHandler: courtQueueHandler,
 	})
 
 	ts := httptest.NewServer(r)

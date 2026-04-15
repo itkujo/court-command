@@ -44,6 +44,10 @@ type Config struct {
 	ScoringPresetHandler *handler.ScoringPresetHandler
 	MatchHandler         *handler.MatchHandler
 
+	// Phase 4D handlers
+	BracketHandler    *handler.BracketHandler
+	CourtQueueHandler *handler.CourtQueueHandler
+
 	// Phase 4C: WebSocket
 	WSHandler chi.Router
 }
@@ -176,6 +180,19 @@ func New(cfg *Config) chi.Router {
 		// Court-scoped matches
 		r.Route("/courts/{courtID}/matches", func(r chi.Router) {
 			r.Mount("/", cfg.MatchHandler.CourtRoutes())
+		})
+
+		// --- Phase 4D routes ---
+
+		// Bracket generation (authenticated)
+		r.Route("/divisions/{divisionID}/bracket", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.BracketHandler.Routes())
+		})
+
+		// Court queue (mixed: GET public, writes authenticated by handler)
+		r.Route("/courts/{courtID}/queue", func(r chi.Router) {
+			r.Mount("/", cfg.CourtQueueHandler.Routes())
 		})
 
 		// Team-scoped matches

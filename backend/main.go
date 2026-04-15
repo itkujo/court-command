@@ -81,6 +81,10 @@ func main() {
 	scoringPresetService := service.NewScoringPresetService(queries)
 	matchService := service.NewMatchService(queries, pool, ps)
 
+	// Phase 4D services
+	bracketService := service.NewBracketService(queries, pool)
+	courtQueueService := service.NewCourtQueueService(queries, ps)
+
 	// Phase 1+2 handlers
 	secureCookie := !cfg.IsDevelopment()
 	authHandler := handler.NewAuthHandler(authService, secureCookie)
@@ -105,6 +109,10 @@ func main() {
 	// Phase 4A handlers
 	scoringPresetHandler := handler.NewScoringPresetHandler(scoringPresetService)
 	matchHandler := handler.NewMatchHandler(matchService)
+
+	// Phase 4D handlers
+	bracketHandler := handler.NewBracketHandler(bracketService)
+	courtQueueHandler := handler.NewCourtQueueHandler(courtQueueService)
 
 	// Phase 4C: WebSocket handler
 	wsHandler := ws.NewHandler(ps, logger)
@@ -137,6 +145,10 @@ func main() {
 		// Phase 4A
 		ScoringPresetHandler: scoringPresetHandler,
 		MatchHandler:         matchHandler,
+
+		// Phase 4D
+		BracketHandler:    bracketHandler,
+		CourtQueueHandler: courtQueueHandler,
 
 		// Phase 4C
 		WSHandler: wsHandler.Routes(),
