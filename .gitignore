@@ -13,3 +13,8 @@ tmp/
 backend/court-command
 uploads/
 .superpowers/
+
+# Frontend
+node_modules/
+frontend/dist/
+frontend/src/routeTree.gen.ts
