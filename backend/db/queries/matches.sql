@@ -282,3 +282,9 @@ UPDATE matches SET
 WHERE court_id = $1
     AND court_queue_position IS NOT NULL
     AND status NOT IN ('completed', 'cancelled', 'forfeited');
+
+-- name: ListMatchesByTeamInDivision :many
+SELECT * FROM matches
+WHERE division_id = sqlc.arg('division_id')
+  AND (team1_id = sqlc.arg('team_id') OR team2_id = sqlc.arg('team_id'))
+ORDER BY created_at;

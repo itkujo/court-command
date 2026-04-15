@@ -404,6 +404,28 @@ type SourceProfile struct {
 	UpdatedAt           time.Time          `json:"updated_at"`
 }
 
+type StandingsEntry struct {
+	ID                int64              `json:"id"`
+	SeasonID          int64              `json:"season_id"`
+	DivisionID        int64              `json:"division_id"`
+	TeamID            int64              `json:"team_id"`
+	Wins              int32              `json:"wins"`
+	Losses            int32              `json:"losses"`
+	Draws             int32              `json:"draws"`
+	PointsFor         int32              `json:"points_for"`
+	PointsAgainst     int32              `json:"points_against"`
+	PointDifferential int32              `json:"point_differential"`
+	MatchesPlayed     int32              `json:"matches_played"`
+	StandingPoints    int32              `json:"standing_points"`
+	OverridePoints    pgtype.Int4        `json:"override_points"`
+	OverrideReason    *string            `json:"override_reason"`
+	IsWithdrawn       bool               `json:"is_withdrawn"`
+	WithdrawnAt       pgtype.Timestamptz `json:"withdrawn_at"`
+	Rank              int32              `json:"rank"`
+	CreatedAt         time.Time          `json:"created_at"`
+	UpdatedAt         time.Time          `json:"updated_at"`
+}
+
 type Team struct {
 	ID             int64              `json:"id"`
 	Name           string             `json:"name"`
