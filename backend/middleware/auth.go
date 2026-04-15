@@ -15,6 +15,26 @@ func SessionData(ctx context.Context) *session.Data {
 	return session.SessionData(ctx)
 }
 
+// OptionalAuth is a middleware that populates session data when a valid cookie exists
+// but never rejects the request. Use this on mixed-auth routes where reads are public
+// but writes check auth at the handler level.
+func OptionalAuth(store *session.Store) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie(session.SessionCookieName)
+			if err == nil && cookie.Value != "" {
+				data, err := store.Get(r.Context(), cookie.Value)
+				if err == nil && data != nil {
+					ctx := session.SetSessionData(r.Context(), data)
+					next.ServeHTTP(w, r.WithContext(ctx))
+					return
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // RequireAuth is a middleware that requires a valid session cookie.
 // If the session is invalid or missing, it returns 401 Unauthorized.
 func RequireAuth(store *session.Store) func(http.Handler) http.Handler {
