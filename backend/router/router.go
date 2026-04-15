@@ -52,6 +52,10 @@ type Config struct {
 	MatchSeriesHandler *handler.MatchSeriesHandler
 	QuickMatchHandler  *handler.QuickMatchHandler
 
+	// Phase 5: Overlay
+	OverlayHandler       *handler.OverlayHandler
+	SourceProfileHandler *handler.SourceProfileHandler
+
 	// Phase 4C: WebSocket
 	WSHandler chi.Router
 }
@@ -222,6 +226,35 @@ func New(cfg *Config) chi.Router {
 		r.Route("/quick-matches", func(r chi.Router) {
 			r.Use(middleware.RequireAuth(cfg.SessionStore))
 			r.Mount("/", cfg.QuickMatchHandler.Routes())
+		})
+
+		// --- Phase 5 routes ---
+
+		// Overlay routes (mixed public and authenticated)
+		r.Route("/overlay", func(r chi.Router) {
+			// Public routes (overlay data, themes, demo, webhook)
+			r.Get("/court/{courtID}/data", cfg.OverlayHandler.GetOverlayData)
+			r.Get("/themes", cfg.OverlayHandler.ListThemes)
+			r.Get("/themes/{themeID}", cfg.OverlayHandler.GetTheme)
+			r.Get("/demo-data", cfg.OverlayHandler.GetDemoData)
+			r.Post("/webhook/{courtID}", cfg.OverlayHandler.ReceiveWebhook)
+
+			// Authenticated control panel routes
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireAuth(cfg.SessionStore))
+				r.Get("/court/{courtID}/config", cfg.OverlayHandler.GetConfig)
+				r.Put("/court/{courtID}/config/theme", cfg.OverlayHandler.UpdateTheme)
+				r.Put("/court/{courtID}/config/elements", cfg.OverlayHandler.UpdateElements)
+				r.Post("/court/{courtID}/config/token/generate", cfg.OverlayHandler.GenerateToken)
+				r.Delete("/court/{courtID}/config/token", cfg.OverlayHandler.RevokeToken)
+				r.Put("/court/{courtID}/config/source-profile", cfg.OverlayHandler.SetSourceProfile)
+			})
+		})
+
+		// Source Profile routes (authenticated)
+		r.Route("/source-profiles", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.SourceProfileHandler.Routes())
 		})
 	})
 

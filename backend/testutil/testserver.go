@@ -7,6 +7,7 @@ import (
 
 	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/handler"
+	"github.com/court-command/court-command/overlay"
 	"github.com/court-command/court-command/router"
 	"github.com/court-command/court-command/service"
 	"github.com/court-command/court-command/session"
@@ -87,6 +88,13 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	matchSeriesHandler := handler.NewMatchSeriesHandler(matchSeriesService)
 	quickMatchHandler := handler.NewQuickMatchHandler(matchService)
 
+	// Phase 5: Overlay (pass nil for pubsub in tests)
+	overlayResolver := overlay.NewResolver(queries)
+	overlayService := service.NewOverlayService(pool, queries, overlayResolver, nil)
+	sourceProfileService := service.NewSourceProfileService(queries)
+	overlayHandler := handler.NewOverlayHandler(overlayService, sourceProfileService)
+	sourceProfileHandler := handler.NewSourceProfileHandler(sourceProfileService)
+
 	r := router.New(&router.Config{
 		DB:             pool,
 		SessionStore:   store,
@@ -123,6 +131,10 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 		// Phase 4E
 		MatchSeriesHandler: matchSeriesHandler,
 		QuickMatchHandler:  quickMatchHandler,
+
+		// Phase 5
+		OverlayHandler:       overlayHandler,
+		SourceProfileHandler: sourceProfileHandler,
 	})
 
 	ts := httptest.NewServer(r)

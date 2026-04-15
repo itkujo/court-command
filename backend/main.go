@@ -15,6 +15,7 @@ import (
 	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/handler"
 	"github.com/court-command/court-command/jobs"
+	"github.com/court-command/court-command/overlay"
 	"github.com/court-command/court-command/pubsub"
 	"github.com/court-command/court-command/router"
 	"github.com/court-command/court-command/service"
@@ -120,6 +121,13 @@ func main() {
 	matchSeriesHandler := handler.NewMatchSeriesHandler(matchSeriesService)
 	quickMatchHandler := handler.NewQuickMatchHandler(matchService)
 
+	// Phase 5: Overlay
+	overlayResolver := overlay.NewResolver(queries)
+	overlayService := service.NewOverlayService(pool, queries, overlayResolver, ps)
+	sourceProfileService := service.NewSourceProfileService(queries)
+	overlayHandler := handler.NewOverlayHandler(overlayService, sourceProfileService)
+	sourceProfileHandler := handler.NewSourceProfileHandler(sourceProfileService)
+
 	// Phase 4C: WebSocket handler
 	wsHandler := ws.NewHandler(ps, logger)
 
@@ -162,6 +170,10 @@ func main() {
 		// Phase 4E
 		MatchSeriesHandler: matchSeriesHandler,
 		QuickMatchHandler:  quickMatchHandler,
+
+		// Phase 5
+		OverlayHandler:       overlayHandler,
+		SourceProfileHandler: sourceProfileHandler,
 
 		// Phase 4C
 		WSHandler: wsHandler.Routes(),
