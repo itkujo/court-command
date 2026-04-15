@@ -1,7 +1,7 @@
 # Makefile
-.PHONY: dev up down migrate-up migrate-down migrate-create sqlc test
+.PHONY: dev up down full full-down build migrate-up migrate-down migrate-create sqlc test
 
-# Start Docker services
+# Start Docker services (db + redis only)
 up:
 	docker compose up -d
 
@@ -9,9 +9,21 @@ up:
 down:
 	docker compose down
 
-# Run backend in development mode
+# Run backend in development mode (db + redis in Docker, backend locally)
 dev: up
 	cd backend && go run main.go
+
+# Start full stack in Docker (db + redis + backend)
+full:
+	docker compose --profile full up -d --build
+
+# Stop full stack
+full-down:
+	docker compose --profile full down
+
+# Build backend Docker image
+build:
+	docker compose --profile full build
 
 # Run migrations up
 migrate-up: up

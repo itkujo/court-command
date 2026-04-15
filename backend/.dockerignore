@@ -1,0 +1,12 @@
+# backend/.dockerignore
+.env
+*.test
+*.out
+__debug_bin*
+vendor/
+tmp/
+.DS_Store
+court-command
+uploads/
+testutil/
+sqlc.yaml

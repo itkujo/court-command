@@ -1,4 +1,6 @@
 # docker-compose.yml
+# Development: `docker compose up` (db + redis only, run backend locally)
+# Full stack: `docker compose --profile full up` (db + redis + backend)
 services:
   db:
     image: postgres:17-alpine
@@ -26,5 +28,33 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    profiles: ["full"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://courtcommand:courtcommand@db:5432/courtcommand?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      PORT: "8080"
+      ENV: production
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
 volumes:
   pgdata:
+  uploads:
