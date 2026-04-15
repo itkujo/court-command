@@ -48,7 +48,7 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 
 	// Phase 4A services
 	scoringPresetService := service.NewScoringPresetService(queries)
-	matchService := service.NewMatchService(queries, pool)
+	matchService := service.NewMatchService(queries, pool, nil)
 
 	// Phase 1+2 handlers
 	authHandler := handler.NewAuthHandler(authService, false)

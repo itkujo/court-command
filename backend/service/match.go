@@ -11,17 +11,30 @@ import (
 
 	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/engine"
+	"github.com/court-command/court-command/pubsub"
 )
 
 // MatchService handles match business logic.
 type MatchService struct {
 	queries *generated.Queries
 	pool    *pgxpool.Pool
+	ps      *pubsub.PubSub
 }
 
 // NewMatchService creates a new MatchService.
-func NewMatchService(queries *generated.Queries, pool *pgxpool.Pool) *MatchService {
-	return &MatchService{queries: queries, pool: pool}
+func NewMatchService(queries *generated.Queries, pool *pgxpool.Pool, ps *pubsub.PubSub) *MatchService {
+	return &MatchService{queries: queries, pool: pool, ps: ps}
+}
+
+// broadcastMatchUpdate publishes a match update to all relevant channels.
+// Handles pgtype.Int8 → *int64 conversion for courtID and divisionID.
+// Silently skips if pub/sub is not configured (ps == nil).
+func (s *MatchService) broadcastMatchUpdate(ctx context.Context, match generated.Match) {
+	if s.ps == nil {
+		return
+	}
+	resp := toMatchResponse(match)
+	s.ps.PublishMatchUpdate(ctx, match.PublicID, optInt8(match.CourtID), optInt8(match.DivisionID), resp)
 }
 
 // ScoreSnapshot holds the denormalized score state for a match.
@@ -423,6 +436,7 @@ func (s *MatchService) UpdateStatus(ctx context.Context, id int64, newStatus str
 		return MatchResponse{}, fmt.Errorf("failed to update match status: %w", err)
 	}
 
+	s.broadcastMatchUpdate(ctx, updated)
 	return toMatchResponse(updated), nil
 }
 
@@ -481,6 +495,7 @@ func (s *MatchService) StartMatch(ctx context.Context, matchID int64, userID int
 		return MatchResponse{}, fmt.Errorf("failed to commit start match: %w", err)
 	}
 
+	s.broadcastMatchUpdate(ctx, updated)
 	return toMatchResponse(updated), nil
 }
 
@@ -662,6 +677,7 @@ func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (M
 		return MatchResponse{}, fmt.Errorf("failed to commit undo: %w", err)
 	}
 
+	s.broadcastMatchUpdate(ctx, updated)
 	return toMatchResponse(updated), nil
 }
 
@@ -997,6 +1013,7 @@ func (s *MatchService) applyEngineResult(
 		return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to commit: %w", err)
 	}
 
+	s.broadcastMatchUpdate(ctx, updated)
 	return updated, event, nil
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/court-command/court-command/db"
 	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/handler"
+	"github.com/court-command/court-command/pubsub"
 	"github.com/court-command/court-command/router"
 	"github.com/court-command/court-command/service"
 	"github.com/court-command/court-command/session"
@@ -72,9 +73,12 @@ func main() {
 	podService := service.NewPodService(queries)
 	announcementService := service.NewAnnouncementService(queries)
 
+	// Phase 4C: pub/sub for real-time updates
+	ps := pubsub.New(sessionStore.Client(), logger)
+
 	// Phase 4A services
 	scoringPresetService := service.NewScoringPresetService(queries)
-	matchService := service.NewMatchService(queries, pool)
+	matchService := service.NewMatchService(queries, pool, ps)
 
 	// Phase 1+2 handlers
 	secureCookie := !cfg.IsDevelopment()
