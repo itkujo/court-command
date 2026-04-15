@@ -10,6 +10,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ActivityLog struct {
+	ID         int64       `json:"id"`
+	UserID     int64       `json:"user_id"`
+	Action     string      `json:"action"`
+	EntityType string      `json:"entity_type"`
+	EntityID   pgtype.Int8 `json:"entity_id"`
+	Metadata   []byte      `json:"metadata"`
+	IpAddress  *string     `json:"ip_address"`
+	CreatedAt  time.Time   `json:"created_at"`
+}
+
 type Announcement struct {
 	ID              int64              `json:"id"`
 	TournamentID    pgtype.Int8        `json:"tournament_id"`
@@ -22,6 +33,20 @@ type Announcement struct {
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type ApiKey struct {
+	ID         int64              `json:"id"`
+	UserID     int64              `json:"user_id"`
+	Name       string             `json:"name"`
+	KeyHash    string             `json:"key_hash"`
+	KeyPrefix  string             `json:"key_prefix"`
+	Scopes     []string           `json:"scopes"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+	LastUsedAt pgtype.Timestamptz `json:"last_used_at"`
+	IsActive   bool               `json:"is_active"`
+	CreatedAt  time.Time          `json:"created_at"`
+	UpdatedAt  time.Time          `json:"updated_at"`
 }
 
 type Court struct {
@@ -487,6 +512,18 @@ type Tournament struct {
 	CreatedAt           time.Time          `json:"created_at"`
 	UpdatedAt           time.Time          `json:"updated_at"`
 	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type Upload struct {
+	ID           int64       `json:"id"`
+	UserID       int64       `json:"user_id"`
+	Filename     string      `json:"filename"`
+	OriginalName string      `json:"original_name"`
+	ContentType  string      `json:"content_type"`
+	SizeBytes    int64       `json:"size_bytes"`
+	EntityType   *string     `json:"entity_type"`
+	EntityID     pgtype.Int8 `json:"entity_id"`
+	CreatedAt    time.Time   `json:"created_at"`
 }
 
 type User struct {

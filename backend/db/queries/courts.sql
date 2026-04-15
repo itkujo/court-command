@@ -73,3 +73,7 @@ UPDATE courts SET
     deleted_at = now(),
     updated_at = now()
 WHERE venue_id = $1 AND is_temporary = true AND deleted_at IS NULL;
+
+-- name: CountCourts :one
+SELECT count(*) FROM courts
+WHERE deleted_at IS NULL;

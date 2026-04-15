@@ -25,6 +25,17 @@ func (q *Queries) ClearCourtQueuePositions(ctx context.Context, courtID pgtype.I
 	return err
 }
 
+const countMatches = `-- name: CountMatches :one
+SELECT count(*) FROM matches
+`
+
+func (q *Queries) CountMatches(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countMatches)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countMatchesByDivision = `-- name: CountMatchesByDivision :one
 SELECT count(*) FROM matches WHERE division_id = $1
 `

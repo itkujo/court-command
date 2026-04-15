@@ -141,6 +141,13 @@ func main() {
 	searchHandler := handler.NewSearchHandler(searchService)
 	publicHandler := handler.NewPublicHandler(queries)
 
+	// Phase 8: Admin & Platform Management
+	activityLogService := service.NewActivityLogService(queries)
+	apiKeyService := service.NewApiKeyService(queries)
+	uploadService := service.NewUploadService(queries, "uploads")
+	adminHandler := handler.NewAdminHandler(queries, activityLogService, apiKeyService, sessionStore)
+	uploadHandler := handler.NewUploadHandler(uploadService)
+
 	// Phase 4C: WebSocket handler
 	wsHandler := ws.NewHandler(ps, logger)
 
@@ -195,6 +202,11 @@ func main() {
 		DashboardHandler: dashboardHandler,
 		SearchHandler:    searchHandler,
 		PublicHandler:    publicHandler,
+
+		// Phase 8
+		AdminHandler:  adminHandler,
+		UploadHandler: uploadHandler,
+		ApiKeySvc:     apiKeyService,
 
 		// Phase 4C
 		WSHandler: wsHandler.Routes(),

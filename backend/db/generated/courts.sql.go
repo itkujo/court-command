@@ -52,6 +52,18 @@ func (q *Queries) CheckFloatingCourtSlug(ctx context.Context, slug string) (int6
 	return count, err
 }
 
+const countCourts = `-- name: CountCourts :one
+SELECT count(*) FROM courts
+WHERE deleted_at IS NULL
+`
+
+func (q *Queries) CountCourts(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countCourts)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countFloatingCourts = `-- name: CountFloatingCourts :one
 SELECT count(*) FROM courts
 WHERE venue_id IS NULL AND deleted_at IS NULL

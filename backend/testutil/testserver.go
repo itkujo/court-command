@@ -108,6 +108,13 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	searchHandler := handler.NewSearchHandler(searchService)
 	publicHandler := handler.NewPublicHandler(queries)
 
+	// Phase 8: Admin & Platform Management
+	activityLogService := service.NewActivityLogService(queries)
+	apiKeyService := service.NewApiKeyService(queries)
+	uploadService := service.NewUploadService(queries, t.TempDir())
+	adminHandler := handler.NewAdminHandler(queries, activityLogService, apiKeyService, store)
+	uploadHandler := handler.NewUploadHandler(uploadService)
+
 	r := router.New(&router.Config{
 		DB:             pool,
 		SessionStore:   store,
@@ -156,6 +163,11 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 		DashboardHandler: dashboardHandler,
 		SearchHandler:    searchHandler,
 		PublicHandler:    publicHandler,
+
+		// Phase 8
+		AdminHandler:  adminHandler,
+		UploadHandler: uploadHandler,
+		ApiKeySvc:     apiKeyService,
 	})
 
 	ts := httptest.NewServer(r)

@@ -59,3 +59,38 @@ WHERE first_name = $1
   AND date_of_birth = $3
   AND status != 'merged'
   AND deleted_at IS NULL;
+
+-- name: SearchUsers :many
+SELECT * FROM users
+WHERE deleted_at IS NULL
+  AND (
+    sqlc.narg('query')::TEXT IS NULL
+    OR first_name ILIKE '%' || sqlc.narg('query')::TEXT || '%'
+    OR last_name ILIKE '%' || sqlc.narg('query')::TEXT || '%'
+    OR email ILIKE '%' || sqlc.narg('query')::TEXT || '%'
+    OR public_id ILIKE '%' || sqlc.narg('query')::TEXT || '%'
+  )
+  AND (sqlc.narg('role')::TEXT IS NULL OR role = sqlc.narg('role')::TEXT)
+  AND (sqlc.narg('status')::TEXT IS NULL OR status = sqlc.narg('status')::TEXT)
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountSearchUsers :one
+SELECT count(*) FROM users
+WHERE deleted_at IS NULL
+  AND (
+    sqlc.narg('query')::TEXT IS NULL
+    OR first_name ILIKE '%' || sqlc.narg('query')::TEXT || '%'
+    OR last_name ILIKE '%' || sqlc.narg('query')::TEXT || '%'
+    OR email ILIKE '%' || sqlc.narg('query')::TEXT || '%'
+    OR public_id ILIKE '%' || sqlc.narg('query')::TEXT || '%'
+  )
+  AND (sqlc.narg('role')::TEXT IS NULL OR role = sqlc.narg('role')::TEXT)
+  AND (sqlc.narg('status')::TEXT IS NULL OR status = sqlc.narg('status')::TEXT);
+
+-- name: UpdateUserRole :one
+UPDATE users SET
+    role = $2,
+    updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING *;

@@ -288,3 +288,6 @@ SELECT * FROM matches
 WHERE division_id = sqlc.arg('division_id')
   AND (team1_id = sqlc.arg('team_id') OR team2_id = sqlc.arg('team_id'))
 ORDER BY created_at;
+
+-- name: CountMatches :one
+SELECT count(*) FROM matches;

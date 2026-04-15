@@ -2,6 +2,7 @@
 package router
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/court-command/court-command/handler"
 	"github.com/court-command/court-command/middleware"
+	"github.com/court-command/court-command/service"
 	"github.com/court-command/court-command/session"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -63,6 +65,13 @@ type Config struct {
 	DashboardHandler *handler.DashboardHandler
 	SearchHandler    *handler.SearchHandler
 	PublicHandler    *handler.PublicHandler
+
+	// Phase 8: Admin & Platform Management
+	AdminHandler  *handler.AdminHandler
+	UploadHandler *handler.UploadHandler
+
+	// Phase 8: External API support
+	ApiKeySvc *service.ApiKeyService
 
 	// Phase 4C: WebSocket
 	WSHandler chi.Router
@@ -291,7 +300,33 @@ func New(cfg *Config) chi.Router {
 			r.Use(middleware.RequireAuth(cfg.SessionStore))
 			r.Mount("/", cfg.SourceProfileHandler.Routes())
 		})
+
+		// --- Phase 8 routes ---
+
+		// Admin routes (authenticated + platform_admin only)
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Use(middleware.RequirePlatformAdmin)
+			r.Mount("/", cfg.AdminHandler.Routes())
+		})
+
+		// Upload routes (authenticated)
+		r.Route("/uploads", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.UploadHandler.Routes())
+		})
+
+		// External API routes (API key auth + rate limiting)
+		r.Route("/external", func(r chi.Router) {
+			r.Use(middleware.ApiKeyAuth(cfg.ApiKeySvc))
+			r.Use(middleware.RateLimit(60, 60, time.Minute))
+			r.Get("/health", cfg.HealthHandler.Check)
+		})
 	})
+
+	// Serve uploaded files as static assets
+	fileServer := http.FileServer(http.Dir("uploads"))
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", fileServer))
 
 	// WebSocket routes (outside API versioning — protocol is inherently versioned)
 	if cfg.WSHandler != nil {

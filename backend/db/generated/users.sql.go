@@ -32,6 +32,33 @@ func (q *Queries) CheckDuplicateUser(ctx context.Context, arg CheckDuplicateUser
 	return count, err
 }
 
+const countSearchUsers = `-- name: CountSearchUsers :one
+SELECT count(*) FROM users
+WHERE deleted_at IS NULL
+  AND (
+    $1::TEXT IS NULL
+    OR first_name ILIKE '%' || $1::TEXT || '%'
+    OR last_name ILIKE '%' || $1::TEXT || '%'
+    OR email ILIKE '%' || $1::TEXT || '%'
+    OR public_id ILIKE '%' || $1::TEXT || '%'
+  )
+  AND ($2::TEXT IS NULL OR role = $2::TEXT)
+  AND ($3::TEXT IS NULL OR status = $3::TEXT)
+`
+
+type CountSearchUsersParams struct {
+	Query  *string `json:"query"`
+	Role   *string `json:"role"`
+	Status *string `json:"status"`
+}
+
+func (q *Queries) CountSearchUsers(ctx context.Context, arg CountSearchUsersParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countSearchUsers, arg.Query, arg.Role, arg.Status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUsers = `-- name: CountUsers :one
 SELECT count(*) FROM users
 WHERE deleted_at IS NULL
@@ -308,6 +335,88 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 	return items, nil
 }
 
+const searchUsers = `-- name: SearchUsers :many
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden FROM users
+WHERE deleted_at IS NULL
+  AND (
+    $3::TEXT IS NULL
+    OR first_name ILIKE '%' || $3::TEXT || '%'
+    OR last_name ILIKE '%' || $3::TEXT || '%'
+    OR email ILIKE '%' || $3::TEXT || '%'
+    OR public_id ILIKE '%' || $3::TEXT || '%'
+  )
+  AND ($4::TEXT IS NULL OR role = $4::TEXT)
+  AND ($5::TEXT IS NULL OR status = $5::TEXT)
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type SearchUsersParams struct {
+	Limit  int32   `json:"limit"`
+	Offset int32   `json:"offset"`
+	Query  *string `json:"query"`
+	Role   *string `json:"role"`
+	Status *string `json:"status"`
+}
+
+func (q *Queries) SearchUsers(ctx context.Context, arg SearchUsersParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, searchUsers,
+		arg.Limit,
+		arg.Offset,
+		arg.Query,
+		arg.Role,
+		arg.Status,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Email,
+			&i.PasswordHash,
+			&i.FirstName,
+			&i.LastName,
+			&i.DateOfBirth,
+			&i.DisplayName,
+			&i.Status,
+			&i.MergedIntoID,
+			&i.Role,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.Gender,
+			&i.Handedness,
+			&i.AvatarUrl,
+			&i.Bio,
+			&i.City,
+			&i.StateProvince,
+			&i.Country,
+			&i.Phone,
+			&i.PaddleBrand,
+			&i.PaddleModel,
+			&i.DuprID,
+			&i.VairID,
+			&i.EmergencyContactName,
+			&i.EmergencyContactPhone,
+			&i.MedicalNotes,
+			&i.WaiverAcceptedAt,
+			&i.IsProfileHidden,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const softDeleteUser = `-- name: SoftDeleteUser :exec
 UPDATE users SET
     deleted_at = now(),
@@ -344,6 +453,58 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		arg.LastName,
 		arg.DisplayName,
 	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.FirstName,
+		&i.LastName,
+		&i.DateOfBirth,
+		&i.DisplayName,
+		&i.Status,
+		&i.MergedIntoID,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Gender,
+		&i.Handedness,
+		&i.AvatarUrl,
+		&i.Bio,
+		&i.City,
+		&i.StateProvince,
+		&i.Country,
+		&i.Phone,
+		&i.PaddleBrand,
+		&i.PaddleModel,
+		&i.DuprID,
+		&i.VairID,
+		&i.EmergencyContactName,
+		&i.EmergencyContactPhone,
+		&i.MedicalNotes,
+		&i.WaiverAcceptedAt,
+		&i.IsProfileHidden,
+	)
+	return i, err
+}
+
+const updateUserRole = `-- name: UpdateUserRole :one
+UPDATE users SET
+    role = $2,
+    updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden
+`
+
+type UpdateUserRoleParams struct {
+	ID   int64  `json:"id"`
+	Role string `json:"role"`
+}
+
+func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserRole, arg.ID, arg.Role)
 	var i User
 	err := row.Scan(
 		&i.ID,
