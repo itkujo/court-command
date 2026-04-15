@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/court-command/court-command/db/generated"
+	"github.com/court-command/court-command/engine"
 )
 
 // MatchService handles match business logic.
@@ -826,4 +827,469 @@ func (s *MatchService) UpdateBracketWiring(ctx context.Context, matchID int64, p
 	}
 
 	return toMatchResponse(updated), nil
+}
+
+// ---------------------------------------------------------------------------
+// Scoring Engine Integration
+// ---------------------------------------------------------------------------
+
+// ScoringActionResult wraps the result of a scoring action.
+type ScoringActionResult struct {
+	Match             MatchResponse      `json:"match"`
+	Event             MatchEventResponse `json:"event"`
+	GameOverDetected  bool               `json:"game_over_detected"`
+	MatchOverDetected bool               `json:"match_over_detected"`
+	EndChangeDetected bool               `json:"end_change_detected"`
+	ScoreCall         string             `json:"score_call"`
+}
+
+// matchToEngineState converts a generated.Match to an engine.MatchState.
+func matchToEngineState(m generated.Match) engine.MatchState {
+	state := engine.MatchState{
+		TeamOneScore:   m.Team1Score,
+		TeamTwoScore:   m.Team2Score,
+		CurrentGameNum: m.CurrentGame,
+		Status:         engine.MatchStatus(m.Status),
+		IsPaused:       m.Status == "paused",
+	}
+
+	if m.ServingTeam.Valid {
+		state.ServingTeam = m.ServingTeam.Int32
+	} else {
+		state.ServingTeam = 1
+	}
+	if m.ServerNumber.Valid {
+		state.ServerNumber = m.ServerNumber.Int32
+	} else {
+		state.ServerNumber = 1
+	}
+
+	// Decode completed games from set_scores JSON.
+	if len(m.SetScores) > 0 {
+		var games []engine.GameResult
+		if err := json.Unmarshal(m.SetScores, &games); err == nil {
+			state.CompletedGames = games
+		}
+	}
+
+	return state
+}
+
+// matchToScoringConfig builds an engine.ScoringConfig from a match's settings.
+func matchToScoringConfig(m generated.Match) engine.ScoringConfig {
+	scoringType := engine.SideOutScoring
+	if m.RallyScoring {
+		scoringType = engine.RallyScoring
+	}
+
+	var maxPts int32
+	if m.MaxPoints.Valid {
+		maxPts = m.MaxPoints.Int32
+	}
+	var freezeAt int32
+	if m.FreezeAt.Valid {
+		freezeAt = m.FreezeAt.Int32
+	}
+
+	cfg, _ := engine.ParseScoringConfig(scoringType, m.PointsToWin, m.WinBy, maxPts, m.GamesPerSet, m.SetsToWin, freezeAt)
+	return cfg
+}
+
+// applyEngineResult writes the engine result back to the database in a transaction.
+// It updates the match scoring state and records an event with the current snapshot.
+func (s *MatchService) applyEngineResult(
+	ctx context.Context,
+	matchID int64,
+	result engine.EngineResult,
+	eventType string,
+	payload json.RawMessage,
+	userID int64,
+) (generated.Match, generated.MatchEvent, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	match, err := qtx.GetMatchForUpdate(ctx, matchID)
+	if err != nil {
+		return generated.Match{}, generated.MatchEvent{}, &NotFoundError{Message: "match not found"}
+	}
+
+	// Encode completed games as set_scores JSON.
+	setScores := match.SetScores
+	if len(result.State.CompletedGames) > 0 {
+		encoded, err := json.Marshal(result.State.CompletedGames)
+		if err == nil {
+			setScores = encoded
+		}
+	}
+
+	// Determine new status.
+	newStatus := match.Status
+	if result.State.Status == engine.StatusPaused {
+		newStatus = "paused"
+	} else if result.State.Status == engine.StatusCompleted {
+		newStatus = "completed"
+	} else if result.State.Status == engine.StatusForfeited {
+		newStatus = "forfeited"
+	} else if result.State.Status == engine.StatusInProgress {
+		newStatus = "in_progress"
+	}
+
+	// Update match scoring state.
+	updated, err := qtx.UpdateMatchScoring(ctx, generated.UpdateMatchScoringParams{
+		ID:           matchID,
+		Team1Score:   result.State.TeamOneScore,
+		Team2Score:   result.State.TeamTwoScore,
+		CurrentSet:   match.CurrentSet,
+		CurrentGame:  result.State.CurrentGameNum,
+		ServingTeam:  pgtype.Int4{Int32: result.State.ServingTeam, Valid: true},
+		ServerNumber: pgtype.Int4{Int32: result.State.ServerNumber, Valid: true},
+		SetScores:    setScores,
+	})
+	if err != nil {
+		return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to update match scoring: %w", err)
+	}
+
+	// If status changed, update it.
+	if newStatus != match.Status {
+		updated, err = qtx.UpdateMatchStatus(ctx, generated.UpdateMatchStatusParams{
+			ID:     matchID,
+			Status: newStatus,
+		})
+		if err != nil {
+			return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to update match status: %w", err)
+		}
+	}
+
+	// Record event.
+	nextSeq, err := qtx.GetNextSequenceID(ctx, matchID)
+	if err != nil {
+		return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to get next sequence: %w", err)
+	}
+
+	if payload == nil {
+		payload = json.RawMessage("{}")
+	}
+
+	event, err := qtx.CreateMatchEvent(ctx, generated.CreateMatchEventParams{
+		MatchID:         matchID,
+		SequenceID:      nextSeq,
+		EventType:       eventType,
+		Team1Score:      result.State.TeamOneScore,
+		Team2Score:      result.State.TeamTwoScore,
+		CurrentSet:      match.CurrentSet,
+		CurrentGame:     result.State.CurrentGameNum,
+		ServingTeam:     pgtype.Int4{Int32: result.State.ServingTeam, Valid: true},
+		ServerNumber:    pgtype.Int4{Int32: result.State.ServerNumber, Valid: true},
+		SetScores:       setScores,
+		Payload:         payload,
+		CreatedByUserID: pgtype.Int8{Int64: userID, Valid: true},
+	})
+	if err != nil {
+		return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to create event: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to commit: %w", err)
+	}
+
+	return updated, event, nil
+}
+
+// ScorePoint awards a point to the given team via the scoring engine.
+func (s *MatchService) ScorePoint(ctx context.Context, matchID int64, team int32, userID int64) (ScoringActionResult, error) {
+	match, err := s.queries.GetMatch(ctx, matchID)
+	if err != nil {
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+	}
+
+	cfg := matchToScoringConfig(match)
+	eng := engine.NewScoringEngine(cfg)
+	state := matchToEngineState(match)
+
+	result := eng.Point(state, team)
+	if result.IsError {
+		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
+	}
+
+	payload, _ := json.Marshal(map[string]interface{}{"team": team})
+	eventType := fmt.Sprintf("point_team%d", team)
+
+	updated, event, err := s.applyEngineResult(ctx, matchID, result, eventType, payload, userID)
+	if err != nil {
+		return ScoringActionResult{}, err
+	}
+
+	return ScoringActionResult{
+		Match:             toMatchResponse(updated),
+		Event:             toMatchEventResponse(event),
+		GameOverDetected:  result.GameOverDetected,
+		MatchOverDetected: result.MatchOverDetected,
+		EndChangeDetected: result.EndChangeDetected,
+		ScoreCall:         eng.ScoreCall(result.State),
+	}, nil
+}
+
+// SideOut handles a side-out (loss of serve).
+func (s *MatchService) SideOut(ctx context.Context, matchID int64, userID int64) (ScoringActionResult, error) {
+	match, err := s.queries.GetMatch(ctx, matchID)
+	if err != nil {
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+	}
+
+	cfg := matchToScoringConfig(match)
+	eng := engine.NewScoringEngine(cfg)
+	state := matchToEngineState(match)
+
+	result := eng.SideOut(state)
+	if result.IsError {
+		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
+	}
+
+	updated, event, err := s.applyEngineResult(ctx, matchID, result, "side_out", nil, userID)
+	if err != nil {
+		return ScoringActionResult{}, err
+	}
+
+	return ScoringActionResult{
+		Match:     toMatchResponse(updated),
+		Event:     toMatchEventResponse(event),
+		ScoreCall: eng.ScoreCall(result.State),
+	}, nil
+}
+
+// RemovePoint removes the last point scored for a team.
+func (s *MatchService) RemovePoint(ctx context.Context, matchID int64, team int32, userID int64) (ScoringActionResult, error) {
+	match, err := s.queries.GetMatch(ctx, matchID)
+	if err != nil {
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+	}
+
+	cfg := matchToScoringConfig(match)
+	eng := engine.NewScoringEngine(cfg)
+	state := matchToEngineState(match)
+
+	// Use current serving state as previous (simplified undo — full undo via Undo endpoint).
+	result := eng.RemovePoint(state, team, state.ServingTeam, state.ServerNumber)
+	if result.IsError {
+		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
+	}
+
+	payload, _ := json.Marshal(map[string]interface{}{"team": team})
+	updated, event, err := s.applyEngineResult(ctx, matchID, result, "remove_point", payload, userID)
+	if err != nil {
+		return ScoringActionResult{}, err
+	}
+
+	return ScoringActionResult{
+		Match:     toMatchResponse(updated),
+		Event:     toMatchEventResponse(event),
+		ScoreCall: eng.ScoreCall(result.State),
+	}, nil
+}
+
+// ConfirmGameOver transitions to the next game after a game win is detected.
+func (s *MatchService) ConfirmGameOver(ctx context.Context, matchID int64, userID int64) (ScoringActionResult, error) {
+	match, err := s.queries.GetMatch(ctx, matchID)
+	if err != nil {
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+	}
+
+	cfg := matchToScoringConfig(match)
+	eng := engine.NewScoringEngine(cfg)
+	state := matchToEngineState(match)
+
+	result := eng.ConfirmGameOver(state)
+	if result.IsError {
+		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
+	}
+
+	updated, event, err := s.applyEngineResult(ctx, matchID, result, "confirm_game_over", nil, userID)
+	if err != nil {
+		return ScoringActionResult{}, err
+	}
+
+	return ScoringActionResult{
+		Match:     toMatchResponse(updated),
+		Event:     toMatchEventResponse(event),
+		ScoreCall: eng.ScoreCall(result.State),
+	}, nil
+}
+
+// ConfirmMatchOver finalizes the match as completed.
+func (s *MatchService) ConfirmMatchOver(ctx context.Context, matchID int64, winnerTeamID, loserTeamID int64, userID int64) (ScoringActionResult, error) {
+	match, err := s.queries.GetMatch(ctx, matchID)
+	if err != nil {
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+	}
+
+	cfg := matchToScoringConfig(match)
+	eng := engine.NewScoringEngine(cfg)
+	state := matchToEngineState(match)
+
+	result := eng.ConfirmMatchOver(state)
+	if result.IsError {
+		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
+	}
+
+	updated, event, err := s.applyEngineResult(ctx, matchID, result, "confirm_match_over", nil, userID)
+	if err != nil {
+		return ScoringActionResult{}, err
+	}
+
+	// Also set winner/loser via the existing CompleteMatch logic.
+	if winnerTeamID > 0 && loserTeamID > 0 {
+		final, err := s.queries.UpdateMatchResult(ctx, generated.UpdateMatchResultParams{
+			ID:           matchID,
+			WinnerTeamID: pgtype.Int8{Int64: winnerTeamID, Valid: true},
+			LoserTeamID:  pgtype.Int8{Int64: loserTeamID, Valid: true},
+			WinReason:    strPtr("score"),
+		})
+		if err == nil {
+			return ScoringActionResult{
+				Match: toMatchResponse(final),
+				Event: toMatchEventResponse(event),
+			}, nil
+		}
+	}
+
+	return ScoringActionResult{
+		Match: toMatchResponse(updated),
+		Event: toMatchEventResponse(event),
+	}, nil
+}
+
+// CallTimeout records a timeout event.
+func (s *MatchService) CallTimeout(ctx context.Context, matchID int64, team int32, userID int64) (ScoringActionResult, error) {
+	match, err := s.queries.GetMatch(ctx, matchID)
+	if err != nil {
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+	}
+
+	cfg := matchToScoringConfig(match)
+	eng := engine.NewScoringEngine(cfg)
+	state := matchToEngineState(match)
+
+	result := eng.Timeout(state, team)
+	if result.IsError {
+		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
+	}
+
+	payload, _ := json.Marshal(map[string]interface{}{"team": team})
+	updated, event, err := s.applyEngineResult(ctx, matchID, result, "timeout", payload, userID)
+	if err != nil {
+		return ScoringActionResult{}, err
+	}
+
+	return ScoringActionResult{
+		Match:     toMatchResponse(updated),
+		Event:     toMatchEventResponse(event),
+		ScoreCall: eng.ScoreCall(result.State),
+	}, nil
+}
+
+// PauseMatch pauses the match.
+func (s *MatchService) PauseMatch(ctx context.Context, matchID int64, userID int64) (ScoringActionResult, error) {
+	match, err := s.queries.GetMatch(ctx, matchID)
+	if err != nil {
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+	}
+
+	cfg := matchToScoringConfig(match)
+	eng := engine.NewScoringEngine(cfg)
+	state := matchToEngineState(match)
+
+	result := eng.Pause(state)
+	if result.IsError {
+		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
+	}
+
+	updated, event, err := s.applyEngineResult(ctx, matchID, result, "pause", nil, userID)
+	if err != nil {
+		return ScoringActionResult{}, err
+	}
+
+	return ScoringActionResult{
+		Match: toMatchResponse(updated),
+		Event: toMatchEventResponse(event),
+	}, nil
+}
+
+// ResumeMatch resumes a paused match.
+func (s *MatchService) ResumeMatch(ctx context.Context, matchID int64, userID int64) (ScoringActionResult, error) {
+	match, err := s.queries.GetMatch(ctx, matchID)
+	if err != nil {
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+	}
+
+	cfg := matchToScoringConfig(match)
+	eng := engine.NewScoringEngine(cfg)
+	state := matchToEngineState(match)
+
+	result := eng.Resume(state)
+	if result.IsError {
+		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
+	}
+
+	updated, event, err := s.applyEngineResult(ctx, matchID, result, "resume", nil, userID)
+	if err != nil {
+		return ScoringActionResult{}, err
+	}
+
+	return ScoringActionResult{
+		Match: toMatchResponse(updated),
+		Event: toMatchEventResponse(event),
+	}, nil
+}
+
+// DeclareForfeit forfeits the match for a team.
+func (s *MatchService) DeclareForfeit(ctx context.Context, matchID int64, forfeitingTeam int32, winnerTeamID, loserTeamID int64, userID int64) (ScoringActionResult, error) {
+	match, err := s.queries.GetMatch(ctx, matchID)
+	if err != nil {
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+	}
+
+	cfg := matchToScoringConfig(match)
+	eng := engine.NewScoringEngine(cfg)
+	state := matchToEngineState(match)
+
+	result := eng.Forfeit(state, forfeitingTeam)
+	if result.IsError {
+		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
+	}
+
+	payload, _ := json.Marshal(map[string]interface{}{"forfeiting_team": forfeitingTeam})
+	updated, event, err := s.applyEngineResult(ctx, matchID, result, "forfeit", payload, userID)
+	if err != nil {
+		return ScoringActionResult{}, err
+	}
+
+	// Set winner/loser.
+	if winnerTeamID > 0 && loserTeamID > 0 {
+		final, err := s.queries.UpdateMatchResult(ctx, generated.UpdateMatchResultParams{
+			ID:           matchID,
+			WinnerTeamID: pgtype.Int8{Int64: winnerTeamID, Valid: true},
+			LoserTeamID:  pgtype.Int8{Int64: loserTeamID, Valid: true},
+			WinReason:    strPtr("forfeit"),
+		})
+		if err == nil {
+			return ScoringActionResult{
+				Match: toMatchResponse(final),
+				Event: toMatchEventResponse(event),
+			}, nil
+		}
+	}
+
+	return ScoringActionResult{
+		Match: toMatchResponse(updated),
+		Event: toMatchEventResponse(event),
+	}, nil
+}
+
+func strPtr(s string) *string {
+	return &s
 }

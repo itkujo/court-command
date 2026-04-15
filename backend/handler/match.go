@@ -45,6 +45,17 @@ func (h *MatchHandler) Routes() chi.Router {
 	r.Patch("/{matchID}/teams", h.UpdateTeams)
 	r.Patch("/{matchID}/bracket-wiring", h.UpdateBracketWiring)
 
+	// Scoring engine routes (by public ID).
+	r.Post("/public/{publicID}/point", h.ScorePoint)
+	r.Post("/public/{publicID}/sideout", h.HandleSideOut)
+	r.Post("/public/{publicID}/remove-point", h.HandleRemovePoint)
+	r.Post("/public/{publicID}/confirm-game", h.HandleConfirmGameOver)
+	r.Post("/public/{publicID}/confirm-match", h.HandleConfirmMatchOver)
+	r.Post("/public/{publicID}/timeout", h.HandleCallTimeout)
+	r.Post("/public/{publicID}/pause", h.HandlePauseMatch)
+	r.Post("/public/{publicID}/resume", h.HandleResumeMatch)
+	r.Post("/public/{publicID}/forfeit", h.HandleDeclareForfeit)
+
 	return r
 }
 
@@ -799,4 +810,283 @@ func (h *MatchHandler) ListQuickMatches(w http.ResponseWriter, r *http.Request) 
 // parseTimestamp parses a timestamp string (RFC3339).
 func parseTimestamp(s string) (time.Time, error) {
 	return time.Parse(time.RFC3339, s)
+}
+
+// ---------------------------------------------------------------------------
+// Scoring Engine Handlers
+// ---------------------------------------------------------------------------
+
+// resolveMatchByPublicID is a helper to get match internal ID from public ID.
+func (h *MatchHandler) resolveMatchByPublicID(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	publicID := chi.URLParam(r, "publicID")
+	if publicID == "" {
+		WriteError(w, http.StatusBadRequest, "MISSING_ID", "public_id is required")
+		return 0, false
+	}
+
+	match, err := h.service.GetByPublicID(r.Context(), publicID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return 0, false
+	}
+
+	return match.ID, true
+}
+
+// requireSession extracts session and returns the user ID, or writes an error response.
+func requireSession(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return 0, false
+	}
+	return sess.UserID, true
+}
+
+// ScorePoint awards a point to a team.
+func (h *MatchHandler) ScorePoint(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	var body struct {
+		Team int32 `json:"team"`
+	}
+	if errMsg := DecodeJSON(r, &body); errMsg != "" {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", errMsg)
+		return
+	}
+	if body.Team != 1 && body.Team != 2 {
+		WriteError(w, http.StatusBadRequest, "INVALID_TEAM", "team must be 1 or 2")
+		return
+	}
+
+	result, err := h.service.ScorePoint(r.Context(), matchID, body.Team, userID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, result)
+}
+
+// HandleSideOut processes a side-out (loss of serve).
+func (h *MatchHandler) HandleSideOut(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.service.SideOut(r.Context(), matchID, userID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, result)
+}
+
+// HandleRemovePoint removes the last point scored.
+func (h *MatchHandler) HandleRemovePoint(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	var body struct {
+		Team int32 `json:"team"`
+	}
+	if errMsg := DecodeJSON(r, &body); errMsg != "" {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", errMsg)
+		return
+	}
+	if body.Team != 1 && body.Team != 2 {
+		WriteError(w, http.StatusBadRequest, "INVALID_TEAM", "team must be 1 or 2")
+		return
+	}
+
+	result, err := h.service.RemovePoint(r.Context(), matchID, body.Team, userID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, result)
+}
+
+// HandleConfirmGameOver confirms the game is over and advances to the next game.
+func (h *MatchHandler) HandleConfirmGameOver(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.service.ConfirmGameOver(r.Context(), matchID, userID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, result)
+}
+
+// HandleConfirmMatchOver confirms the match is over and records the winner.
+func (h *MatchHandler) HandleConfirmMatchOver(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	var body struct {
+		WinnerTeamID int64 `json:"winner_team_id"`
+		LoserTeamID  int64 `json:"loser_team_id"`
+	}
+	if errMsg := DecodeJSON(r, &body); errMsg != "" {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", errMsg)
+		return
+	}
+
+	result, err := h.service.ConfirmMatchOver(r.Context(), matchID, body.WinnerTeamID, body.LoserTeamID, userID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, result)
+}
+
+// HandleCallTimeout records a timeout.
+func (h *MatchHandler) HandleCallTimeout(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	var body struct {
+		Team int32 `json:"team"`
+	}
+	if errMsg := DecodeJSON(r, &body); errMsg != "" {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", errMsg)
+		return
+	}
+	if body.Team != 1 && body.Team != 2 {
+		WriteError(w, http.StatusBadRequest, "INVALID_TEAM", "team must be 1 or 2")
+		return
+	}
+
+	result, err := h.service.CallTimeout(r.Context(), matchID, body.Team, userID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, result)
+}
+
+// HandlePauseMatch pauses a match.
+func (h *MatchHandler) HandlePauseMatch(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.service.PauseMatch(r.Context(), matchID, userID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, result)
+}
+
+// HandleResumeMatch resumes a paused match.
+func (h *MatchHandler) HandleResumeMatch(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := h.service.ResumeMatch(r.Context(), matchID, userID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, result)
+}
+
+// HandleDeclareForfeit declares a forfeit for a team.
+func (h *MatchHandler) HandleDeclareForfeit(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	var body struct {
+		ForfeitingTeam int32 `json:"forfeiting_team"`
+		WinnerTeamID   int64 `json:"winner_team_id"`
+		LoserTeamID    int64 `json:"loser_team_id"`
+	}
+	if errMsg := DecodeJSON(r, &body); errMsg != "" {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", errMsg)
+		return
+	}
+	if body.ForfeitingTeam != 1 && body.ForfeitingTeam != 2 {
+		WriteError(w, http.StatusBadRequest, "INVALID_TEAM", "forfeiting_team must be 1 or 2")
+		return
+	}
+
+	result, err := h.service.DeclareForfeit(r.Context(), matchID, body.ForfeitingTeam, body.WinnerTeamID, body.LoserTeamID, userID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, result)
 }
