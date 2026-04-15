@@ -142,7 +142,10 @@ func TestLoginAndMe(t *testing.T) {
 		"password": "password123",
 	}
 	b, _ = json.Marshal(loginBody)
-	loginResp, _ := http.Post(ts.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(b))
+	loginResp, err := http.Post(ts.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("login request failed: %v", err)
+	}
 	defer loginResp.Body.Close()
 
 	if loginResp.StatusCode != http.StatusOK {
