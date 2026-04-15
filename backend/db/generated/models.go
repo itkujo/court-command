@@ -200,6 +200,7 @@ type Match struct {
 	CreatedAt          time.Time          `json:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at"`
 	MatchSeriesID      pgtype.Int8        `json:"match_series_id"`
+	CourtQueuePosition pgtype.Int4        `json:"court_queue_position"`
 }
 
 type MatchEvent struct {
@@ -220,28 +221,34 @@ type MatchEvent struct {
 }
 
 type MatchSeries struct {
-	ID              int64              `json:"id"`
-	PublicID        string             `json:"public_id"`
-	DivisionID      pgtype.Int8        `json:"division_id"`
-	PodID           pgtype.Int8        `json:"pod_id"`
-	CreatedByUserID int64              `json:"created_by_user_id"`
-	Team1ID         pgtype.Int8        `json:"team1_id"`
-	Team2ID         pgtype.Int8        `json:"team2_id"`
-	SeriesFormat    string             `json:"series_format"`
-	GamesToWin      int32              `json:"games_to_win"`
-	Team1Wins       int32              `json:"team1_wins"`
-	Team2Wins       int32              `json:"team2_wins"`
-	Status          string             `json:"status"`
-	StartedAt       pgtype.Timestamptz `json:"started_at"`
-	CompletedAt     pgtype.Timestamptz `json:"completed_at"`
-	WinnerTeamID    pgtype.Int8        `json:"winner_team_id"`
-	LoserTeamID     pgtype.Int8        `json:"loser_team_id"`
-	WinReason       *string            `json:"win_reason"`
-	Round           pgtype.Int4        `json:"round"`
-	RoundName       *string            `json:"round_name"`
-	MatchNumber     pgtype.Int4        `json:"match_number"`
-	CreatedAt       time.Time          `json:"created_at"`
-	UpdatedAt       time.Time          `json:"updated_at"`
+	ID                int64              `json:"id"`
+	PublicID          string             `json:"public_id"`
+	DivisionID        pgtype.Int8        `json:"division_id"`
+	PodID             pgtype.Int8        `json:"pod_id"`
+	CreatedByUserID   int64              `json:"created_by_user_id"`
+	Team1ID           pgtype.Int8        `json:"team1_id"`
+	Team2ID           pgtype.Int8        `json:"team2_id"`
+	SeriesFormat      string             `json:"series_format"`
+	GamesToWin        int32              `json:"games_to_win"`
+	Team1Wins         int32              `json:"team1_wins"`
+	Team2Wins         int32              `json:"team2_wins"`
+	Status            string             `json:"status"`
+	StartedAt         pgtype.Timestamptz `json:"started_at"`
+	CompletedAt       pgtype.Timestamptz `json:"completed_at"`
+	WinnerTeamID      pgtype.Int8        `json:"winner_team_id"`
+	LoserTeamID       pgtype.Int8        `json:"loser_team_id"`
+	WinReason         *string            `json:"win_reason"`
+	Round             pgtype.Int4        `json:"round"`
+	RoundName         *string            `json:"round_name"`
+	MatchNumber       pgtype.Int4        `json:"match_number"`
+	CreatedAt         time.Time          `json:"created_at"`
+	UpdatedAt         time.Time          `json:"updated_at"`
+	SeriesConfig      []byte             `json:"series_config"`
+	NextSeriesID      pgtype.Int8        `json:"next_series_id"`
+	LoserNextSeriesID pgtype.Int8        `json:"loser_next_series_id"`
+	CourtID           pgtype.Int8        `json:"court_id"`
+	ScheduledAt       pgtype.Timestamptz `json:"scheduled_at"`
+	Notes             *string            `json:"notes"`
 }
 
 type OrgBlock struct {

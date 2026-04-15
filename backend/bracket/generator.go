@@ -3,6 +3,7 @@ package bracket
 import (
 	"fmt"
 	"math"
+	"math/bits"
 	"sort"
 )
 
@@ -32,11 +33,12 @@ type BracketMatch struct {
 }
 
 // nextPowerOfTwo returns the smallest power of 2 >= n.
+// Uses bit manipulation for exact integer results (no floating-point imprecision).
 func nextPowerOfTwo(n int) int {
 	if n <= 1 {
 		return 1
 	}
-	return int(math.Pow(2, math.Ceil(math.Log2(float64(n)))))
+	return 1 << bits.Len(uint(n-1))
 }
 
 // GenerateSingleElimination creates a single-elimination bracket.

@@ -268,3 +268,17 @@ UPDATE matches SET
     updated_at = now()
 WHERE id = $1
 RETURNING *;
+
+-- name: UpdateMatchQueuePosition :exec
+UPDATE matches SET
+    court_queue_position = $2,
+    updated_at = now()
+WHERE id = $1;
+
+-- name: ClearCourtQueuePositions :exec
+UPDATE matches SET
+    court_queue_position = NULL,
+    updated_at = now()
+WHERE court_id = $1
+    AND court_queue_position IS NOT NULL
+    AND status NOT IN ('completed', 'cancelled', 'forfeited');

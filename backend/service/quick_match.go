@@ -71,7 +71,7 @@ func (s *MatchService) ListQuickMatchesByUser(ctx context.Context, userID int64,
 		return nil, fmt.Errorf("failed to list quick matches: %w", err)
 	}
 
-	var results []MatchResponse
+	results := make([]MatchResponse, 0, len(matches))
 	for _, m := range matches {
 		results = append(results, toMatchResponse(m))
 	}

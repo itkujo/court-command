@@ -84,7 +84,7 @@ func main() {
 
 	// Phase 4D services
 	bracketService := service.NewBracketService(queries, pool)
-	courtQueueService := service.NewCourtQueueService(queries, ps)
+	courtQueueService := service.NewCourtQueueService(queries, pool, ps)
 
 	// Phase 1+2 handlers
 	secureCookie := !cfg.IsDevelopment()

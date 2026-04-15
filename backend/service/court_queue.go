@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/pubsub"
@@ -13,12 +14,13 @@ import (
 // CourtQueueService manages the match queue for courts.
 type CourtQueueService struct {
 	queries *generated.Queries
+	pool    *pgxpool.Pool
 	ps      *pubsub.PubSub
 }
 
 // NewCourtQueueService creates a new CourtQueueService.
-func NewCourtQueueService(queries *generated.Queries, ps *pubsub.PubSub) *CourtQueueService {
-	return &CourtQueueService{queries: queries, ps: ps}
+func NewCourtQueueService(queries *generated.Queries, pool *pgxpool.Pool, ps *pubsub.PubSub) *CourtQueueService {
+	return &CourtQueueService{queries: queries, pool: pool, ps: ps}
 }
 
 // CourtQueueEntry represents a match in the court queue.
@@ -145,16 +147,24 @@ func (s *CourtQueueService) RemoveFromQueue(ctx context.Context, courtID int64, 
 }
 
 // ReorderQueue reorders the matches in a court's queue by updating their
-// scheduled_at timestamps based on the provided match ID order.
-// matchIDs should contain the desired order of match IDs on this court.
+// court_queue_position column. matchIDs should contain the desired order
+// of match IDs on this court.
 func (s *CourtQueueService) ReorderQueue(ctx context.Context, courtID int64, matchIDs []int64) error {
 	if len(matchIDs) == 0 {
 		return &ValidationError{Message: "match_ids cannot be empty"}
 	}
 
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
 	// Verify all matches belong to this court and are not completed
 	for _, mid := range matchIDs {
-		match, err := s.queries.GetMatch(ctx, mid)
+		match, err := qtx.GetMatchForUpdate(ctx, mid)
 		if err != nil {
 			return &NotFoundError{Message: fmt.Sprintf("match %d not found", mid)}
 		}
@@ -170,11 +180,23 @@ func (s *CourtQueueService) ReorderQueue(ctx context.Context, courtID int64, mat
 		}
 	}
 
-	// Note: Reordering is achieved by the order matches are returned from
-	// ListMatchesByCourt which orders by scheduled_at, created_at.
-	// For a real reorder we'd need a sort_order column on matches.
-	// For now this validates the desired order and broadcasts the update.
-	// The frontend can maintain order state client-side.
+	// Clear existing positions for this court, then set new ones
+	if err := qtx.ClearCourtQueuePositions(ctx, pgtype.Int8{Int64: courtID, Valid: true}); err != nil {
+		return fmt.Errorf("clearing queue positions: %w", err)
+	}
+
+	for i, mid := range matchIDs {
+		if err := qtx.UpdateMatchQueuePosition(ctx, generated.UpdateMatchQueuePositionParams{
+			ID:                 mid,
+			CourtQueuePosition: pgtype.Int4{Int32: int32(i + 1), Valid: true},
+		}); err != nil {
+			return fmt.Errorf("setting queue position for match %d: %w", mid, err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("committing queue reorder: %w", err)
+	}
 
 	s.broadcastCourtUpdate(ctx, courtID)
 	return nil

@@ -1166,12 +1166,13 @@ func (s *MatchService) ConfirmMatchOver(ctx context.Context, matchID int64, winn
 			LoserTeamID:  pgtype.Int8{Int64: loserTeamID, Valid: true},
 			WinReason:    strPtr("score"),
 		})
-		if err == nil {
-			return ScoringActionResult{
-				Match: toMatchResponse(final),
-				Event: toMatchEventResponse(event),
-			}, nil
+		if err != nil {
+			return ScoringActionResult{}, fmt.Errorf("setting match result: %w", err)
 		}
+		return ScoringActionResult{
+			Match: toMatchResponse(final),
+			Event: toMatchEventResponse(event),
+		}, nil
 	}
 
 	return ScoringActionResult{
@@ -1293,12 +1294,13 @@ func (s *MatchService) DeclareForfeit(ctx context.Context, matchID int64, forfei
 			LoserTeamID:  pgtype.Int8{Int64: loserTeamID, Valid: true},
 			WinReason:    strPtr("forfeit"),
 		})
-		if err == nil {
-			return ScoringActionResult{
-				Match: toMatchResponse(final),
-				Event: toMatchEventResponse(event),
-			}, nil
+		if err != nil {
+			return ScoringActionResult{}, fmt.Errorf("setting forfeit result: %w", err)
 		}
+		return ScoringActionResult{
+			Match: toMatchResponse(final),
+			Event: toMatchEventResponse(event),
+		}, nil
 	}
 
 	return ScoringActionResult{

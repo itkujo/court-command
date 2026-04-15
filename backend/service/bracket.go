@@ -288,9 +288,18 @@ func (s *BracketService) GenerateBracket(ctx context.Context, divisionID int64, 
 }
 
 // AdvanceWinner slots the winner of a completed match into the next match.
-// This is called after a match is completed to progress the bracket.
+// Uses a transaction with FOR UPDATE to prevent race conditions when
+// two matches complete simultaneously and feed into the same next match.
 func (s *BracketService) AdvanceWinner(ctx context.Context, matchID int64) error {
-	match, err := s.queries.GetMatch(ctx, matchID)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	match, err := qtx.GetMatchForUpdate(ctx, matchID)
 	if err != nil {
 		return &NotFoundError{Message: "match not found"}
 	}
@@ -307,7 +316,7 @@ func (s *BracketService) AdvanceWinner(ctx context.Context, matchID int64) error
 
 	// Advance winner to next match
 	if match.NextMatchID.Valid {
-		nextMatch, err := s.queries.GetMatch(ctx, match.NextMatchID.Int64)
+		nextMatch, err := qtx.GetMatchForUpdate(ctx, match.NextMatchID.Int64)
 		if err != nil {
 			return fmt.Errorf("fetching next match: %w", err)
 		}
@@ -333,7 +342,7 @@ func (s *BracketService) AdvanceWinner(ctx context.Context, matchID int64) error
 			params.Team2ID = pgtype.Int8{Int64: winnerTeamID, Valid: true}
 		}
 
-		if _, err := s.queries.UpdateMatchTeams(ctx, params); err != nil {
+		if _, err := qtx.UpdateMatchTeams(ctx, params); err != nil {
 			return fmt.Errorf("advancing winner to next match: %w", err)
 		}
 	}
@@ -341,7 +350,7 @@ func (s *BracketService) AdvanceWinner(ctx context.Context, matchID int64) error
 	// Advance loser to losers bracket (double elimination)
 	if match.LoserNextMatchID.Valid && match.LoserTeamID.Valid {
 		loserTeamID := match.LoserTeamID.Int64
-		loserNextMatch, err := s.queries.GetMatch(ctx, match.LoserNextMatchID.Int64)
+		loserNextMatch, err := qtx.GetMatchForUpdate(ctx, match.LoserNextMatchID.Int64)
 		if err != nil {
 			return fmt.Errorf("fetching loser next match: %w", err)
 		}
@@ -365,9 +374,13 @@ func (s *BracketService) AdvanceWinner(ctx context.Context, matchID int64) error
 			params.Team2ID = pgtype.Int8{Int64: loserTeamID, Valid: true}
 		}
 
-		if _, err := s.queries.UpdateMatchTeams(ctx, params); err != nil {
+		if _, err := qtx.UpdateMatchTeams(ctx, params); err != nil {
 			return fmt.Errorf("advancing loser to losers bracket: %w", err)
 		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("committing bracket advancement: %w", err)
 	}
 
 	return nil

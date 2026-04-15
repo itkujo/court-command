@@ -14,9 +14,15 @@ func StartQuickMatchCleanup(ctx context.Context, matchService *service.MatchServ
 	ticker := time.NewTicker(1 * time.Hour)
 
 	go func() {
-		// Run once on startup after a short delay
-		time.Sleep(10 * time.Second)
-		runCleanup(ctx, matchService, logger)
+		// Run once on startup after a short delay, respecting context cancellation
+		select {
+		case <-time.After(10 * time.Second):
+			runCleanup(ctx, matchService, logger)
+		case <-ctx.Done():
+			ticker.Stop()
+			logger.Info("quick match cleanup stopped before initial run")
+			return
+		}
 
 		for {
 			select {

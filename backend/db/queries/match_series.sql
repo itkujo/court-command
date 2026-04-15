@@ -3,14 +3,18 @@ INSERT INTO match_series (
     division_id, pod_id, created_by_user_id,
     team1_id, team2_id,
     series_format, games_to_win,
+    series_config,
     status,
-    round, round_name, match_number
+    round, round_name, match_number,
+    court_id, scheduled_at, notes
 ) VALUES (
     $1, $2, $3,
     $4, $5,
     $6, $7,
     $8,
-    $9, $10, $11
+    $9,
+    $10, $11, $12,
+    $13, $14, $15
 )
 RETURNING *;
 
@@ -90,3 +94,18 @@ ORDER BY match_number, created_at;
 
 -- name: CountMatchesBySeriesID :one
 SELECT count(*) FROM matches WHERE match_series_id = $1;
+
+-- name: CancelScheduledChildMatches :exec
+UPDATE matches SET
+    status = 'cancelled',
+    updated_at = now()
+WHERE match_series_id = $1
+    AND status IN ('scheduled', 'warmup');
+
+-- name: UpdateMatchSeriesWiring :one
+UPDATE match_series SET
+    next_series_id = $2,
+    loser_next_series_id = $3,
+    updated_at = now()
+WHERE id = $1
+RETURNING *;

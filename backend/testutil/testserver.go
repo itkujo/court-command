@@ -52,7 +52,7 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 
 	// Phase 4D services
 	bracketService := service.NewBracketService(queries, pool)
-	courtQueueService := service.NewCourtQueueService(queries, nil)
+	courtQueueService := service.NewCourtQueueService(queries, pool, nil)
 
 	// Phase 1+2 handlers
 	authHandler := handler.NewAuthHandler(authService, false)

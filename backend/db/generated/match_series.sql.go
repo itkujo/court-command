@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cancelScheduledChildMatches = `-- name: CancelScheduledChildMatches :exec
+UPDATE matches SET
+    status = 'cancelled',
+    updated_at = now()
+WHERE match_series_id = $1
+    AND status IN ('scheduled', 'warmup')
+`
+
+func (q *Queries) CancelScheduledChildMatches(ctx context.Context, matchSeriesID pgtype.Int8) error {
+	_, err := q.db.Exec(ctx, cancelScheduledChildMatches, matchSeriesID)
+	return err
+}
+
 const countMatchSeriesByDivision = `-- name: CountMatchSeriesByDivision :one
 SELECT count(*) FROM match_series WHERE division_id = $1
 `
@@ -38,30 +51,38 @@ INSERT INTO match_series (
     division_id, pod_id, created_by_user_id,
     team1_id, team2_id,
     series_format, games_to_win,
+    series_config,
     status,
-    round, round_name, match_number
+    round, round_name, match_number,
+    court_id, scheduled_at, notes
 ) VALUES (
     $1, $2, $3,
     $4, $5,
     $6, $7,
     $8,
-    $9, $10, $11
+    $9,
+    $10, $11, $12,
+    $13, $14, $15
 )
-RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at
+RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes
 `
 
 type CreateMatchSeriesParams struct {
-	DivisionID      pgtype.Int8 `json:"division_id"`
-	PodID           pgtype.Int8 `json:"pod_id"`
-	CreatedByUserID int64       `json:"created_by_user_id"`
-	Team1ID         pgtype.Int8 `json:"team1_id"`
-	Team2ID         pgtype.Int8 `json:"team2_id"`
-	SeriesFormat    string      `json:"series_format"`
-	GamesToWin      int32       `json:"games_to_win"`
-	Status          string      `json:"status"`
-	Round           pgtype.Int4 `json:"round"`
-	RoundName       *string     `json:"round_name"`
-	MatchNumber     pgtype.Int4 `json:"match_number"`
+	DivisionID      pgtype.Int8        `json:"division_id"`
+	PodID           pgtype.Int8        `json:"pod_id"`
+	CreatedByUserID int64              `json:"created_by_user_id"`
+	Team1ID         pgtype.Int8        `json:"team1_id"`
+	Team2ID         pgtype.Int8        `json:"team2_id"`
+	SeriesFormat    string             `json:"series_format"`
+	GamesToWin      int32              `json:"games_to_win"`
+	SeriesConfig    []byte             `json:"series_config"`
+	Status          string             `json:"status"`
+	Round           pgtype.Int4        `json:"round"`
+	RoundName       *string            `json:"round_name"`
+	MatchNumber     pgtype.Int4        `json:"match_number"`
+	CourtID         pgtype.Int8        `json:"court_id"`
+	ScheduledAt     pgtype.Timestamptz `json:"scheduled_at"`
+	Notes           *string            `json:"notes"`
 }
 
 func (q *Queries) CreateMatchSeries(ctx context.Context, arg CreateMatchSeriesParams) (MatchSeries, error) {
@@ -73,10 +94,14 @@ func (q *Queries) CreateMatchSeries(ctx context.Context, arg CreateMatchSeriesPa
 		arg.Team2ID,
 		arg.SeriesFormat,
 		arg.GamesToWin,
+		arg.SeriesConfig,
 		arg.Status,
 		arg.Round,
 		arg.RoundName,
 		arg.MatchNumber,
+		arg.CourtID,
+		arg.ScheduledAt,
+		arg.Notes,
 	)
 	var i MatchSeries
 	err := row.Scan(
@@ -102,12 +127,18 @@ func (q *Queries) CreateMatchSeries(ctx context.Context, arg CreateMatchSeriesPa
 		&i.MatchNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesConfig,
+		&i.NextSeriesID,
+		&i.LoserNextSeriesID,
+		&i.CourtID,
+		&i.ScheduledAt,
+		&i.Notes,
 	)
 	return i, err
 }
 
 const getMatchSeries = `-- name: GetMatchSeries :one
-SELECT id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at FROM match_series WHERE id = $1
+SELECT id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes FROM match_series WHERE id = $1
 `
 
 func (q *Queries) GetMatchSeries(ctx context.Context, id int64) (MatchSeries, error) {
@@ -136,12 +167,18 @@ func (q *Queries) GetMatchSeries(ctx context.Context, id int64) (MatchSeries, er
 		&i.MatchNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesConfig,
+		&i.NextSeriesID,
+		&i.LoserNextSeriesID,
+		&i.CourtID,
+		&i.ScheduledAt,
+		&i.Notes,
 	)
 	return i, err
 }
 
 const getMatchSeriesByPublicID = `-- name: GetMatchSeriesByPublicID :one
-SELECT id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at FROM match_series WHERE public_id = $1
+SELECT id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes FROM match_series WHERE public_id = $1
 `
 
 func (q *Queries) GetMatchSeriesByPublicID(ctx context.Context, publicID string) (MatchSeries, error) {
@@ -170,12 +207,18 @@ func (q *Queries) GetMatchSeriesByPublicID(ctx context.Context, publicID string)
 		&i.MatchNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesConfig,
+		&i.NextSeriesID,
+		&i.LoserNextSeriesID,
+		&i.CourtID,
+		&i.ScheduledAt,
+		&i.Notes,
 	)
 	return i, err
 }
 
 const getMatchSeriesForUpdate = `-- name: GetMatchSeriesForUpdate :one
-SELECT id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at FROM match_series WHERE id = $1 FOR UPDATE
+SELECT id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes FROM match_series WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetMatchSeriesForUpdate(ctx context.Context, id int64) (MatchSeries, error) {
@@ -204,12 +247,18 @@ func (q *Queries) GetMatchSeriesForUpdate(ctx context.Context, id int64) (MatchS
 		&i.MatchNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesConfig,
+		&i.NextSeriesID,
+		&i.LoserNextSeriesID,
+		&i.CourtID,
+		&i.ScheduledAt,
+		&i.Notes,
 	)
 	return i, err
 }
 
 const listMatchSeriesByDivision = `-- name: ListMatchSeriesByDivision :many
-SELECT id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at FROM match_series
+SELECT id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes FROM match_series
 WHERE division_id = $1
 ORDER BY round, match_number, created_at
 LIMIT $2 OFFSET $3
@@ -253,6 +302,12 @@ func (q *Queries) ListMatchSeriesByDivision(ctx context.Context, arg ListMatchSe
 			&i.MatchNumber,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SeriesConfig,
+			&i.NextSeriesID,
+			&i.LoserNextSeriesID,
+			&i.CourtID,
+			&i.ScheduledAt,
+			&i.Notes,
 		); err != nil {
 			return nil, err
 		}
@@ -265,7 +320,7 @@ func (q *Queries) ListMatchSeriesByDivision(ctx context.Context, arg ListMatchSe
 }
 
 const listMatchSeriesByPod = `-- name: ListMatchSeriesByPod :many
-SELECT id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at FROM match_series
+SELECT id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes FROM match_series
 WHERE pod_id = $1
 ORDER BY round, match_number, created_at
 LIMIT $2 OFFSET $3
@@ -309,6 +364,12 @@ func (q *Queries) ListMatchSeriesByPod(ctx context.Context, arg ListMatchSeriesB
 			&i.MatchNumber,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SeriesConfig,
+			&i.NextSeriesID,
+			&i.LoserNextSeriesID,
+			&i.CourtID,
+			&i.ScheduledAt,
+			&i.Notes,
 		); err != nil {
 			return nil, err
 		}
@@ -321,7 +382,7 @@ func (q *Queries) ListMatchSeriesByPod(ctx context.Context, arg ListMatchSeriesB
 }
 
 const listMatchesBySeriesID = `-- name: ListMatchesBySeriesID :many
-SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id FROM matches
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id, court_queue_position FROM matches
 WHERE match_series_id = $1
 ORDER BY match_number, created_at
 `
@@ -385,6 +446,7 @@ func (q *Queries) ListMatchesBySeriesID(ctx context.Context, matchSeriesID pgtyp
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.MatchSeriesID,
+			&i.CourtQueuePosition,
 		); err != nil {
 			return nil, err
 		}
@@ -405,7 +467,7 @@ UPDATE match_series SET
     completed_at = now(),
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at
+RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes
 `
 
 type UpdateMatchSeriesForfeitedParams struct {
@@ -440,6 +502,12 @@ func (q *Queries) UpdateMatchSeriesForfeited(ctx context.Context, arg UpdateMatc
 		&i.MatchNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesConfig,
+		&i.NextSeriesID,
+		&i.LoserNextSeriesID,
+		&i.CourtID,
+		&i.ScheduledAt,
+		&i.Notes,
 	)
 	return i, err
 }
@@ -453,7 +521,7 @@ UPDATE match_series SET
     completed_at = now(),
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at
+RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes
 `
 
 type UpdateMatchSeriesResultParams struct {
@@ -494,6 +562,12 @@ func (q *Queries) UpdateMatchSeriesResult(ctx context.Context, arg UpdateMatchSe
 		&i.MatchNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesConfig,
+		&i.NextSeriesID,
+		&i.LoserNextSeriesID,
+		&i.CourtID,
+		&i.ScheduledAt,
+		&i.Notes,
 	)
 	return i, err
 }
@@ -504,7 +578,7 @@ UPDATE match_series SET
     team2_wins = $3,
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at
+RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes
 `
 
 type UpdateMatchSeriesScoreParams struct {
@@ -539,6 +613,12 @@ func (q *Queries) UpdateMatchSeriesScore(ctx context.Context, arg UpdateMatchSer
 		&i.MatchNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesConfig,
+		&i.NextSeriesID,
+		&i.LoserNextSeriesID,
+		&i.CourtID,
+		&i.ScheduledAt,
+		&i.Notes,
 	)
 	return i, err
 }
@@ -549,7 +629,7 @@ UPDATE match_series SET
     started_at = now(),
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at
+RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes
 `
 
 func (q *Queries) UpdateMatchSeriesStarted(ctx context.Context, id int64) (MatchSeries, error) {
@@ -578,6 +658,12 @@ func (q *Queries) UpdateMatchSeriesStarted(ctx context.Context, id int64) (Match
 		&i.MatchNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesConfig,
+		&i.NextSeriesID,
+		&i.LoserNextSeriesID,
+		&i.CourtID,
+		&i.ScheduledAt,
+		&i.Notes,
 	)
 	return i, err
 }
@@ -587,7 +673,7 @@ UPDATE match_series SET
     status = $2,
     updated_at = now()
 WHERE id = $1
-RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at
+RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes
 `
 
 type UpdateMatchSeriesStatusParams struct {
@@ -621,6 +707,63 @@ func (q *Queries) UpdateMatchSeriesStatus(ctx context.Context, arg UpdateMatchSe
 		&i.MatchNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesConfig,
+		&i.NextSeriesID,
+		&i.LoserNextSeriesID,
+		&i.CourtID,
+		&i.ScheduledAt,
+		&i.Notes,
+	)
+	return i, err
+}
+
+const updateMatchSeriesWiring = `-- name: UpdateMatchSeriesWiring :one
+UPDATE match_series SET
+    next_series_id = $2,
+    loser_next_series_id = $3,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, public_id, division_id, pod_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, team1_wins, team2_wins, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, round, round_name, match_number, created_at, updated_at, series_config, next_series_id, loser_next_series_id, court_id, scheduled_at, notes
+`
+
+type UpdateMatchSeriesWiringParams struct {
+	ID                int64       `json:"id"`
+	NextSeriesID      pgtype.Int8 `json:"next_series_id"`
+	LoserNextSeriesID pgtype.Int8 `json:"loser_next_series_id"`
+}
+
+func (q *Queries) UpdateMatchSeriesWiring(ctx context.Context, arg UpdateMatchSeriesWiringParams) (MatchSeries, error) {
+	row := q.db.QueryRow(ctx, updateMatchSeriesWiring, arg.ID, arg.NextSeriesID, arg.LoserNextSeriesID)
+	var i MatchSeries
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.DivisionID,
+		&i.PodID,
+		&i.CreatedByUserID,
+		&i.Team1ID,
+		&i.Team2ID,
+		&i.SeriesFormat,
+		&i.GamesToWin,
+		&i.Team1Wins,
+		&i.Team2Wins,
+		&i.Status,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.WinnerTeamID,
+		&i.LoserTeamID,
+		&i.WinReason,
+		&i.Round,
+		&i.RoundName,
+		&i.MatchNumber,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SeriesConfig,
+		&i.NextSeriesID,
+		&i.LoserNextSeriesID,
+		&i.CourtID,
+		&i.ScheduledAt,
+		&i.Notes,
 	)
 	return i, err
 }

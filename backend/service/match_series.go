@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -34,6 +36,7 @@ type MatchSeriesResponse struct {
 	Team2ID         *int64          `json:"team2_id,omitempty"`
 	SeriesFormat    string          `json:"series_format"`
 	GamesToWin      int32           `json:"games_to_win"`
+	SeriesConfig    json.RawMessage `json:"series_config"`
 	Team1Wins       int32           `json:"team1_wins"`
 	Team2Wins       int32           `json:"team2_wins"`
 	Status          string          `json:"status"`
@@ -45,12 +48,20 @@ type MatchSeriesResponse struct {
 	Round           *int32          `json:"round,omitempty"`
 	RoundName       *string         `json:"round_name,omitempty"`
 	MatchNumber     *int32          `json:"match_number,omitempty"`
-	Matches         []MatchResponse `json:"matches,omitempty"`
+	CourtID         *int64          `json:"court_id,omitempty"`
+	ScheduledAt     *string         `json:"scheduled_at,omitempty"`
+	Notes           *string         `json:"notes,omitempty"`
+	Matches         []MatchResponse `json:"matches"`
 	CreatedAt       string          `json:"created_at"`
 	UpdatedAt       string          `json:"updated_at"`
 }
 
 func toMatchSeriesResponse(ms generated.MatchSeries) MatchSeriesResponse {
+	seriesConfig := json.RawMessage(ms.SeriesConfig)
+	if len(seriesConfig) == 0 {
+		seriesConfig = json.RawMessage("{}")
+	}
+
 	return MatchSeriesResponse{
 		ID:              ms.ID,
 		PublicID:        ms.PublicID,
@@ -61,6 +72,7 @@ func toMatchSeriesResponse(ms generated.MatchSeries) MatchSeriesResponse {
 		Team2ID:         optInt8(ms.Team2ID),
 		SeriesFormat:    ms.SeriesFormat,
 		GamesToWin:      ms.GamesToWin,
+		SeriesConfig:    seriesConfig,
 		Team1Wins:       ms.Team1Wins,
 		Team2Wins:       ms.Team2Wins,
 		Status:          ms.Status,
@@ -72,22 +84,44 @@ func toMatchSeriesResponse(ms generated.MatchSeries) MatchSeriesResponse {
 		Round:           optInt4(ms.Round),
 		RoundName:       ms.RoundName,
 		MatchNumber:     optInt4(ms.MatchNumber),
-		CreatedAt:       ms.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:       ms.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		CourtID:         optInt8(ms.CourtID),
+		ScheduledAt:     optTimestamptz(ms.ScheduledAt),
+		Notes:           ms.Notes,
+		Matches:         make([]MatchResponse, 0),
+		CreatedAt:       ms.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       ms.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+// broadcastSeriesUpdate publishes a series update to relevant channels.
+func (s *MatchSeriesService) broadcastSeriesUpdate(ctx context.Context, series generated.MatchSeries) {
+	if s.ps == nil {
+		return
+	}
+	resp := toMatchSeriesResponse(series)
+	if series.DivisionID.Valid {
+		s.ps.Publish(ctx, pubsub.DivisionChannel(series.DivisionID.Int64), "series_update", resp)
+	}
+	if series.CourtID.Valid {
+		s.ps.Publish(ctx, pubsub.CourtChannel(series.CourtID.Int64), "series_update", resp)
 	}
 }
 
 // CreateSeriesInput holds the input for creating a match series.
 type CreateSeriesInput struct {
-	DivisionID  *int64  `json:"division_id"`
-	PodID       *int64  `json:"pod_id"`
-	Team1ID     *int64  `json:"team1_id"`
-	Team2ID     *int64  `json:"team2_id"`
-	Format      string  `json:"series_format"`
-	GamesToWin  int32   `json:"games_to_win"`
-	Round       *int32  `json:"round"`
-	RoundName   *string `json:"round_name"`
-	MatchNumber *int32  `json:"match_number"`
+	DivisionID   *int64          `json:"division_id"`
+	PodID        *int64          `json:"pod_id"`
+	Team1ID      *int64          `json:"team1_id"`
+	Team2ID      *int64          `json:"team2_id"`
+	Format       string          `json:"series_format"`
+	GamesToWin   int32           `json:"games_to_win"`
+	SeriesConfig json.RawMessage `json:"series_config"`
+	Round        *int32          `json:"round"`
+	RoundName    *string         `json:"round_name"`
+	MatchNumber  *int32          `json:"match_number"`
+	CourtID      *int64          `json:"court_id"`
+	ScheduledAt  *string         `json:"scheduled_at"`
+	Notes        *string         `json:"notes"`
 	// Scoring config for child matches
 	GamesPerSet        int32  `json:"games_per_set"`
 	SetsToWin          int32  `json:"sets_to_win"`
@@ -124,6 +158,19 @@ func (s *MatchSeriesService) Create(ctx context.Context, userID int64, input Cre
 		return MatchSeriesResponse{}, &ValidationError{Message: "games_to_win must be at least 1"}
 	}
 
+	seriesConfig := input.SeriesConfig
+	if len(seriesConfig) == 0 {
+		seriesConfig = json.RawMessage("{}")
+	}
+
+	var scheduledAt pgtype.Timestamptz
+	if input.ScheduledAt != nil {
+		t, err := time.Parse(time.RFC3339, *input.ScheduledAt)
+		if err == nil {
+			scheduledAt = pgtype.Timestamptz{Time: t, Valid: true}
+		}
+	}
+
 	series, err := s.queries.CreateMatchSeries(ctx, generated.CreateMatchSeriesParams{
 		DivisionID:      toPgInt8(input.DivisionID),
 		PodID:           toPgInt8(input.PodID),
@@ -132,10 +179,14 @@ func (s *MatchSeriesService) Create(ctx context.Context, userID int64, input Cre
 		Team2ID:         toPgInt8(input.Team2ID),
 		SeriesFormat:    input.Format,
 		GamesToWin:      input.GamesToWin,
+		SeriesConfig:    seriesConfig,
 		Status:          "pending",
 		Round:           toPgInt4(input.Round),
 		RoundName:       input.RoundName,
 		MatchNumber:     toPgInt4(input.MatchNumber),
+		CourtID:         toPgInt8(input.CourtID),
+		ScheduledAt:     scheduledAt,
+		Notes:           input.Notes,
 	})
 	if err != nil {
 		return MatchSeriesResponse{}, fmt.Errorf("failed to create match series: %w", err)
@@ -198,7 +249,7 @@ func (s *MatchSeriesService) ListByDivision(ctx context.Context, divisionID int6
 		return nil, 0, fmt.Errorf("failed to count match series: %w", err)
 	}
 
-	var results []MatchSeriesResponse
+	results := make([]MatchSeriesResponse, 0, len(series))
 	for _, ms := range series {
 		results = append(results, toMatchSeriesResponse(ms))
 	}
@@ -206,7 +257,19 @@ func (s *MatchSeriesService) ListByDivision(ctx context.Context, divisionID int6
 	return results, total, nil
 }
 
-// StartSeries transitions a series from pending to in_progress and creates the first child match.
+// seriesConfigData represents the parsed series_config JSONB content.
+type seriesConfigData struct {
+	MatchTypes         []string `json:"match_types,omitempty"`
+	DefaultGamesPerSet int32    `json:"default_games_per_set,omitempty"`
+	DefaultSetsToWin   int32    `json:"default_sets_to_win,omitempty"`
+	DefaultPointsToWin int32    `json:"default_points_to_win,omitempty"`
+	DefaultWinBy       int32    `json:"default_win_by,omitempty"`
+	DefaultRally       bool     `json:"default_rally_scoring,omitempty"`
+}
+
+// StartSeries transitions a series from pending to in_progress and auto-creates
+// child matches based on series_config.match_types. If no match_types are specified,
+// creates games_to_win * 2 - 1 child matches (maximum possible games).
 func (s *MatchSeriesService) StartSeries(ctx context.Context, seriesID int64, userID int64) (MatchSeriesResponse, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -225,6 +288,69 @@ func (s *MatchSeriesService) StartSeries(ctx context.Context, seriesID int64, us
 		return MatchSeriesResponse{}, &ValidationError{Message: "series must be in pending status to start"}
 	}
 
+	// Parse series_config for match_types and default scoring
+	var cfg seriesConfigData
+	if len(series.SeriesConfig) > 0 {
+		_ = json.Unmarshal(series.SeriesConfig, &cfg)
+	}
+
+	// Apply scoring defaults
+	gamesPerSet := cfg.DefaultGamesPerSet
+	if gamesPerSet < 1 {
+		gamesPerSet = 1
+	}
+	setsToWin := cfg.DefaultSetsToWin
+	if setsToWin < 1 {
+		setsToWin = 1
+	}
+	pointsToWin := cfg.DefaultPointsToWin
+	if pointsToWin < 1 {
+		pointsToWin = 11
+	}
+	winBy := cfg.DefaultWinBy
+	if winBy < 1 {
+		winBy = 2
+	}
+
+	// Determine how many child matches to create
+	matchCount := int32(0)
+	if len(cfg.MatchTypes) > 0 {
+		// MLP-style: one match per match type
+		matchCount = int32(len(cfg.MatchTypes))
+	} else {
+		// Standard best-of-N: create the maximum possible matches
+		// e.g., best_of_3 (games_to_win=2) → 3 matches, best_of_5 → 5
+		matchCount = series.GamesToWin*2 - 1
+	}
+
+	// Create child matches
+	createdMatches := make([]MatchResponse, 0, matchCount)
+	for i := int32(0); i < matchCount; i++ {
+		matchNum := i + 1
+		match, err := qtx.CreateSeriesChildMatch(ctx, generated.CreateSeriesChildMatchParams{
+			MatchSeriesID:      pgtype.Int8{Int64: seriesID, Valid: true},
+			DivisionID:         series.DivisionID,
+			PodID:              series.PodID,
+			CreatedByUserID:    userID,
+			MatchNumber:        pgtype.Int4{Int32: matchNum, Valid: true},
+			Team1ID:            series.Team1ID,
+			Team2ID:            series.Team2ID,
+			GamesPerSet:        gamesPerSet,
+			SetsToWin:          setsToWin,
+			PointsToWin:        pointsToWin,
+			WinBy:              winBy,
+			MaxPoints:          pgtype.Int4{},
+			RallyScoring:       cfg.DefaultRally,
+			TimeoutsPerGame:    2,
+			TimeoutDurationSec: 60,
+			FreezeAt:           pgtype.Int4{},
+		})
+		if err != nil {
+			return MatchSeriesResponse{}, fmt.Errorf("failed to create child match %d: %w", matchNum, err)
+		}
+		createdMatches = append(createdMatches, toMatchResponse(match))
+	}
+
 	updated, err := qtx.UpdateMatchSeriesStarted(ctx, seriesID)
 	if err != nil {
 		return MatchSeriesResponse{}, fmt.Errorf("failed to start series: %w", err)
@@ -234,7 +360,12 @@ func (s *MatchSeriesService) StartSeries(ctx context.Context, seriesID int64, us
 		return MatchSeriesResponse{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return toMatchSeriesResponse(updated), nil
+	resp := toMatchSeriesResponse(updated)
+	resp.Matches = createdMatches
+
+	s.broadcastSeriesUpdate(ctx, updated)
+
+	return resp, nil
 }
 
 // RecordMatchResult records the result of a child match and updates series score.
@@ -280,6 +411,8 @@ func (s *MatchSeriesService) RecordMatchResult(ctx context.Context, seriesID int
 
 	// Check if series is complete
 	var updated generated.MatchSeries
+	seriesComplete := false
+
 	if team1Wins >= series.GamesToWin {
 		// Team 1 wins the series
 		var loserID pgtype.Int8
@@ -296,6 +429,7 @@ func (s *MatchSeriesService) RecordMatchResult(ctx context.Context, seriesID int
 		if err != nil {
 			return MatchSeriesResponse{}, fmt.Errorf("failed to complete series: %w", err)
 		}
+		seriesComplete = true
 	} else if team2Wins >= series.GamesToWin {
 		// Team 2 wins the series
 		var loserID pgtype.Int8
@@ -312,6 +446,7 @@ func (s *MatchSeriesService) RecordMatchResult(ctx context.Context, seriesID int
 		if err != nil {
 			return MatchSeriesResponse{}, fmt.Errorf("failed to complete series: %w", err)
 		}
+		seriesComplete = true
 	} else {
 		// Series continues — re-read after score update
 		updated, err = qtx.GetMatchSeries(ctx, seriesID)
@@ -320,16 +455,33 @@ func (s *MatchSeriesService) RecordMatchResult(ctx context.Context, seriesID int
 		}
 	}
 
+	// Cancel remaining scheduled child matches when series completes
+	if seriesComplete {
+		if err := qtx.CancelScheduledChildMatches(ctx, pgtype.Int8{Int64: seriesID, Valid: true}); err != nil {
+			return MatchSeriesResponse{}, fmt.Errorf("failed to cancel remaining child matches: %w", err)
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return MatchSeriesResponse{}, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	s.broadcastSeriesUpdate(ctx, updated)
 	return toMatchSeriesResponse(updated), nil
 }
 
 // ForfeitSeries forfeits a series on behalf of a team.
+// Uses a transaction to atomically forfeit the series and cancel remaining child matches.
 func (s *MatchSeriesService) ForfeitSeries(ctx context.Context, seriesID int64, forfeitingTeamID int64) (MatchSeriesResponse, error) {
-	series, err := s.queries.GetMatchSeries(ctx, seriesID)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return MatchSeriesResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	series, err := qtx.GetMatchSeriesForUpdate(ctx, seriesID)
 	if err != nil {
 		return MatchSeriesResponse{}, &NotFoundError{Message: "match series not found"}
 	}
@@ -350,7 +502,7 @@ func (s *MatchSeriesService) ForfeitSeries(ctx context.Context, seriesID int64, 
 		return MatchSeriesResponse{}, &ValidationError{Message: "forfeiting team must be one of the series teams"}
 	}
 
-	updated, err := s.queries.UpdateMatchSeriesForfeited(ctx, generated.UpdateMatchSeriesForfeitedParams{
+	updated, err := qtx.UpdateMatchSeriesForfeited(ctx, generated.UpdateMatchSeriesForfeitedParams{
 		ID:           seriesID,
 		WinnerTeamID: winnerID,
 		LoserTeamID:  loserID,
@@ -359,12 +511,31 @@ func (s *MatchSeriesService) ForfeitSeries(ctx context.Context, seriesID int64, 
 		return MatchSeriesResponse{}, fmt.Errorf("failed to forfeit series: %w", err)
 	}
 
+	// Cancel remaining scheduled child matches
+	if err := qtx.CancelScheduledChildMatches(ctx, pgtype.Int8{Int64: seriesID, Valid: true}); err != nil {
+		return MatchSeriesResponse{}, fmt.Errorf("failed to cancel child matches: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return MatchSeriesResponse{}, fmt.Errorf("failed to commit forfeit: %w", err)
+	}
+
+	s.broadcastSeriesUpdate(ctx, updated)
 	return toMatchSeriesResponse(updated), nil
 }
 
 // CancelSeries cancels a pending or in-progress series.
+// Uses a transaction to atomically cancel the series and its remaining child matches.
 func (s *MatchSeriesService) CancelSeries(ctx context.Context, seriesID int64) (MatchSeriesResponse, error) {
-	series, err := s.queries.GetMatchSeries(ctx, seriesID)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return MatchSeriesResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	series, err := qtx.GetMatchSeriesForUpdate(ctx, seriesID)
 	if err != nil {
 		return MatchSeriesResponse{}, &NotFoundError{Message: "match series not found"}
 	}
@@ -373,7 +544,7 @@ func (s *MatchSeriesService) CancelSeries(ctx context.Context, seriesID int64) (
 		return MatchSeriesResponse{}, &ValidationError{Message: "series must be pending or in_progress to cancel"}
 	}
 
-	updated, err := s.queries.UpdateMatchSeriesStatus(ctx, generated.UpdateMatchSeriesStatusParams{
+	updated, err := qtx.UpdateMatchSeriesStatus(ctx, generated.UpdateMatchSeriesStatusParams{
 		ID:     seriesID,
 		Status: "cancelled",
 	})
@@ -381,6 +552,16 @@ func (s *MatchSeriesService) CancelSeries(ctx context.Context, seriesID int64) (
 		return MatchSeriesResponse{}, fmt.Errorf("failed to cancel series: %w", err)
 	}
 
+	// Cancel remaining scheduled child matches
+	if err := qtx.CancelScheduledChildMatches(ctx, pgtype.Int8{Int64: seriesID, Valid: true}); err != nil {
+		return MatchSeriesResponse{}, fmt.Errorf("failed to cancel child matches: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return MatchSeriesResponse{}, fmt.Errorf("failed to commit cancellation: %w", err)
+	}
+
+	s.broadcastSeriesUpdate(ctx, updated)
 	return toMatchSeriesResponse(updated), nil
 }
 
