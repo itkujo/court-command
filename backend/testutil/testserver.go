@@ -92,12 +92,21 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	standingsService := service.NewStandingsService(queries)
 	standingsHandler := handler.NewStandingsHandler(standingsService)
 
+	// Phase 7: Public & Player Experience
+	dashboardService := service.NewDashboardService(queries)
+	searchService := service.NewSearchService(queries)
+
 	// Phase 5: Overlay (pass nil for pubsub in tests)
 	overlayResolver := overlay.NewResolver(queries, nil)
 	overlayService := service.NewOverlayService(pool, queries, overlayResolver, nil)
 	sourceProfileService := service.NewSourceProfileService(queries)
 	overlayHandler := handler.NewOverlayHandler(overlayService, sourceProfileService)
 	sourceProfileHandler := handler.NewSourceProfileHandler(sourceProfileService)
+
+	// Phase 7: Handlers
+	dashboardHandler := handler.NewDashboardHandler(dashboardService)
+	searchHandler := handler.NewSearchHandler(searchService)
+	publicHandler := handler.NewPublicHandler(queries)
 
 	r := router.New(&router.Config{
 		DB:             pool,
@@ -142,6 +151,11 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 
 		// Phase 6
 		StandingsHandler: standingsHandler,
+
+		// Phase 7
+		DashboardHandler: dashboardHandler,
+		SearchHandler:    searchHandler,
+		PublicHandler:    publicHandler,
 	})
 
 	ts := httptest.NewServer(r)

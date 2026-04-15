@@ -125,12 +125,21 @@ func main() {
 	standingsService := service.NewStandingsService(queries)
 	standingsHandler := handler.NewStandingsHandler(standingsService)
 
+	// Phase 7: Public & Player Experience
+	dashboardService := service.NewDashboardService(queries)
+	searchService := service.NewSearchService(queries)
+
 	// Phase 5: Overlay
 	overlayResolver := overlay.NewResolver(queries, logger)
 	overlayService := service.NewOverlayService(pool, queries, overlayResolver, ps)
 	sourceProfileService := service.NewSourceProfileService(queries)
 	overlayHandler := handler.NewOverlayHandler(overlayService, sourceProfileService)
 	sourceProfileHandler := handler.NewSourceProfileHandler(sourceProfileService)
+
+	// Phase 7: Handlers
+	dashboardHandler := handler.NewDashboardHandler(dashboardService)
+	searchHandler := handler.NewSearchHandler(searchService)
+	publicHandler := handler.NewPublicHandler(queries)
 
 	// Phase 4C: WebSocket handler
 	wsHandler := ws.NewHandler(ps, logger)
@@ -181,6 +190,11 @@ func main() {
 
 		// Phase 6
 		StandingsHandler: standingsHandler,
+
+		// Phase 7
+		DashboardHandler: dashboardHandler,
+		SearchHandler:    searchHandler,
+		PublicHandler:    publicHandler,
 
 		// Phase 4C
 		WSHandler: wsHandler.Routes(),

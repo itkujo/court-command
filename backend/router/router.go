@@ -59,6 +59,11 @@ type Config struct {
 	// Phase 6: Standings
 	StandingsHandler *handler.StandingsHandler
 
+	// Phase 7: Public & Player Experience
+	DashboardHandler *handler.DashboardHandler
+	SearchHandler    *handler.SearchHandler
+	PublicHandler    *handler.PublicHandler
+
 	// Phase 4C: WebSocket
 	WSHandler chi.Router
 }
@@ -236,6 +241,24 @@ func New(cfg *Config) chi.Router {
 		// Standings (mixed auth: public reads, handler-level auth on writes)
 		r.Route("/standings", func(r chi.Router) {
 			r.Mount("/", cfg.StandingsHandler.Routes())
+		})
+
+		// --- Phase 7 routes ---
+
+		// Player dashboard (authenticated)
+		r.Route("/dashboard", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.DashboardHandler.Routes())
+		})
+
+		// Global search (public)
+		r.Route("/search", func(r chi.Router) {
+			r.Mount("/", cfg.SearchHandler.Routes())
+		})
+
+		// Public directory (no auth)
+		r.Route("/public", func(r chi.Router) {
+			r.Mount("/", cfg.PublicHandler.Routes())
 		})
 
 		// --- Phase 5 routes ---
