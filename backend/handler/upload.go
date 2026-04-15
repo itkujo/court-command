@@ -55,10 +55,13 @@ func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	contentType := header.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
+	// Detect content type from actual file content, not client-provided header.
+	// Read first 512 bytes for detection, then prepend back for the service.
+	sniffBuf := make([]byte, 512)
+	n, _ := file.Read(sniffBuf)
+	contentType := http.DetectContentType(sniffBuf[:n])
+	// Seek back to start so the service reads the full file
+	file.Seek(0, 0)
 
 	var entityType *string
 	if et := r.FormValue("entity_type"); et != "" {

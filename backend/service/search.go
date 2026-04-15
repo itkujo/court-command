@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/court-command/court-command/db/generated"
 )
@@ -37,7 +38,9 @@ func (s *SearchService) Search(ctx context.Context, query string) (SearchResults
 		Query: query,
 		Limit: limit,
 	})
-	if err == nil {
+	if err != nil {
+		slog.Warn("search: failed to search players", "query", query, "error", err)
+	} else {
 		results.Players = players
 	}
 	if results.Players == nil {
@@ -48,7 +51,9 @@ func (s *SearchService) Search(ctx context.Context, query string) (SearchResults
 		Query: query,
 		Limit: limit,
 	})
-	if err == nil {
+	if err != nil {
+		slog.Warn("search: failed to search teams", "query", query, "error", err)
+	} else {
 		results.Teams = teams
 	}
 	if results.Teams == nil {
@@ -59,7 +64,9 @@ func (s *SearchService) Search(ctx context.Context, query string) (SearchResults
 		Query: query,
 		Limit: limit,
 	})
-	if err == nil {
+	if err != nil {
+		slog.Warn("search: failed to search organizations", "query", query, "error", err)
+	} else {
 		results.Organizations = orgs
 	}
 	if results.Organizations == nil {
@@ -70,7 +77,9 @@ func (s *SearchService) Search(ctx context.Context, query string) (SearchResults
 		Query: query,
 		Limit: limit,
 	})
-	if err == nil {
+	if err != nil {
+		slog.Warn("search: failed to search tournaments", "query", query, "error", err)
+	} else {
 		results.Tournaments = tournaments
 	}
 	if results.Tournaments == nil {
@@ -81,7 +90,9 @@ func (s *SearchService) Search(ctx context.Context, query string) (SearchResults
 		Query: query,
 		Limit: limit,
 	})
-	if err == nil {
+	if err != nil {
+		slog.Warn("search: failed to search leagues", "query", query, "error", err)
+	} else {
 		results.Leagues = leagues
 	}
 	if results.Leagues == nil {
@@ -92,7 +103,9 @@ func (s *SearchService) Search(ctx context.Context, query string) (SearchResults
 		Query: query,
 		Limit: limit,
 	})
-	if err == nil {
+	if err != nil {
+		slog.Warn("search: failed to search venues", "query", query, "error", err)
+	} else {
 		results.Venues = venues
 	}
 	if results.Venues == nil {

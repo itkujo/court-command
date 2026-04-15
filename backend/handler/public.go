@@ -54,11 +54,26 @@ func parseLimitOffset(r *http.Request, defaultLimit, maxLimit int32) (int32, int
 	return int32(limit), int32(offset)
 }
 
+// publicTournamentStatuses are the only statuses visible on the public directory.
+var publicTournamentStatuses = map[string]bool{
+	"published":           true,
+	"registration_open":   true,
+	"registration_closed": true,
+	"in_progress":         true,
+	"completed":           true,
+}
+
 // ListTournaments handles GET /api/v1/public/tournaments
-// Filterable by status query param.
+// Filterable by status query param (only publicly visible statuses allowed).
 func (h *PublicHandler) ListTournaments(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	limit, offset := parseLimitOffset(r, 20, 50)
+
+	// If status provided, validate it's a public status
+	if status != "" && !publicTournamentStatuses[status] {
+		WriteError(w, http.StatusBadRequest, "INVALID_STATUS", "Invalid or non-public status filter")
+		return
+	}
 
 	var tournaments []generated.Tournament
 	var err error
@@ -70,7 +85,10 @@ func (h *PublicHandler) ListTournaments(w http.ResponseWriter, r *http.Request) 
 			Offset: offset,
 		})
 	} else {
-		tournaments, err = h.queries.ListTournaments(r.Context(), generated.ListTournamentsParams{
+		// Default: show only published + active tournaments
+		defaultStatus := "published"
+		tournaments, err = h.queries.ListTournamentsByStatus(r.Context(), generated.ListTournamentsByStatusParams{
+			Status: defaultStatus,
 			Limit:  limit,
 			Offset: offset,
 		})

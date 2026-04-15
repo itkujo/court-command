@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sort"
 	"time"
 
@@ -133,7 +134,10 @@ func (svc *StandingsService) RecomputeStandings(ctx context.Context, seasonID, d
 
 	cfg := DefaultStandingsConfig(method)
 	if len(season.StandingsConfig) > 0 && string(season.StandingsConfig) != "{}" {
-		_ = json.Unmarshal(season.StandingsConfig, &cfg)
+		if err := json.Unmarshal(season.StandingsConfig, &cfg); err != nil {
+			slog.Warn("standings: failed to parse standings_config, using defaults",
+				"season_id", seasonID, "method", method, "error", err)
+		}
 	}
 
 	// 2. Get all approved registrations for this division to find teams

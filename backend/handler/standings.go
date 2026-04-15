@@ -94,10 +94,15 @@ func (h *StandingsHandler) GetStandingsEntry(w http.ResponseWriter, r *http.Requ
 }
 
 // RecomputeStandings triggers a full recompute of standings for a division.
+// Requires platform_admin role.
 func (h *StandingsHandler) RecomputeStandings(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
 		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+	if sess.Role != "platform_admin" {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Admin access required")
 		return
 	}
 
@@ -117,10 +122,15 @@ func (h *StandingsHandler) RecomputeStandings(w http.ResponseWriter, r *http.Req
 }
 
 // UpdateOverride sets an admin points override on a standings entry.
+// Requires platform_admin role.
 func (h *StandingsHandler) UpdateOverride(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
 		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+	if sess.Role != "platform_admin" {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Admin access required")
 		return
 	}
 
@@ -156,10 +166,15 @@ func (h *StandingsHandler) UpdateOverride(w http.ResponseWriter, r *http.Request
 }
 
 // ClearOverride removes the admin points override from a standings entry.
+// Requires platform_admin role.
 func (h *StandingsHandler) ClearOverride(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
 		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+	if sess.Role != "platform_admin" {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Admin access required")
 		return
 	}
 
@@ -185,10 +200,15 @@ func (h *StandingsHandler) ClearOverride(w http.ResponseWriter, r *http.Request)
 }
 
 // MarkWithdrawn marks a team as withdrawn in the standings.
+// Requires platform_admin role.
 func (h *StandingsHandler) MarkWithdrawn(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
 		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+	if sess.Role != "platform_admin" {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Admin access required")
 		return
 	}
 

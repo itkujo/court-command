@@ -3,6 +3,7 @@ package router
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -324,9 +325,20 @@ func New(cfg *Config) chi.Router {
 		})
 	})
 
-	// Serve uploaded files as static assets
-	fileServer := http.FileServer(http.Dir("uploads"))
-	r.Handle("/uploads/*", http.StripPrefix("/uploads/", fileServer))
+	// Serve uploaded files as static assets (no directory listing)
+	r.Route("/uploads", func(r chi.Router) {
+		r.Get("/{filename}", func(w http.ResponseWriter, req *http.Request) {
+			filename := chi.URLParam(req, "filename")
+			// Prevent path traversal
+			if strings.Contains(filename, "/") || strings.Contains(filename, "..") {
+				http.NotFound(w, req)
+				return
+			}
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("Content-Disposition", "inline")
+			http.ServeFile(w, req, "uploads/"+filename)
+		})
+	})
 
 	// WebSocket routes (outside API versioning — protocol is inherently versioned)
 	if cfg.WSHandler != nil {

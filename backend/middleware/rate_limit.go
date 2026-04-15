@@ -14,6 +14,7 @@ type RateLimiter struct {
 	rate     int           // tokens added per interval
 	burst    int           // max tokens
 	interval time.Duration // refill interval
+	done     chan struct{}
 }
 
 type visitor struct {
@@ -29,23 +30,34 @@ func NewRateLimiter(rate, burst int, interval time.Duration) *RateLimiter {
 		rate:     rate,
 		burst:    burst,
 		interval: interval,
+		done:     make(chan struct{}),
 	}
 	go rl.cleanup()
 	return rl
+}
+
+// Stop shuts down the cleanup goroutine.
+func (rl *RateLimiter) Stop() {
+	close(rl.done)
 }
 
 // cleanup periodically removes stale visitors.
 func (rl *RateLimiter) cleanup() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
-	for range ticker.C {
-		rl.mu.Lock()
-		for ip, v := range rl.visitors {
-			if time.Since(v.lastSeen) > 10*time.Minute {
-				delete(rl.visitors, ip)
+	for {
+		select {
+		case <-rl.done:
+			return
+		case <-ticker.C:
+			rl.mu.Lock()
+			for ip, v := range rl.visitors {
+				if time.Since(v.lastSeen) > 10*time.Minute {
+					delete(rl.visitors, ip)
+				}
 			}
+			rl.mu.Unlock()
 		}
-		rl.mu.Unlock()
 	}
 }
 
@@ -82,12 +94,13 @@ func RateLimit(rate, burst int, interval time.Duration) func(http.Handler) http.
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Use r.RemoteAddr directly — chi's RealIP middleware (in the global
+			// stack) has already resolved the true client IP from trusted proxy
+			// headers. Do NOT read X-Forwarded-For here; it's user-spoofable.
 			key := r.RemoteAddr
-			if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-				key = forwarded
-			}
 
 			if !limiter.allow(key) {
+				w.Header().Set("Retry-After", "60")
 				writeError(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
 				return
 			}

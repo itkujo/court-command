@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -40,7 +41,9 @@ func (s *DashboardService) GetDashboard(ctx context.Context, userID int64) (Dash
 		PlayerID: userID,
 		Limit:    10,
 	})
-	if err == nil {
+	if err != nil {
+		slog.Warn("dashboard: failed to load upcoming matches", "user_id", userID, "error", err)
+	} else {
 		data.UpcomingMatches = upcoming
 	}
 	if data.UpcomingMatches == nil {
@@ -49,7 +52,9 @@ func (s *DashboardService) GetDashboard(ctx context.Context, userID int64) (Dash
 
 	// Active tournament registrations
 	active, err := s.queries.GetActiveRegistrationsForPlayer(ctx, playerInt8)
-	if err == nil {
+	if err != nil {
+		slog.Warn("dashboard: failed to load active registrations", "user_id", userID, "error", err)
+	} else {
 		data.ActiveRegistrations = active
 	}
 	if data.ActiveRegistrations == nil {
@@ -61,7 +66,9 @@ func (s *DashboardService) GetDashboard(ctx context.Context, userID int64) (Dash
 		PlayerID: userID,
 		Limit:    20,
 	})
-	if err == nil {
+	if err != nil {
+		slog.Warn("dashboard: failed to load recent results", "user_id", userID, "error", err)
+	} else {
 		data.RecentResults = recent
 	}
 	if data.RecentResults == nil {
@@ -70,7 +77,9 @@ func (s *DashboardService) GetDashboard(ctx context.Context, userID int64) (Dash
 
 	// Stats aggregate
 	stats, err := s.queries.GetPlayerStatsAggregate(ctx, userID)
-	if err == nil {
+	if err != nil {
+		slog.Warn("dashboard: failed to load stats", "user_id", userID, "error", err)
+	} else {
 		data.Stats = stats
 	}
 
@@ -79,7 +88,9 @@ func (s *DashboardService) GetDashboard(ctx context.Context, userID int64) (Dash
 		PlayerID: playerInt8,
 		Limit:    20,
 	})
-	if err == nil {
+	if err != nil {
+		slog.Warn("dashboard: failed to load announcements", "user_id", userID, "error", err)
+	} else {
 		data.Announcements = announcements
 	}
 	if data.Announcements == nil {
@@ -88,7 +99,9 @@ func (s *DashboardService) GetDashboard(ctx context.Context, userID int64) (Dash
 
 	// Player's teams
 	teams, err := s.queries.GetDashboardPlayerTeams(ctx, userID)
-	if err == nil {
+	if err != nil {
+		slog.Warn("dashboard: failed to load teams", "user_id", userID, "error", err)
+	} else {
 		data.Teams = teams
 	}
 	if data.Teams == nil {
