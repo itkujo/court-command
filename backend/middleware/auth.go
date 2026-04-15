@@ -67,6 +67,22 @@ func RequireRole(roles ...string) func(http.Handler) http.Handler {
 	}
 }
 
+// RequirePlatformAdmin is middleware that requires the user to be a platform admin.
+func RequirePlatformAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data := SessionData(r.Context())
+		if data == nil {
+			writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+			return
+		}
+		if data.Role != "platform_admin" {
+			writeError(w, http.StatusForbidden, "forbidden", "platform admin required")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // writeError writes a structured JSON error response.
 // This is a local helper to avoid importing the handler package (which would create a cycle).
 func writeError(w http.ResponseWriter, status int, code, message string) {
