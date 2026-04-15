@@ -41,6 +41,7 @@ func (h *RegistrationHandler) Routes() chi.Router {
 	r.Patch("/{registrationID}/placement", h.UpdatePlacement)
 	r.Post("/{registrationID}/check-in", h.CheckIn)
 	r.Post("/{registrationID}/withdraw", h.WithdrawMidTournament)
+	r.Patch("/{registrationID}/admin-notes", h.UpdateAdminNotes)
 	r.Post("/bulk-no-show", h.BulkNoShow)
 
 	return r
@@ -339,4 +340,35 @@ func (h *RegistrationHandler) ListSeekingPartner(w http.ResponseWriter, r *http.
 	}
 
 	Success(w, regs)
+}
+
+// UpdateAdminNotes updates the admin notes on a registration.
+func (h *RegistrationHandler) UpdateAdminNotes(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	regID, err := strconv.ParseInt(chi.URLParam(r, "registrationID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid registration ID")
+		return
+	}
+
+	var body struct {
+		AdminNotes *string `json:"admin_notes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", "Invalid request body")
+		return
+	}
+
+	reg, err := h.regSvc.UpdateAdminNotes(r.Context(), regID, body.AdminNotes)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, reg)
 }

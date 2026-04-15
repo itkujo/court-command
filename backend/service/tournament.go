@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/court-command/court-command/db/generated"
 )
@@ -14,11 +15,12 @@ import (
 // TournamentService handles tournament business logic.
 type TournamentService struct {
 	queries *generated.Queries
+	pool    *pgxpool.Pool
 }
 
 // NewTournamentService creates a new TournamentService.
-func NewTournamentService(queries *generated.Queries) *TournamentService {
-	return &TournamentService{queries: queries}
+func NewTournamentService(queries *generated.Queries, pool *pgxpool.Pool) *TournamentService {
+	return &TournamentService{queries: queries, pool: pool}
 }
 
 // TournamentResponse is the public representation of a tournament.
@@ -107,7 +109,7 @@ func toTournamentResponse(t generated.Tournament) TournamentResponse {
 	if len(t.SocialLinks) > 0 {
 		resp.SocialLinks = json.RawMessage(t.SocialLinks)
 	} else {
-		resp.SocialLinks = json.RawMessage("[]")
+		resp.SocialLinks = json.RawMessage("{}")
 	}
 	if len(t.SponsorInfo) > 0 {
 		resp.SponsorInfo = json.RawMessage(t.SponsorInfo)
@@ -300,12 +302,12 @@ func (s *TournamentService) Delete(ctx context.Context, id int64) error {
 
 // validTournamentTransitions defines allowed status transitions for tournaments.
 var validTournamentTransitions = map[string][]string{
-	"draft":       {"published"},
-	"published":   {"reg_open", "cancelled"},
-	"reg_open":    {"reg_closed", "cancelled"},
-	"reg_closed":  {"in_progress", "cancelled"},
-	"in_progress": {"completed", "cancelled"},
-	"completed":   {"archived"},
+	"draft":               {"published", "cancelled"},
+	"published":           {"registration_open", "cancelled"},
+	"registration_open":   {"registration_closed", "cancelled"},
+	"registration_closed": {"in_progress", "cancelled"},
+	"in_progress":         {"completed", "cancelled"},
+	"completed":           {"archived"},
 }
 
 // UpdateStatus transitions a tournament to a new status.
@@ -360,6 +362,7 @@ func (s *TournamentService) IsTD(ctx context.Context, tournamentID, userID int64
 }
 
 // Clone creates a copy of a tournament with its divisions, optionally including registrations.
+// The entire operation is wrapped in a transaction to prevent partial clones.
 func (s *TournamentService) Clone(ctx context.Context, sourceTournamentID int64, newName string, createdByUserID int64, includeRegistrations bool) (TournamentResponse, error) {
 	source, err := s.queries.GetTournamentByID(ctx, sourceTournamentID)
 	if err != nil {
@@ -371,7 +374,15 @@ func (s *TournamentService) Clone(ctx context.Context, sourceTournamentID int64,
 		return TournamentResponse{}, err
 	}
 
-	newTournament, err := s.queries.CreateTournament(ctx, generated.CreateTournamentParams{
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return TournamentResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	newTournament, err := qtx.CreateTournament(ctx, generated.CreateTournamentParams{
 		Name:                newName,
 		Slug:                slug,
 		Status:              "draft",
@@ -379,7 +390,7 @@ func (s *TournamentService) Clone(ctx context.Context, sourceTournamentID int64,
 		EndDate:             source.EndDate,
 		VenueID:             source.VenueID,
 		LeagueID:            source.LeagueID,
-		SeasonID:            source.SeasonID,
+		SeasonID:            pgtype.Int8{}, // clone doesn't inherit season
 		Description:         source.Description,
 		LogoUrl:             source.LogoUrl,
 		BannerUrl:           source.BannerUrl,
@@ -409,7 +420,7 @@ func (s *TournamentService) Clone(ctx context.Context, sourceTournamentID int64,
 
 	for _, div := range divisions {
 		divSlug := generateSlug(div.Name)
-		newDiv, err := s.queries.CreateDivision(ctx, generated.CreateDivisionParams{
+		newDiv, err := qtx.CreateDivision(ctx, generated.CreateDivisionParams{
 			TournamentID:        newTournament.ID,
 			Name:                div.Name,
 			Slug:                divSlug,
@@ -445,10 +456,11 @@ func (s *TournamentService) Clone(ctx context.Context, sourceTournamentID int64,
 			return TournamentResponse{}, fmt.Errorf("failed to clone division %q: %w", div.Name, err)
 		}
 
-		// Optionally clone registrations
+		// Optionally clone only approved registrations
 		if includeRegistrations {
-			regs, err := s.queries.ListRegistrationsByDivision(ctx, generated.ListRegistrationsByDivisionParams{
+			regs, err := qtx.ListRegistrationsByDivisionAndStatus(ctx, generated.ListRegistrationsByDivisionAndStatusParams{
 				DivisionID: div.ID,
+				Status:     "approved",
 				Limit:      10000,
 				Offset:     0,
 			})
@@ -457,7 +469,7 @@ func (s *TournamentService) Clone(ctx context.Context, sourceTournamentID int64,
 			}
 
 			for _, reg := range regs {
-				_, err := s.queries.CreateRegistration(ctx, generated.CreateRegistrationParams{
+				_, err := qtx.CreateRegistration(ctx, generated.CreateRegistrationParams{
 					DivisionID:         newDiv.ID,
 					TeamID:             reg.TeamID,
 					PlayerID:           reg.PlayerID,
@@ -473,6 +485,10 @@ func (s *TournamentService) Clone(ctx context.Context, sourceTournamentID int64,
 				}
 			}
 		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return TournamentResponse{}, fmt.Errorf("failed to commit clone transaction: %w", err)
 	}
 
 	return toTournamentResponse(newTournament), nil

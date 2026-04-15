@@ -98,7 +98,7 @@ func (h *LeagueRegistrationHandler) CreateRegistration(w http.ResponseWriter, r 
 	params := generated.CreateLeagueRegistrationParams{
 		LeagueID: leagueID,
 		OrgID:    body.OrgID,
-		Status:   "pending",
+		Status:   "active",
 		Notes:    body.Notes,
 	}
 

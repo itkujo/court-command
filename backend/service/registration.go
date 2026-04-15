@@ -307,3 +307,16 @@ func (s *RegistrationService) WithdrawMidTournament(ctx context.Context, id int6
 
 	return toRegistrationResponse(updated), nil
 }
+
+// UpdateAdminNotes updates the admin notes on a registration.
+func (s *RegistrationService) UpdateAdminNotes(ctx context.Context, id int64, notes *string) (RegistrationResponse, error) {
+	updated, err := s.queries.UpdateRegistrationAdminNotes(ctx, generated.UpdateRegistrationAdminNotesParams{
+		ID:         id,
+		AdminNotes: notes,
+	})
+	if err != nil {
+		return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+	}
+
+	return toRegistrationResponse(updated), nil
+}

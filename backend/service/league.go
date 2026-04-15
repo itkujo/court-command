@@ -70,7 +70,7 @@ func toLeagueResponse(l generated.League) LeagueResponse {
 	if len(l.SocialLinks) > 0 {
 		resp.SocialLinks = json.RawMessage(l.SocialLinks)
 	} else {
-		resp.SocialLinks = json.RawMessage("[]")
+		resp.SocialLinks = json.RawMessage("{}")
 	}
 	if len(l.SponsorInfo) > 0 {
 		resp.SponsorInfo = json.RawMessage(l.SponsorInfo)

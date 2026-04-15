@@ -65,7 +65,7 @@ func main() {
 
 	// Phase 3 services
 	leagueService := service.NewLeagueService(queries)
-	tournamentService := service.NewTournamentService(queries)
+	tournamentService := service.NewTournamentService(queries, pool)
 	divisionService := service.NewDivisionService(queries)
 	registrationService := service.NewRegistrationService(queries)
 	seasonService := service.NewSeasonService(queries)

@@ -200,11 +200,11 @@ func (s *DivisionService) Delete(ctx context.Context, id int64) error {
 
 // validDivisionTransitions defines allowed status transitions for divisions.
 var validDivisionTransitions = map[string][]string{
-	"draft":       {"reg_open"},
-	"reg_open":    {"reg_closed"},
-	"reg_closed":  {"seeding"},
-	"seeding":     {"in_progress"},
-	"in_progress": {"completed"},
+	"draft":               {"registration_open"},
+	"registration_open":   {"registration_closed"},
+	"registration_closed": {"seeding"},
+	"seeding":             {"in_progress"},
+	"in_progress":         {"completed"},
 }
 
 // UpdateStatus transitions a division to a new status.

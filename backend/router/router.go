@@ -105,32 +105,32 @@ func New(cfg *Config) chi.Router {
 
 		// --- Phase 3 routes ---
 
-		// League routes (mixed auth: public reads, auth writes)
+		// League routes (mixed auth: public reads, handler-level auth on writes)
 		r.Route("/leagues", func(r chi.Router) {
-			r.Use(middleware.RequireAuth(cfg.SessionStore))
 			r.Mount("/", cfg.LeagueHandler.Routes())
 
-			// League sub-resources
+			// League sub-resources (auth checked by handlers)
 			r.Route("/{leagueID}/seasons", func(r chi.Router) {
 				r.Mount("/", cfg.SeasonHandler.Routes())
 			})
 			r.Route("/{leagueID}/division-templates", func(r chi.Router) {
+				r.Use(middleware.RequireAuth(cfg.SessionStore))
 				r.Mount("/", cfg.DivTemplateHandler.Routes())
 			})
 			r.Route("/{leagueID}/announcements", func(r chi.Router) {
 				r.Mount("/", cfg.AnnouncementHandler.LeagueAnnouncementRoutes())
 			})
 			r.Route("/{leagueID}/registrations", func(r chi.Router) {
+				r.Use(middleware.RequireAuth(cfg.SessionStore))
 				r.Mount("/", cfg.LeagueRegHandler.Routes())
 			})
 		})
 
-		// Tournament routes (mixed auth: public reads, auth writes)
+		// Tournament routes (mixed auth: public reads, handler-level auth on writes)
 		r.Route("/tournaments", func(r chi.Router) {
-			r.Use(middleware.RequireAuth(cfg.SessionStore))
 			r.Mount("/", cfg.TournamentHandler.Routes())
 
-			// Tournament sub-resources
+			// Tournament sub-resources (auth checked by handlers)
 			r.Route("/{tournamentID}/divisions", func(r chi.Router) {
 				r.Mount("/", cfg.DivisionHandler.Routes())
 			})
@@ -139,13 +139,11 @@ func New(cfg *Config) chi.Router {
 			})
 		})
 
-		// Division sub-resources (registrations and pods)
+		// Division sub-resources (registrations and pods — auth checked by handlers)
 		r.Route("/divisions/{divisionID}/registrations", func(r chi.Router) {
-			r.Use(middleware.RequireAuth(cfg.SessionStore))
 			r.Mount("/", cfg.RegistrationHandler.Routes())
 		})
 		r.Route("/divisions/{divisionID}/pods", func(r chi.Router) {
-			r.Use(middleware.RequireAuth(cfg.SessionStore))
 			r.Mount("/", cfg.PodHandler.Routes())
 		})
 	})
