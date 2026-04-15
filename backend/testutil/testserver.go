@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/handler"
 	"github.com/court-command/court-command/router"
 	"github.com/court-command/court-command/service"
@@ -27,9 +28,21 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 		t.Fatalf("creating session store: %v", err)
 	}
 
+	queries := generated.New(pool)
+
 	authService := service.NewAuthService(pool, store)
+	playerService := service.NewPlayerService(queries)
+	teamService := service.NewTeamService(queries)
+	orgService := service.NewOrganizationService(queries)
+	venueService := service.NewVenueService(queries)
+
 	authHandler := handler.NewAuthHandler(authService, false)
 	healthHandler := handler.NewHealthHandler(pool, store.Client())
+	playerHandler := handler.NewPlayerHandler(playerService)
+	teamHandler := handler.NewTeamHandler(teamService)
+	orgHandler := handler.NewOrgHandler(orgService)
+	venueHandler := handler.NewVenueHandler(venueService)
+	courtHandler := handler.NewCourtHandler(venueService)
 
 	r := router.New(&router.Config{
 		DB:             pool,
@@ -38,6 +51,11 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 		AllowedOrigins: []string{"http://localhost:5173"},
 		AuthHandler:    authHandler,
 		HealthHandler:  healthHandler,
+		PlayerHandler:  playerHandler,
+		TeamHandler:    teamHandler,
+		OrgHandler:     orgHandler,
+		VenueHandler:   venueHandler,
+		CourtHandler:   courtHandler,
 		SecureCookie:   false,
 	})
 

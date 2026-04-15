@@ -12,6 +12,7 @@ import (
 
 	"github.com/court-command/court-command/config"
 	"github.com/court-command/court-command/db"
+	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/handler"
 	"github.com/court-command/court-command/router"
 	"github.com/court-command/court-command/service"
@@ -53,11 +54,22 @@ func main() {
 	}
 	defer sessionStore.Close()
 
+	queries := generated.New(pool)
+
 	authService := service.NewAuthService(pool, sessionStore)
+	playerService := service.NewPlayerService(queries)
+	teamService := service.NewTeamService(queries)
+	orgService := service.NewOrganizationService(queries)
+	venueService := service.NewVenueService(queries)
 
 	secureCookie := !cfg.IsDevelopment()
 	authHandler := handler.NewAuthHandler(authService, secureCookie)
 	healthHandler := handler.NewHealthHandler(pool, sessionStore.Client())
+	playerHandler := handler.NewPlayerHandler(playerService)
+	teamHandler := handler.NewTeamHandler(teamService)
+	orgHandler := handler.NewOrgHandler(orgService)
+	venueHandler := handler.NewVenueHandler(venueService)
+	courtHandler := handler.NewCourtHandler(venueService)
 
 	r := router.New(&router.Config{
 		DB:             pool,
@@ -66,6 +78,11 @@ func main() {
 		AllowedOrigins: cfg.CORSAllowedOrigins,
 		AuthHandler:    authHandler,
 		HealthHandler:  healthHandler,
+		PlayerHandler:  playerHandler,
+		TeamHandler:    teamHandler,
+		OrgHandler:     orgHandler,
+		VenueHandler:   venueHandler,
+		CourtHandler:   courtHandler,
 		SecureCookie:   secureCookie,
 	})
 

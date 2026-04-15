@@ -22,6 +22,11 @@ type Config struct {
 	AllowedOrigins []string
 	AuthHandler    *handler.AuthHandler
 	HealthHandler  *handler.HealthHandler
+	PlayerHandler  *handler.PlayerHandler
+	TeamHandler    *handler.TeamHandler
+	OrgHandler     *handler.OrgHandler
+	VenueHandler   *handler.VenueHandler
+	CourtHandler   *handler.CourtHandler
 	SecureCookie   bool
 }
 
@@ -54,6 +59,36 @@ func New(cfg *Config) chi.Router {
 				r.Use(middleware.RequireAuth(cfg.SessionStore))
 				r.Get("/me", cfg.AuthHandler.Me)
 			})
+		})
+
+		// Player routes (authenticated)
+		r.Route("/players", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.PlayerHandler.Routes())
+		})
+
+		// Team routes (authenticated)
+		r.Route("/teams", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.TeamHandler.Routes())
+		})
+
+		// Organization routes (authenticated)
+		r.Route("/organizations", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.OrgHandler.Routes())
+		})
+
+		// Venue routes (authenticated)
+		r.Route("/venues", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.VenueHandler.Routes())
+		})
+
+		// Court routes (authenticated — standalone/floating courts)
+		r.Route("/courts", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.CourtHandler.Routes())
 		})
 	})
 
