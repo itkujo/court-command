@@ -96,8 +96,18 @@ func (h *SourceProfileHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if params.SourceType == "" {
 		params.SourceType = "court_command"
 	}
+	validSourceTypes := map[string]bool{"court_command": true, "rest_api": true, "webhook": true}
+	if !validSourceTypes[params.SourceType] {
+		WriteError(w, http.StatusBadRequest, "INVALID_FIELD", "source_type must be one of: court_command, rest_api, webhook")
+		return
+	}
 	if params.AuthType == "" {
 		params.AuthType = "none"
+	}
+	validAuthTypes := map[string]bool{"none": true, "api_key": true, "bearer": true, "basic": true}
+	if !validAuthTypes[params.AuthType] {
+		WriteError(w, http.StatusBadRequest, "INVALID_FIELD", "auth_type must be one of: none, api_key, bearer, basic")
+		return
 	}
 
 	params.ApiUrl = req.ApiURL

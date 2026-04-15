@@ -95,6 +95,8 @@ func (p *Poller) applyAuth(req *http.Request, authType string, authConfig []byte
 			return err
 		}
 		req.SetBasicAuth(config.Username, config.Password)
+	default:
+		return fmt.Errorf("unsupported auth type: %s", authType)
 	}
 	return nil
 }

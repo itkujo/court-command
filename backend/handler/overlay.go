@@ -270,7 +270,7 @@ func (h *OverlayHandler) ClearDataOverrides(w http.ResponseWriter, r *http.Reque
 
 // ListThemes handles GET /api/v1/overlay/themes
 func (h *OverlayHandler) ListThemes(w http.ResponseWriter, r *http.Request) {
-	Success(w, overlay.AllThemes)
+	Success(w, overlay.AllThemes())
 }
 
 // GetTheme handles GET /api/v1/overlay/themes/{themeID}

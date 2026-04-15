@@ -122,7 +122,7 @@ func main() {
 	quickMatchHandler := handler.NewQuickMatchHandler(matchService)
 
 	// Phase 5: Overlay
-	overlayResolver := overlay.NewResolver(queries)
+	overlayResolver := overlay.NewResolver(queries, logger)
 	overlayService := service.NewOverlayService(pool, queries, overlayResolver, ps)
 	sourceProfileService := service.NewSourceProfileService(queries)
 	overlayHandler := handler.NewOverlayHandler(overlayService, sourceProfileService)

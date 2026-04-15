@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 )
 
@@ -20,7 +21,8 @@ type WebhookPayload struct {
 // The signature should be in the X-Webhook-Signature header.
 func ValidateWebhookSignature(body []byte, signature string, secret string) error {
 	if secret == "" {
-		// No secret configured — accept all
+		// No secret configured — accept all, but log a warning
+		slog.Warn("webhook: accepting unvalidated webhook data — no webhook_secret configured on source profile")
 		return nil
 	}
 	if signature == "" {
@@ -50,7 +52,8 @@ func ReadWebhookBody(r *http.Request) ([]byte, error) {
 // ApplyFieldMapping transforms raw external data into canonical OverlayData
 // using the field_mapping configuration from a Source Profile.
 // The mapping is a JSON object where keys are canonical field names and values
-// are dot-path expressions into the raw data (e.g., "score.home" -> team_1_score).
+// are flat top-level keys in the raw data (e.g., "home_score" -> team_1_score).
+// Nested dot-path resolution is not supported in v2.
 func ApplyFieldMapping(rawData json.RawMessage, fieldMapping []byte) (OverlayData, error) {
 	var data OverlayData
 	var raw map[string]interface{}

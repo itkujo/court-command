@@ -4,18 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"github.com/court-command/court-command/db/generated"
+	"github.com/jackc/pgx/v5"
 )
 
 // Resolver transforms internal data into the canonical OverlayData contract.
 type Resolver struct {
 	queries *generated.Queries
+	logger  *slog.Logger
 }
 
 // NewResolver creates a new Resolver.
-func NewResolver(queries *generated.Queries) *Resolver {
-	return &Resolver{queries: queries}
+func NewResolver(queries *generated.Queries, logger *slog.Logger) *Resolver {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Resolver{queries: queries, logger: logger}
 }
 
 // ResolveFromMatch builds OverlayData from a Match and its related entities.
@@ -67,7 +73,9 @@ func (r *Resolver) ResolveFromMatch(ctx context.Context, match generated.Match) 
 	// Resolve team 1
 	if match.Team1ID.Valid {
 		team, err := r.queries.GetTeamByID(ctx, match.Team1ID.Int64)
-		if err == nil {
+		if err != nil && !isNotFound(err) {
+			r.logger.Warn("resolver: failed to get team 1", "team_id", match.Team1ID.Int64, "error", err)
+		} else if err == nil {
 			data.Team1 = r.teamToOverlay(ctx, team, int(match.Team1Score))
 			data.Team1.GameWins = r.countGameWins(data.CompletedGames, 1)
 		}
@@ -76,7 +84,9 @@ func (r *Resolver) ResolveFromMatch(ctx context.Context, match generated.Match) 
 	// Resolve team 2
 	if match.Team2ID.Valid {
 		team, err := r.queries.GetTeamByID(ctx, match.Team2ID.Int64)
-		if err == nil {
+		if err != nil && !isNotFound(err) {
+			r.logger.Warn("resolver: failed to get team 2", "team_id", match.Team2ID.Int64, "error", err)
+		} else if err == nil {
 			data.Team2 = r.teamToOverlay(ctx, team, int(match.Team2Score))
 			data.Team2.GameWins = r.countGameWins(data.CompletedGames, 2)
 		}
@@ -85,7 +95,9 @@ func (r *Resolver) ResolveFromMatch(ctx context.Context, match generated.Match) 
 	// Resolve division -> tournament -> league chain
 	if match.DivisionID.Valid {
 		div, err := r.queries.GetDivisionByID(ctx, match.DivisionID.Int64)
-		if err == nil {
+		if err != nil && !isNotFound(err) {
+			r.logger.Warn("resolver: failed to get division", "division_id", match.DivisionID.Int64, "error", err)
+		} else if err == nil {
 			data.DivisionName = div.Name
 			if match.Round.Valid {
 				data.RoundLabel = fmt.Sprintf("Round %d", match.Round.Int32)
@@ -93,7 +105,9 @@ func (r *Resolver) ResolveFromMatch(ctx context.Context, match generated.Match) 
 
 			// Get tournament
 			tournament, err := r.queries.GetTournamentByID(ctx, div.TournamentID)
-			if err == nil {
+			if err != nil && !isNotFound(err) {
+				r.logger.Warn("resolver: failed to get tournament", "tournament_id", div.TournamentID, "error", err)
+			} else if err == nil {
 				data.TournamentName = tournament.Name
 				if tournament.LogoUrl != nil {
 					data.TournamentLogoURL = *tournament.LogoUrl
@@ -110,7 +124,9 @@ func (r *Resolver) ResolveFromMatch(ctx context.Context, match generated.Match) 
 				// Get league if present
 				if tournament.LeagueID.Valid {
 					league, err := r.queries.GetLeagueByID(ctx, tournament.LeagueID.Int64)
-					if err == nil {
+					if err != nil && !isNotFound(err) {
+						r.logger.Warn("resolver: failed to get league", "league_id", tournament.LeagueID.Int64, "error", err)
+					} else if err == nil {
 						data.LeagueName = league.Name
 						if league.LogoUrl != nil {
 							data.LeagueLogoURL = *league.LogoUrl
@@ -128,7 +144,9 @@ func (r *Resolver) ResolveFromMatch(ctx context.Context, match generated.Match) 
 	// Resolve court name
 	if match.CourtID.Valid {
 		court, err := r.queries.GetCourtByID(ctx, match.CourtID.Int64)
-		if err == nil {
+		if err != nil && !isNotFound(err) {
+			r.logger.Warn("resolver: failed to get court", "court_id", match.CourtID.Int64, "error", err)
+		} else if err == nil {
 			data.CourtName = court.Name
 		}
 	}
@@ -139,7 +157,9 @@ func (r *Resolver) ResolveFromMatch(ctx context.Context, match generated.Match) 
 	// Resolve series score if this is a series match
 	if match.MatchSeriesID.Valid {
 		series, err := r.queries.GetMatchSeries(ctx, match.MatchSeriesID.Int64)
-		if err == nil {
+		if err != nil && !isNotFound(err) {
+			r.logger.Warn("resolver: failed to get match series", "series_id", match.MatchSeriesID.Int64, "error", err)
+		} else if err == nil {
 			bestOf := int(series.GamesToWin)*2 - 1
 			data.SeriesScore = &SeriesScoreData{
 				Team1Wins: int(series.Team1Wins),
@@ -161,7 +181,9 @@ func (r *Resolver) ResolveIdle(ctx context.Context, courtID int64) OverlayData {
 	}
 
 	court, err := r.queries.GetCourtByID(ctx, courtID)
-	if err == nil {
+	if err != nil && !isNotFound(err) {
+		r.logger.Warn("resolver: failed to get court for idle", "court_id", courtID, "error", err)
+	} else if err == nil {
 		data.CourtName = court.Name
 	}
 
@@ -184,7 +206,9 @@ func (r *Resolver) teamToOverlay(ctx context.Context, team generated.Team, score
 
 	// Load roster players
 	roster, err := r.queries.GetActiveRoster(ctx, team.ID)
-	if err == nil {
+	if err != nil && !isNotFound(err) {
+		r.logger.Warn("resolver: failed to get roster", "team_id", team.ID, "error", err)
+	} else if err == nil {
 		for _, member := range roster {
 			name := member.FirstName + " " + member.LastName
 			if member.DisplayName != nil {
@@ -195,6 +219,11 @@ func (r *Resolver) teamToOverlay(ctx context.Context, team generated.Team, score
 	}
 
 	return t
+}
+
+// isNotFound returns true if the error is a pgx "no rows" error.
+func isNotFound(err error) bool {
+	return err == pgx.ErrNoRows
 }
 
 func (r *Resolver) countGameWins(games []GameResult, team int) int {

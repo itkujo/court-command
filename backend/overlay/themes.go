@@ -20,8 +20,8 @@ type ThemeDefaults struct {
 	AnimationStyle string `json:"animation_style"` // slide, fade, scale, none
 }
 
-// AllThemes is the registry of available themes.
-var AllThemes = []Theme{
+// allThemes is the internal registry of available themes.
+var allThemes = []Theme{
 	{
 		ID:          "classic",
 		Name:        "Classic",
@@ -114,20 +114,27 @@ var AllThemes = []Theme{
 	},
 }
 
+// AllThemes returns a copy of all available themes.
+func AllThemes() []Theme {
+	result := make([]Theme, len(allThemes))
+	copy(result, allThemes)
+	return result
+}
+
 // GetTheme returns a theme by ID, or the classic theme if not found.
 func GetTheme(id string) Theme {
-	for _, t := range AllThemes {
+	for _, t := range allThemes {
 		if t.ID == id {
 			return t
 		}
 	}
-	return AllThemes[0] // classic as fallback
+	return allThemes[0] // classic as fallback
 }
 
 // ListThemeIDs returns all available theme IDs.
 func ListThemeIDs() []string {
-	ids := make([]string, len(AllThemes))
-	for i, t := range AllThemes {
+	ids := make([]string, len(allThemes))
+	for i, t := range allThemes {
 		ids[i] = t.ID
 	}
 	return ids

@@ -89,7 +89,7 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	quickMatchHandler := handler.NewQuickMatchHandler(matchService)
 
 	// Phase 5: Overlay (pass nil for pubsub in tests)
-	overlayResolver := overlay.NewResolver(queries)
+	overlayResolver := overlay.NewResolver(queries, nil)
 	overlayService := service.NewOverlayService(pool, queries, overlayResolver, nil)
 	sourceProfileService := service.NewSourceProfileService(queries)
 	overlayHandler := handler.NewOverlayHandler(overlayService, sourceProfileService)
