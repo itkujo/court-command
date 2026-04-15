@@ -45,6 +45,21 @@ type Court struct {
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type CourtOverlayConfig struct {
+	ID                      int64       `json:"id"`
+	CourtID                 int64       `json:"court_id"`
+	ThemeID                 string      `json:"theme_id"`
+	ColorOverrides          []byte      `json:"color_overrides"`
+	Elements                []byte      `json:"elements"`
+	SourceProfileID         pgtype.Int8 `json:"source_profile_id"`
+	OverlayToken            *string     `json:"overlay_token"`
+	ShowBranding            bool        `json:"show_branding"`
+	MatchResultDelaySeconds int32       `json:"match_result_delay_seconds"`
+	IdleDisplay             string      `json:"idle_display"`
+	CreatedAt               time.Time   `json:"created_at"`
+	UpdatedAt               time.Time   `json:"updated_at"`
+}
+
 type Division struct {
 	ID                  int64              `json:"id"`
 	TournamentID        int64              `json:"tournament_id"`
@@ -367,6 +382,24 @@ type SeasonConfirmation struct {
 	Confirmed   pgtype.Bool        `json:"confirmed"`
 	ConfirmedAt pgtype.Timestamptz `json:"confirmed_at"`
 	Deadline    time.Time          `json:"deadline"`
+}
+
+type SourceProfile struct {
+	ID                  int64              `json:"id"`
+	Name                string             `json:"name"`
+	CreatedByUserID     int64              `json:"created_by_user_id"`
+	SourceType          string             `json:"source_type"`
+	ApiUrl              *string            `json:"api_url"`
+	WebhookSecret       *string            `json:"webhook_secret"`
+	AuthType            string             `json:"auth_type"`
+	AuthConfig          []byte             `json:"auth_config"`
+	PollIntervalSeconds pgtype.Int4        `json:"poll_interval_seconds"`
+	FieldMapping        []byte             `json:"field_mapping"`
+	IsActive            bool               `json:"is_active"`
+	LastPollAt          pgtype.Timestamptz `json:"last_poll_at"`
+	LastPollStatus      *string            `json:"last_poll_status"`
+	CreatedAt           time.Time          `json:"created_at"`
+	UpdatedAt           time.Time          `json:"updated_at"`
 }
 
 type Team struct {
