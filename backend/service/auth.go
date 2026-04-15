@@ -58,6 +58,9 @@ func (in *RegisterInput) Validate() error {
 	if len(in.Password) < 8 {
 		return errors.New("password must be at least 8 characters")
 	}
+	if len(in.Password) > 72 {
+		return errors.New("password must be at most 72 characters")
+	}
 	if in.FirstName == "" {
 		return errors.New("first_name is required")
 	}
@@ -73,9 +76,8 @@ func (in *RegisterInput) Validate() error {
 	return nil
 }
 
-// UserResponse is the public representation of a user (no password hash).
+// UserResponse is the public representation of a user (no password hash, no internal ID).
 type UserResponse struct {
-	ID          int64     `json:"id"`
 	PublicID    string    `json:"public_id"`
 	Email       *string   `json:"email,omitempty"`
 	FirstName   string    `json:"first_name"`
@@ -91,13 +93,13 @@ type UserResponse struct {
 // Register creates a new user account and returns a session token.
 func (s *AuthService) Register(ctx context.Context, input *RegisterInput) (*UserResponse, string, error) {
 	if err := input.Validate(); err != nil {
-		return nil, "", fmt.Errorf("validation: %w", err)
+		return nil, "", NewValidation(err.Error())
 	}
 
 	// Check for existing email
 	_, err := s.queries.GetUserByEmail(ctx, &input.Email)
 	if err == nil {
-		return nil, "", fmt.Errorf("validation: email already registered")
+		return nil, "", NewConflict("email already registered")
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, "", fmt.Errorf("checking email: %w", err)
@@ -149,23 +151,23 @@ func (s *AuthService) Login(ctx context.Context, input *LoginInput) (*UserRespon
 	input.Email = strings.TrimSpace(strings.ToLower(input.Email))
 
 	if input.Email == "" || input.Password == "" {
-		return nil, "", fmt.Errorf("validation: email and password are required")
+		return nil, "", NewValidation("email and password are required")
 	}
 
 	user, err := s.queries.GetUserByEmail(ctx, &input.Email)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, "", fmt.Errorf("validation: invalid email or password")
+		return nil, "", NewValidation("invalid email or password")
 	}
 	if err != nil {
 		return nil, "", fmt.Errorf("looking up user: %w", err)
 	}
 
 	if user.Status != "active" {
-		return nil, "", fmt.Errorf("validation: account is %s", user.Status)
+		return nil, "", NewValidationf("account is %s", user.Status)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
-		return nil, "", fmt.Errorf("validation: invalid email or password")
+		return nil, "", NewValidation("invalid email or password")
 	}
 
 	token, err := s.sessionStore.Create(ctx, &session.Data{
@@ -190,7 +192,7 @@ func (s *AuthService) Logout(ctx context.Context, token string) error {
 func (s *AuthService) GetCurrentUser(ctx context.Context, sessionData *session.Data) (*UserResponse, error) {
 	user, err := s.queries.GetUserByID(ctx, sessionData.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("not_found: user not found")
+		return nil, NewNotFound("user not found")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("looking up user: %w", err)
@@ -199,10 +201,11 @@ func (s *AuthService) GetCurrentUser(ctx context.Context, sessionData *session.D
 	return userToResponse(&user), nil
 }
 
-// userToResponse converts a database user row to the public response format.
+// userToResponse maps a generated.User to a safe API response.
+// IMPORTANT: Never serialize generated.User directly — it contains password_hash
+// with a json tag that would leak the hash. Always use this mapping function.
 func userToResponse(u *generated.User) *UserResponse {
 	return &UserResponse{
-		ID:          u.ID,
 		PublicID:    u.PublicID,
 		Email:       u.Email,
 		FirstName:   u.FirstName,

@@ -14,7 +14,6 @@ type Config struct {
 	DatabaseURL        string
 	RedisURL           string
 	Port               string
-	SessionSecret      string
 	CORSAllowedOrigins []string
 	Env                string // "development", "production"
 }
@@ -26,11 +25,10 @@ func Load() (*Config, error) {
 	_ = godotenv.Load("../.env")
 
 	cfg := &Config{
-		DatabaseURL:   os.Getenv("DATABASE_URL"),
-		RedisURL:      os.Getenv("REDIS_URL"),
-		Port:          os.Getenv("PORT"),
-		SessionSecret: os.Getenv("SESSION_SECRET"),
-		Env:           os.Getenv("ENV"),
+		DatabaseURL: os.Getenv("DATABASE_URL"),
+		RedisURL:    os.Getenv("REDIS_URL"),
+		Port:        os.Getenv("PORT"),
+		Env:         os.Getenv("ENV"),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -41,9 +39,6 @@ func Load() (*Config, error) {
 	}
 	if cfg.Port == "" {
 		cfg.Port = "8080"
-	}
-	if cfg.SessionSecret == "" {
-		return nil, fmt.Errorf("SESSION_SECRET is required")
 	}
 	if cfg.Env == "" {
 		cfg.Env = "development"

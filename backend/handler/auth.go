@@ -2,8 +2,8 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/court-command/court-command/service"
@@ -34,8 +34,14 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, token, err := h.authService.Register(r.Context(), &input)
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "validation:") {
-			BadRequest(w, strings.TrimPrefix(err.Error(), "validation: "))
+		var validationErr *service.ValidationError
+		var conflictErr *service.ConflictError
+		if errors.As(err, &validationErr) {
+			BadRequest(w, validationErr.Message)
+			return
+		}
+		if errors.As(err, &conflictErr) {
+			Conflict(w, conflictErr.Message)
 			return
 		}
 		InternalError(w, "registration failed")
@@ -56,8 +62,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	user, token, err := h.authService.Login(r.Context(), &input)
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "validation:") {
-			BadRequest(w, strings.TrimPrefix(err.Error(), "validation: "))
+		var validationErr *service.ValidationError
+		if errors.As(err, &validationErr) {
+			BadRequest(w, validationErr.Message)
 			return
 		}
 		InternalError(w, "login failed")
@@ -101,8 +108,9 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.authService.GetCurrentUser(r.Context(), sessionData)
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "not_found:") {
-			NotFound(w, "user not found")
+		var notFoundErr *service.NotFoundError
+		if errors.As(err, &notFoundErr) {
+			NotFound(w, notFoundErr.Message)
 			return
 		}
 		InternalError(w, "failed to fetch user")

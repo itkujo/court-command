@@ -84,8 +84,8 @@ func TestRegisterDuplicate(t *testing.T) {
 	b, _ = json.Marshal(body)
 	resp2, _ := http.Post(ts.URL+"/api/v1/auth/register", "application/json", bytes.NewReader(b))
 	resp2.Body.Close()
-	if resp2.StatusCode != http.StatusBadRequest {
-		t.Fatalf("duplicate register expected 400, got %d", resp2.StatusCode)
+	if resp2.StatusCode != http.StatusConflict {
+		t.Fatalf("duplicate register expected 409, got %d", resp2.StatusCode)
 	}
 }
 
