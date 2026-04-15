@@ -7,6 +7,7 @@ import (
 
 	"github.com/court-command/court-command/overlay"
 	"github.com/court-command/court-command/service"
+	"github.com/court-command/court-command/session"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -26,6 +27,17 @@ func NewOverlayHandler(overlayService *service.OverlayService, sourceProfileServ
 
 func (h *OverlayHandler) parseCourtID(r *http.Request) (int64, error) {
 	return strconv.ParseInt(chi.URLParam(r, "courtID"), 10, 64)
+}
+
+// requireSession checks that the request has a valid session and returns it.
+// Returns nil and writes a 401 error if not authenticated.
+func (h *OverlayHandler) requireSession(w http.ResponseWriter, r *http.Request) *session.Data {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return nil
+	}
+	return sess
 }
 
 // GetOverlayData handles GET /api/v1/overlay/court/{courtID}/data
@@ -57,6 +69,10 @@ func (h *OverlayHandler) GetOverlayData(w http.ResponseWriter, r *http.Request) 
 
 // GetConfig handles GET /api/v1/overlay/court/{courtID}/config
 func (h *OverlayHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
+	if sess := h.requireSession(w, r); sess == nil {
+		return
+	}
+
 	courtID, err := h.parseCourtID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid court ID")
@@ -65,7 +81,7 @@ func (h *OverlayHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 
 	config, err := h.overlayService.GetOrCreateConfig(r.Context(), courtID)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "GET_FAILED", err.Error())
+		WriteError(w, http.StatusInternalServerError, "GET_FAILED", "Failed to get overlay config")
 		return
 	}
 
@@ -74,6 +90,10 @@ func (h *OverlayHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 
 // UpdateTheme handles PUT /api/v1/overlay/court/{courtID}/config/theme
 func (h *OverlayHandler) UpdateTheme(w http.ResponseWriter, r *http.Request) {
+	if sess := h.requireSession(w, r); sess == nil {
+		return
+	}
+
 	courtID, err := h.parseCourtID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid court ID")
@@ -96,7 +116,7 @@ func (h *OverlayHandler) UpdateTheme(w http.ResponseWriter, r *http.Request) {
 
 	config, err := h.overlayService.UpdateTheme(r.Context(), courtID, req.ThemeID, req.ColorOverrides)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "UPDATE_FAILED", err.Error())
+		HandleServiceError(w, err)
 		return
 	}
 
@@ -105,6 +125,10 @@ func (h *OverlayHandler) UpdateTheme(w http.ResponseWriter, r *http.Request) {
 
 // UpdateElements handles PUT /api/v1/overlay/court/{courtID}/config/elements
 func (h *OverlayHandler) UpdateElements(w http.ResponseWriter, r *http.Request) {
+	if sess := h.requireSession(w, r); sess == nil {
+		return
+	}
+
 	courtID, err := h.parseCourtID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid court ID")
@@ -130,6 +154,10 @@ func (h *OverlayHandler) UpdateElements(w http.ResponseWriter, r *http.Request) 
 
 // GenerateToken handles POST /api/v1/overlay/court/{courtID}/config/token/generate
 func (h *OverlayHandler) GenerateToken(w http.ResponseWriter, r *http.Request) {
+	if sess := h.requireSession(w, r); sess == nil {
+		return
+	}
+
 	courtID, err := h.parseCourtID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid court ID")
@@ -147,6 +175,10 @@ func (h *OverlayHandler) GenerateToken(w http.ResponseWriter, r *http.Request) {
 
 // RevokeToken handles DELETE /api/v1/overlay/court/{courtID}/config/token
 func (h *OverlayHandler) RevokeToken(w http.ResponseWriter, r *http.Request) {
+	if sess := h.requireSession(w, r); sess == nil {
+		return
+	}
+
 	courtID, err := h.parseCourtID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid court ID")
@@ -164,6 +196,10 @@ func (h *OverlayHandler) RevokeToken(w http.ResponseWriter, r *http.Request) {
 
 // SetSourceProfile handles PUT /api/v1/overlay/court/{courtID}/config/source-profile
 func (h *OverlayHandler) SetSourceProfile(w http.ResponseWriter, r *http.Request) {
+	if sess := h.requireSession(w, r); sess == nil {
+		return
+	}
+
 	courtID, err := h.parseCourtID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid court ID")
@@ -181,6 +217,51 @@ func (h *OverlayHandler) SetSourceProfile(w http.ResponseWriter, r *http.Request
 	config, err := h.overlayService.SetSourceProfile(r.Context(), courtID, req.SourceProfileID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "UPDATE_FAILED", err.Error())
+		return
+	}
+
+	Success(w, config)
+}
+
+// UpdateDataOverrides handles PUT /api/v1/overlay/court/{courtID}/config/data-overrides
+// Allows Broadcast Operators to override any canonical overlay field per-court
+// without modifying the underlying tournament/team/match data.
+func (h *OverlayHandler) UpdateDataOverrides(w http.ResponseWriter, r *http.Request) {
+	courtID, err := h.parseCourtID(r)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid court ID")
+		return
+	}
+
+	var req struct {
+		Overrides json.RawMessage `json:"overrides"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid request body")
+		return
+	}
+
+	config, err := h.overlayService.UpdateDataOverrides(r.Context(), courtID, req.Overrides)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, config)
+}
+
+// ClearDataOverrides handles DELETE /api/v1/overlay/court/{courtID}/config/data-overrides
+// Resets all per-court data overrides to empty.
+func (h *OverlayHandler) ClearDataOverrides(w http.ResponseWriter, r *http.Request) {
+	courtID, err := h.parseCourtID(r)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid court ID")
+		return
+	}
+
+	config, err := h.overlayService.ClearDataOverrides(r.Context(), courtID)
+	if err != nil {
+		HandleServiceError(w, err)
 		return
 	}
 

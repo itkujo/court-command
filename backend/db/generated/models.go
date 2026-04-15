@@ -58,6 +58,8 @@ type CourtOverlayConfig struct {
 	IdleDisplay             string      `json:"idle_display"`
 	CreatedAt               time.Time   `json:"created_at"`
 	UpdatedAt               time.Time   `json:"updated_at"`
+	// Per-court field-level overrides for overlay data. Keys match canonical OverlayData fields (e.g. team_1_name, division_name). Values replace resolved data before rendering.
+	DataOverrides []byte `json:"data_overrides"`
 }
 
 type Division struct {

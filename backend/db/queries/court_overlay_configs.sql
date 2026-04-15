@@ -2,9 +2,9 @@
 INSERT INTO court_overlay_configs (
     court_id, theme_id, color_overrides, elements,
     source_profile_id, overlay_token, show_branding,
-    match_result_delay_seconds, idle_display
+    match_result_delay_seconds, idle_display, data_overrides
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 )
 RETURNING *;
 
@@ -52,6 +52,13 @@ RETURNING *;
 -- name: UpdateOverlaySourceProfile :one
 UPDATE court_overlay_configs
 SET source_profile_id = $2,
+    updated_at = now()
+WHERE court_id = $1
+RETURNING *;
+
+-- name: UpdateOverlayDataOverrides :one
+UPDATE court_overlay_configs
+SET data_overrides = $2,
     updated_at = now()
 WHERE court_id = $1
 RETURNING *;

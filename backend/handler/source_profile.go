@@ -128,6 +128,12 @@ func (h *SourceProfileHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // GetByID handles GET /api/v1/source-profiles/{profileID}
 func (h *SourceProfileHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
 	profileID, err := h.parseProfileID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid profile ID")
@@ -140,14 +146,37 @@ func (h *SourceProfileHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Ownership check — only the creator or platform admin can view
+	if profile.CreatedByUserID != sess.UserID && sess.Role != "platform_admin" {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Access denied")
+		return
+	}
+
 	Success(w, profile)
 }
 
 // Update handles PUT /api/v1/source-profiles/{profileID}
 func (h *SourceProfileHandler) Update(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
 	profileID, err := h.parseProfileID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid profile ID")
+		return
+	}
+
+	// Ownership check
+	existing, err := h.service.GetByID(r.Context(), profileID)
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "NOT_FOUND", "Source profile not found")
+		return
+	}
+	if existing.CreatedByUserID != sess.UserID && sess.Role != "platform_admin" {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Access denied")
 		return
 	}
 
@@ -202,14 +231,31 @@ func (h *SourceProfileHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles DELETE /api/v1/source-profiles/{profileID}
 func (h *SourceProfileHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
 	profileID, err := h.parseProfileID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid profile ID")
 		return
 	}
 
+	// Ownership check
+	existing, err := h.service.GetByID(r.Context(), profileID)
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "NOT_FOUND", "Source profile not found")
+		return
+	}
+	if existing.CreatedByUserID != sess.UserID && sess.Role != "platform_admin" {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Access denied")
+		return
+	}
+
 	if err := h.service.Delete(r.Context(), profileID); err != nil {
-		WriteError(w, http.StatusInternalServerError, "DELETE_FAILED", err.Error())
+		WriteError(w, http.StatusInternalServerError, "DELETE_FAILED", "Failed to delete source profile")
 		return
 	}
 
@@ -218,15 +264,32 @@ func (h *SourceProfileHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // Deactivate handles POST /api/v1/source-profiles/{profileID}/deactivate
 func (h *SourceProfileHandler) Deactivate(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
 	profileID, err := h.parseProfileID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid profile ID")
 		return
 	}
 
+	// Ownership check
+	existing, err := h.service.GetByID(r.Context(), profileID)
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "NOT_FOUND", "Source profile not found")
+		return
+	}
+	if existing.CreatedByUserID != sess.UserID && sess.Role != "platform_admin" {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Access denied")
+		return
+	}
+
 	profile, err := h.service.Deactivate(r.Context(), profileID)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, "DEACTIVATE_FAILED", err.Error())
+		WriteError(w, http.StatusInternalServerError, "DEACTIVATE_FAILED", "Failed to deactivate source profile")
 		return
 	}
 

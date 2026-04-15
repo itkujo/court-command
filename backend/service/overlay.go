@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/overlay"
 	"github.com/court-command/court-command/pubsub"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -34,8 +36,11 @@ func (s *OverlayService) GetOrCreateConfig(ctx context.Context, courtID int64) (
 	if err == nil {
 		return config, nil
 	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return generated.CourtOverlayConfig{}, fmt.Errorf("get overlay config: %w", err)
+	}
 
-	// Create default config
+	// Not found — create default config
 	defaultElements, _ := json.Marshal(map[string]interface{}{
 		"scoreboard":       map[string]interface{}{"visible": true, "auto_animate": true},
 		"lower_third":      map[string]interface{}{"visible": false, "auto_animate": true},
@@ -59,6 +64,7 @@ func (s *OverlayService) GetOrCreateConfig(ctx context.Context, courtID int64) (
 		ShowBranding:            true,
 		MatchResultDelaySeconds: 30,
 		IdleDisplay:             "court_name",
+		DataOverrides:           []byte("{}"),
 	})
 	if err != nil {
 		return generated.CourtOverlayConfig{}, fmt.Errorf("create default overlay config: %w", err)
@@ -69,8 +75,11 @@ func (s *OverlayService) GetOrCreateConfig(ctx context.Context, courtID int64) (
 
 // UpdateTheme updates the theme and color overrides for a court's overlay.
 func (s *OverlayService) UpdateTheme(ctx context.Context, courtID int64, themeID string, colorOverrides json.RawMessage) (generated.CourtOverlayConfig, error) {
-	// Validate theme exists (GetTheme returns classic as fallback, which is fine)
-	_ = overlay.GetTheme(themeID)
+	// Validate theme exists — GetTheme falls back to classic, so compare the returned ID
+	theme := overlay.GetTheme(themeID)
+	if theme.ID != themeID {
+		return generated.CourtOverlayConfig{}, &ValidationError{Message: fmt.Sprintf("unknown theme: %s", themeID)}
+	}
 
 	if colorOverrides == nil {
 		colorOverrides = []byte("{}")
@@ -156,8 +165,8 @@ func (s *OverlayService) ValidateToken(ctx context.Context, courtID int64, token
 		return errors.New("overlay token required")
 	}
 
-	// Compare
-	if *config.OverlayToken != token {
+	// Constant-time comparison to prevent timing side-channel attacks
+	if subtle.ConstantTimeCompare([]byte(*config.OverlayToken), []byte(token)) != 1 {
 		return errors.New("invalid overlay token")
 	}
 
@@ -184,22 +193,59 @@ func (s *OverlayService) SetSourceProfile(ctx context.Context, courtID int64, so
 	return config, nil
 }
 
+// UpdateDataOverrides updates the per-court field-level data overrides.
+// Overrides are applied on top of resolved overlay data before rendering.
+// Keys match canonical OverlayData JSON field names (e.g. "team_1_name", "division_name").
+func (s *OverlayService) UpdateDataOverrides(ctx context.Context, courtID int64, overrides json.RawMessage) (generated.CourtOverlayConfig, error) {
+	if overrides == nil {
+		overrides = []byte("{}")
+	}
+
+	config, err := s.queries.UpdateOverlayDataOverrides(ctx, generated.UpdateOverlayDataOverridesParams{
+		CourtID:       courtID,
+		DataOverrides: overrides,
+	})
+	if err != nil {
+		return generated.CourtOverlayConfig{}, fmt.Errorf("update data overrides: %w", err)
+	}
+
+	s.broadcastConfigChange(ctx, courtID, config)
+
+	return config, nil
+}
+
+// ClearDataOverrides resets all per-court data overrides to empty.
+func (s *OverlayService) ClearDataOverrides(ctx context.Context, courtID int64) (generated.CourtOverlayConfig, error) {
+	return s.UpdateDataOverrides(ctx, courtID, []byte("{}"))
+}
+
 // GetOverlayData returns the canonical overlay data for a court.
 // If the court has an active match, resolves from match data.
 // Otherwise returns idle data or demo data.
+// Per-court data_overrides are applied on top of the resolved data.
 func (s *OverlayService) GetOverlayData(ctx context.Context, courtID int64, useDemoData bool) (overlay.OverlayData, error) {
+	var data overlay.OverlayData
+
 	// Check for active match on this court using GetActiveMatchOnCourt
 	match, err := s.queries.GetActiveMatchOnCourt(ctx, pgtype.Int8{Int64: courtID, Valid: true})
 	if err == nil {
-		return s.resolver.ResolveFromMatch(ctx, match)
+		data, err = s.resolver.ResolveFromMatch(ctx, match)
+		if err != nil {
+			return overlay.OverlayData{}, err
+		}
+	} else if useDemoData {
+		data = overlay.DemoData()
+	} else {
+		data = s.resolver.ResolveIdle(ctx, courtID)
 	}
 
-	// No active match
-	if useDemoData {
-		return overlay.DemoData(), nil
+	// Apply per-court data overrides if any are configured
+	config, err := s.queries.GetOverlayConfigByCourtID(ctx, courtID)
+	if err == nil && len(config.DataOverrides) > 0 {
+		overlay.ApplyDataOverrides(&data, config.DataOverrides)
 	}
 
-	return s.resolver.ResolveIdle(ctx, courtID), nil
+	return data, nil
 }
 
 // BroadcastOverlayData broadcasts overlay data to the overlay WS channel for a court.

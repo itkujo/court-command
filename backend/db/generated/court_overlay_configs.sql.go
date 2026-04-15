@@ -15,11 +15,11 @@ const createOverlayConfig = `-- name: CreateOverlayConfig :one
 INSERT INTO court_overlay_configs (
     court_id, theme_id, color_overrides, elements,
     source_profile_id, overlay_token, show_branding,
-    match_result_delay_seconds, idle_display
+    match_result_delay_seconds, idle_display, data_overrides
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 )
-RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at
+RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at, data_overrides
 `
 
 type CreateOverlayConfigParams struct {
@@ -32,6 +32,7 @@ type CreateOverlayConfigParams struct {
 	ShowBranding            bool        `json:"show_branding"`
 	MatchResultDelaySeconds int32       `json:"match_result_delay_seconds"`
 	IdleDisplay             string      `json:"idle_display"`
+	DataOverrides           []byte      `json:"data_overrides"`
 }
 
 func (q *Queries) CreateOverlayConfig(ctx context.Context, arg CreateOverlayConfigParams) (CourtOverlayConfig, error) {
@@ -45,6 +46,7 @@ func (q *Queries) CreateOverlayConfig(ctx context.Context, arg CreateOverlayConf
 		arg.ShowBranding,
 		arg.MatchResultDelaySeconds,
 		arg.IdleDisplay,
+		arg.DataOverrides,
 	)
 	var i CourtOverlayConfig
 	err := row.Scan(
@@ -60,6 +62,7 @@ func (q *Queries) CreateOverlayConfig(ctx context.Context, arg CreateOverlayConf
 		&i.IdleDisplay,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DataOverrides,
 	)
 	return i, err
 }
@@ -74,7 +77,7 @@ func (q *Queries) DeleteOverlayConfig(ctx context.Context, courtID int64) error 
 }
 
 const getOverlayConfigByCourtID = `-- name: GetOverlayConfigByCourtID :one
-SELECT id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at FROM court_overlay_configs WHERE court_id = $1
+SELECT id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at, data_overrides FROM court_overlay_configs WHERE court_id = $1
 `
 
 func (q *Queries) GetOverlayConfigByCourtID(ctx context.Context, courtID int64) (CourtOverlayConfig, error) {
@@ -93,12 +96,13 @@ func (q *Queries) GetOverlayConfigByCourtID(ctx context.Context, courtID int64) 
 		&i.IdleDisplay,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DataOverrides,
 	)
 	return i, err
 }
 
 const getOverlayConfigByToken = `-- name: GetOverlayConfigByToken :one
-SELECT id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at FROM court_overlay_configs WHERE overlay_token = $1
+SELECT id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at, data_overrides FROM court_overlay_configs WHERE overlay_token = $1
 `
 
 func (q *Queries) GetOverlayConfigByToken(ctx context.Context, overlayToken *string) (CourtOverlayConfig, error) {
@@ -117,6 +121,7 @@ func (q *Queries) GetOverlayConfigByToken(ctx context.Context, overlayToken *str
 		&i.IdleDisplay,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DataOverrides,
 	)
 	return i, err
 }
@@ -143,7 +148,7 @@ SET theme_id = $2,
     idle_display = $8,
     updated_at = now()
 WHERE court_id = $1
-RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at
+RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at, data_overrides
 `
 
 type UpdateOverlayConfigParams struct {
@@ -182,6 +187,41 @@ func (q *Queries) UpdateOverlayConfig(ctx context.Context, arg UpdateOverlayConf
 		&i.IdleDisplay,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DataOverrides,
+	)
+	return i, err
+}
+
+const updateOverlayDataOverrides = `-- name: UpdateOverlayDataOverrides :one
+UPDATE court_overlay_configs
+SET data_overrides = $2,
+    updated_at = now()
+WHERE court_id = $1
+RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at, data_overrides
+`
+
+type UpdateOverlayDataOverridesParams struct {
+	CourtID       int64  `json:"court_id"`
+	DataOverrides []byte `json:"data_overrides"`
+}
+
+func (q *Queries) UpdateOverlayDataOverrides(ctx context.Context, arg UpdateOverlayDataOverridesParams) (CourtOverlayConfig, error) {
+	row := q.db.QueryRow(ctx, updateOverlayDataOverrides, arg.CourtID, arg.DataOverrides)
+	var i CourtOverlayConfig
+	err := row.Scan(
+		&i.ID,
+		&i.CourtID,
+		&i.ThemeID,
+		&i.ColorOverrides,
+		&i.Elements,
+		&i.SourceProfileID,
+		&i.OverlayToken,
+		&i.ShowBranding,
+		&i.MatchResultDelaySeconds,
+		&i.IdleDisplay,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DataOverrides,
 	)
 	return i, err
 }
@@ -191,7 +231,7 @@ UPDATE court_overlay_configs
 SET elements = $2,
     updated_at = now()
 WHERE court_id = $1
-RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at
+RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at, data_overrides
 `
 
 type UpdateOverlayElementsParams struct {
@@ -215,6 +255,7 @@ func (q *Queries) UpdateOverlayElements(ctx context.Context, arg UpdateOverlayEl
 		&i.IdleDisplay,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DataOverrides,
 	)
 	return i, err
 }
@@ -224,7 +265,7 @@ UPDATE court_overlay_configs
 SET source_profile_id = $2,
     updated_at = now()
 WHERE court_id = $1
-RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at
+RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at, data_overrides
 `
 
 type UpdateOverlaySourceProfileParams struct {
@@ -248,6 +289,7 @@ func (q *Queries) UpdateOverlaySourceProfile(ctx context.Context, arg UpdateOver
 		&i.IdleDisplay,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DataOverrides,
 	)
 	return i, err
 }
@@ -258,7 +300,7 @@ SET theme_id = $2,
     color_overrides = $3,
     updated_at = now()
 WHERE court_id = $1
-RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at
+RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at, data_overrides
 `
 
 type UpdateOverlayThemeParams struct {
@@ -283,6 +325,7 @@ func (q *Queries) UpdateOverlayTheme(ctx context.Context, arg UpdateOverlayTheme
 		&i.IdleDisplay,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DataOverrides,
 	)
 	return i, err
 }
@@ -292,7 +335,7 @@ UPDATE court_overlay_configs
 SET overlay_token = $2,
     updated_at = now()
 WHERE court_id = $1
-RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at
+RETURNING id, court_id, theme_id, color_overrides, elements, source_profile_id, overlay_token, show_branding, match_result_delay_seconds, idle_display, created_at, updated_at, data_overrides
 `
 
 type UpdateOverlayTokenParams struct {
@@ -316,6 +359,7 @@ func (q *Queries) UpdateOverlayToken(ctx context.Context, arg UpdateOverlayToken
 		&i.IdleDisplay,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DataOverrides,
 	)
 	return i, err
 }

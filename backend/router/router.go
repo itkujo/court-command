@@ -248,6 +248,8 @@ func New(cfg *Config) chi.Router {
 				r.Post("/court/{courtID}/config/token/generate", cfg.OverlayHandler.GenerateToken)
 				r.Delete("/court/{courtID}/config/token", cfg.OverlayHandler.RevokeToken)
 				r.Put("/court/{courtID}/config/source-profile", cfg.OverlayHandler.SetSourceProfile)
+				r.Put("/court/{courtID}/config/data-overrides", cfg.OverlayHandler.UpdateDataOverrides)
+				r.Delete("/court/{courtID}/config/data-overrides", cfg.OverlayHandler.ClearDataOverrides)
 			})
 		})
 

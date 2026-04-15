@@ -2,6 +2,127 @@
 // It imports from core packages but nothing outside imports from it.
 package overlay
 
+import "encoding/json"
+
+// ApplyDataOverrides applies per-court field-level overrides to resolved overlay data.
+// Keys match canonical OverlayData JSON field names (e.g. "team_1_name", "division_name").
+// Only non-empty string values are applied. Numeric overrides use their JSON field names
+// (e.g. "team_1_score", "serving_team").
+func ApplyDataOverrides(data *OverlayData, overrides json.RawMessage) {
+	if len(overrides) == 0 || string(overrides) == "{}" {
+		return
+	}
+
+	var m map[string]interface{}
+	if err := json.Unmarshal(overrides, &m); err != nil {
+		return
+	}
+
+	for key, val := range m {
+		switch key {
+		// Team 1 fields
+		case "team_1_name":
+			if s, ok := val.(string); ok {
+				data.Team1.Name = s
+			}
+		case "team_1_short_name":
+			if s, ok := val.(string); ok {
+				data.Team1.ShortName = s
+			}
+		case "team_1_score":
+			if n, ok := val.(float64); ok {
+				data.Team1.Score = int(n)
+			}
+		case "team_1_color":
+			if s, ok := val.(string); ok {
+				data.Team1.Color = s
+			}
+		case "team_1_logo_url":
+			if s, ok := val.(string); ok {
+				data.Team1.LogoURL = s
+			}
+		case "team_1_game_wins":
+			if n, ok := val.(float64); ok {
+				data.Team1.GameWins = int(n)
+			}
+		// Team 2 fields
+		case "team_2_name":
+			if s, ok := val.(string); ok {
+				data.Team2.Name = s
+			}
+		case "team_2_short_name":
+			if s, ok := val.(string); ok {
+				data.Team2.ShortName = s
+			}
+		case "team_2_score":
+			if n, ok := val.(float64); ok {
+				data.Team2.Score = int(n)
+			}
+		case "team_2_color":
+			if s, ok := val.(string); ok {
+				data.Team2.Color = s
+			}
+		case "team_2_logo_url":
+			if s, ok := val.(string); ok {
+				data.Team2.LogoURL = s
+			}
+		case "team_2_game_wins":
+			if n, ok := val.(float64); ok {
+				data.Team2.GameWins = int(n)
+			}
+		// Match context fields
+		case "division_name":
+			if s, ok := val.(string); ok {
+				data.DivisionName = s
+			}
+		case "tournament_name":
+			if s, ok := val.(string); ok {
+				data.TournamentName = s
+			}
+		case "league_name":
+			if s, ok := val.(string); ok {
+				data.LeagueName = s
+			}
+		case "round_label":
+			if s, ok := val.(string); ok {
+				data.RoundLabel = s
+			}
+		case "match_info":
+			if s, ok := val.(string); ok {
+				data.MatchInfo = s
+			}
+		case "court_name":
+			if s, ok := val.(string); ok {
+				data.CourtName = s
+			}
+		case "tournament_logo_url":
+			if s, ok := val.(string); ok {
+				data.TournamentLogoURL = s
+			}
+		case "league_logo_url":
+			if s, ok := val.(string); ok {
+				data.LeagueLogoURL = s
+			}
+		case "match_status":
+			if s, ok := val.(string); ok {
+				data.MatchStatus = s
+			}
+		case "serving_team":
+			if n, ok := val.(float64); ok {
+				data.ServingTeam = int(n)
+			}
+		case "server_number":
+			if n, ok := val.(float64); ok {
+				data.ServerNumber = int(n)
+			}
+		case "current_game":
+			if n, ok := val.(float64); ok {
+				data.CurrentGame = int(n)
+			}
+		}
+	}
+}
+
 // OverlayData is the canonical data contract that all overlay renderers consume.
 // Whether data comes from Court Command's own match system or a third-party API,
 // it gets normalized into this structure before reaching the overlay.
