@@ -56,12 +56,23 @@ func main() {
 
 	queries := generated.New(pool)
 
+	// Phase 1+2 services
 	authService := service.NewAuthService(pool, sessionStore)
 	playerService := service.NewPlayerService(queries)
 	teamService := service.NewTeamService(queries)
 	orgService := service.NewOrganizationService(queries, pool)
 	venueService := service.NewVenueService(queries)
 
+	// Phase 3 services
+	leagueService := service.NewLeagueService(queries)
+	tournamentService := service.NewTournamentService(queries)
+	divisionService := service.NewDivisionService(queries)
+	registrationService := service.NewRegistrationService(queries)
+	seasonService := service.NewSeasonService(queries)
+	podService := service.NewPodService(queries)
+	announcementService := service.NewAnnouncementService(queries)
+
+	// Phase 1+2 handlers
 	secureCookie := !cfg.IsDevelopment()
 	authHandler := handler.NewAuthHandler(authService, secureCookie)
 	healthHandler := handler.NewHealthHandler(pool, sessionStore.Client())
@@ -70,6 +81,17 @@ func main() {
 	orgHandler := handler.NewOrgHandler(orgService)
 	venueHandler := handler.NewVenueHandler(venueService)
 	courtHandler := handler.NewCourtHandler(venueService)
+
+	// Phase 3 handlers
+	leagueHandler := handler.NewLeagueHandler(leagueService)
+	tournamentHandler := handler.NewTournamentHandler(tournamentService)
+	divisionHandler := handler.NewDivisionHandler(divisionService)
+	registrationHandler := handler.NewRegistrationHandler(registrationService)
+	seasonHandler := handler.NewSeasonHandler(seasonService)
+	podHandler := handler.NewPodHandler(podService)
+	announcementHandler := handler.NewAnnouncementHandler(announcementService)
+	divTemplateHandler := handler.NewDivisionTemplateHandler(queries)
+	leagueRegHandler := handler.NewLeagueRegistrationHandler(queries)
 
 	r := router.New(&router.Config{
 		DB:             pool,
@@ -84,6 +106,17 @@ func main() {
 		VenueHandler:   venueHandler,
 		CourtHandler:   courtHandler,
 		SecureCookie:   secureCookie,
+
+		// Phase 3
+		LeagueHandler:       leagueHandler,
+		TournamentHandler:   tournamentHandler,
+		DivisionHandler:     divisionHandler,
+		RegistrationHandler: registrationHandler,
+		SeasonHandler:       seasonHandler,
+		PodHandler:          podHandler,
+		AnnouncementHandler: announcementHandler,
+		DivTemplateHandler:  divTemplateHandler,
+		LeagueRegHandler:    leagueRegHandler,
 	})
 
 	srv := &http.Server{

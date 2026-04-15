@@ -28,6 +28,17 @@ type Config struct {
 	VenueHandler   *handler.VenueHandler
 	CourtHandler   *handler.CourtHandler
 	SecureCookie   bool
+
+	// Phase 3 handlers
+	LeagueHandler       *handler.LeagueHandler
+	TournamentHandler   *handler.TournamentHandler
+	DivisionHandler     *handler.DivisionHandler
+	RegistrationHandler *handler.RegistrationHandler
+	SeasonHandler       *handler.SeasonHandler
+	PodHandler          *handler.PodHandler
+	AnnouncementHandler *handler.AnnouncementHandler
+	DivTemplateHandler  *handler.DivisionTemplateHandler
+	LeagueRegHandler    *handler.LeagueRegistrationHandler
 }
 
 // New creates a chi.Router with all middleware and routes mounted.
@@ -90,6 +101,52 @@ func New(cfg *Config) chi.Router {
 		r.Route("/courts", func(r chi.Router) {
 			r.Use(middleware.RequireAuth(cfg.SessionStore))
 			r.Mount("/", cfg.CourtHandler.Routes())
+		})
+
+		// --- Phase 3 routes ---
+
+		// League routes (mixed auth: public reads, auth writes)
+		r.Route("/leagues", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.LeagueHandler.Routes())
+
+			// League sub-resources
+			r.Route("/{leagueID}/seasons", func(r chi.Router) {
+				r.Mount("/", cfg.SeasonHandler.Routes())
+			})
+			r.Route("/{leagueID}/division-templates", func(r chi.Router) {
+				r.Mount("/", cfg.DivTemplateHandler.Routes())
+			})
+			r.Route("/{leagueID}/announcements", func(r chi.Router) {
+				r.Mount("/", cfg.AnnouncementHandler.LeagueAnnouncementRoutes())
+			})
+			r.Route("/{leagueID}/registrations", func(r chi.Router) {
+				r.Mount("/", cfg.LeagueRegHandler.Routes())
+			})
+		})
+
+		// Tournament routes (mixed auth: public reads, auth writes)
+		r.Route("/tournaments", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.TournamentHandler.Routes())
+
+			// Tournament sub-resources
+			r.Route("/{tournamentID}/divisions", func(r chi.Router) {
+				r.Mount("/", cfg.DivisionHandler.Routes())
+			})
+			r.Route("/{tournamentID}/announcements", func(r chi.Router) {
+				r.Mount("/", cfg.AnnouncementHandler.TournamentAnnouncementRoutes())
+			})
+		})
+
+		// Division sub-resources (registrations and pods)
+		r.Route("/divisions/{divisionID}/registrations", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.RegistrationHandler.Routes())
+		})
+		r.Route("/divisions/{divisionID}/pods", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.PodHandler.Routes())
 		})
 	})
 
