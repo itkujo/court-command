@@ -56,6 +56,9 @@ type Config struct {
 	OverlayHandler       *handler.OverlayHandler
 	SourceProfileHandler *handler.SourceProfileHandler
 
+	// Phase 6: Standings
+	StandingsHandler *handler.StandingsHandler
+
 	// Phase 4C: WebSocket
 	WSHandler chi.Router
 }
@@ -226,6 +229,13 @@ func New(cfg *Config) chi.Router {
 		r.Route("/quick-matches", func(r chi.Router) {
 			r.Use(middleware.RequireAuth(cfg.SessionStore))
 			r.Mount("/", cfg.QuickMatchHandler.Routes())
+		})
+
+		// --- Phase 6 routes ---
+
+		// Standings (mixed auth: public reads, handler-level auth on writes)
+		r.Route("/standings", func(r chi.Router) {
+			r.Mount("/", cfg.StandingsHandler.Routes())
 		})
 
 		// --- Phase 5 routes ---

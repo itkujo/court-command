@@ -88,6 +88,10 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	matchSeriesHandler := handler.NewMatchSeriesHandler(matchSeriesService)
 	quickMatchHandler := handler.NewQuickMatchHandler(matchService)
 
+	// Phase 6: Standings
+	standingsService := service.NewStandingsService(queries)
+	standingsHandler := handler.NewStandingsHandler(standingsService)
+
 	// Phase 5: Overlay (pass nil for pubsub in tests)
 	overlayResolver := overlay.NewResolver(queries, nil)
 	overlayService := service.NewOverlayService(pool, queries, overlayResolver, nil)
@@ -135,6 +139,9 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 		// Phase 5
 		OverlayHandler:       overlayHandler,
 		SourceProfileHandler: sourceProfileHandler,
+
+		// Phase 6
+		StandingsHandler: standingsHandler,
 	})
 
 	ts := httptest.NewServer(r)

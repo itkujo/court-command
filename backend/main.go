@@ -121,6 +121,10 @@ func main() {
 	matchSeriesHandler := handler.NewMatchSeriesHandler(matchSeriesService)
 	quickMatchHandler := handler.NewQuickMatchHandler(matchService)
 
+	// Phase 6: Standings
+	standingsService := service.NewStandingsService(queries)
+	standingsHandler := handler.NewStandingsHandler(standingsService)
+
 	// Phase 5: Overlay
 	overlayResolver := overlay.NewResolver(queries, logger)
 	overlayService := service.NewOverlayService(pool, queries, overlayResolver, ps)
@@ -174,6 +178,9 @@ func main() {
 		// Phase 5
 		OverlayHandler:       overlayHandler,
 		SourceProfileHandler: sourceProfileHandler,
+
+		// Phase 6
+		StandingsHandler: standingsHandler,
 
 		// Phase 4C
 		WSHandler: wsHandler.Routes(),
