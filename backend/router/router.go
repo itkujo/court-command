@@ -39,6 +39,10 @@ type Config struct {
 	AnnouncementHandler *handler.AnnouncementHandler
 	DivTemplateHandler  *handler.DivisionTemplateHandler
 	LeagueRegHandler    *handler.LeagueRegistrationHandler
+
+	// Phase 4A handlers
+	ScoringPresetHandler *handler.ScoringPresetHandler
+	MatchHandler         *handler.MatchHandler
 }
 
 // New creates a chi.Router with all middleware and routes mounted.
@@ -145,6 +149,36 @@ func New(cfg *Config) chi.Router {
 		})
 		r.Route("/divisions/{divisionID}/pods", func(r chi.Router) {
 			r.Mount("/", cfg.PodHandler.Routes())
+		})
+
+		// Division-scoped matches
+		r.Route("/divisions/{divisionID}/matches", func(r chi.Router) {
+			r.Mount("/", cfg.MatchHandler.DivisionRoutes())
+		})
+
+		// --- Phase 4A routes ---
+
+		// Scoring presets (mixed auth: public reads, handler-level auth on writes)
+		r.Route("/scoring-presets", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.ScoringPresetHandler.Routes())
+		})
+
+		// Matches (authenticated)
+		r.Route("/matches", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.MatchHandler.Routes())
+		})
+
+		// Court-scoped matches
+		r.Route("/courts/{courtID}/matches", func(r chi.Router) {
+			r.Mount("/", cfg.MatchHandler.CourtRoutes())
+		})
+
+		// Team-scoped matches
+		r.Route("/teams/{teamID}/matches", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Mount("/", cfg.MatchHandler.TeamRoutes())
 		})
 	})
 

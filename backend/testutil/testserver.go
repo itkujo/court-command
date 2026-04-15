@@ -46,6 +46,10 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	podService := service.NewPodService(queries)
 	announcementService := service.NewAnnouncementService(queries)
 
+	// Phase 4A services
+	scoringPresetService := service.NewScoringPresetService(queries)
+	matchService := service.NewMatchService(queries, pool)
+
 	// Phase 1+2 handlers
 	authHandler := handler.NewAuthHandler(authService, false)
 	healthHandler := handler.NewHealthHandler(pool, store.Client())
@@ -65,6 +69,10 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	announcementHandler := handler.NewAnnouncementHandler(announcementService)
 	divTemplateHandler := handler.NewDivisionTemplateHandler(queries)
 	leagueRegHandler := handler.NewLeagueRegistrationHandler(queries)
+
+	// Phase 4A handlers
+	scoringPresetHandler := handler.NewScoringPresetHandler(scoringPresetService)
+	matchHandler := handler.NewMatchHandler(matchService)
 
 	r := router.New(&router.Config{
 		DB:             pool,
@@ -90,6 +98,10 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 		AnnouncementHandler: announcementHandler,
 		DivTemplateHandler:  divTemplateHandler,
 		LeagueRegHandler:    leagueRegHandler,
+
+		// Phase 4A
+		ScoringPresetHandler: scoringPresetHandler,
+		MatchHandler:         matchHandler,
 	})
 
 	ts := httptest.NewServer(r)

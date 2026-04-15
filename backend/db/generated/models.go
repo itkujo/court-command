@@ -150,6 +150,74 @@ type LeagueRegistration struct {
 	Notes        *string            `json:"notes"`
 }
 
+type Match struct {
+	ID                 int64              `json:"id"`
+	PublicID           string             `json:"public_id"`
+	TournamentID       pgtype.Int8        `json:"tournament_id"`
+	DivisionID         pgtype.Int8        `json:"division_id"`
+	PodID              pgtype.Int8        `json:"pod_id"`
+	CourtID            pgtype.Int8        `json:"court_id"`
+	CreatedByUserID    int64              `json:"created_by_user_id"`
+	MatchType          string             `json:"match_type"`
+	Round              pgtype.Int4        `json:"round"`
+	RoundName          *string            `json:"round_name"`
+	MatchNumber        pgtype.Int4        `json:"match_number"`
+	Team1ID            pgtype.Int8        `json:"team1_id"`
+	Team2ID            pgtype.Int8        `json:"team2_id"`
+	Team1Seed          pgtype.Int4        `json:"team1_seed"`
+	Team2Seed          pgtype.Int4        `json:"team2_seed"`
+	ScoringPresetID    pgtype.Int8        `json:"scoring_preset_id"`
+	GamesPerSet        int32              `json:"games_per_set"`
+	SetsToWin          int32              `json:"sets_to_win"`
+	PointsToWin        int32              `json:"points_to_win"`
+	WinBy              int32              `json:"win_by"`
+	MaxPoints          pgtype.Int4        `json:"max_points"`
+	RallyScoring       bool               `json:"rally_scoring"`
+	TimeoutsPerGame    int32              `json:"timeouts_per_game"`
+	TimeoutDurationSec int32              `json:"timeout_duration_sec"`
+	FreezeAt           pgtype.Int4        `json:"freeze_at"`
+	Team1Score         int32              `json:"team1_score"`
+	Team2Score         int32              `json:"team2_score"`
+	CurrentSet         int32              `json:"current_set"`
+	CurrentGame        int32              `json:"current_game"`
+	ServingTeam        pgtype.Int4        `json:"serving_team"`
+	ServerNumber       pgtype.Int4        `json:"server_number"`
+	SetScores          []byte             `json:"set_scores"`
+	Status             string             `json:"status"`
+	StartedAt          pgtype.Timestamptz `json:"started_at"`
+	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
+	WinnerTeamID       pgtype.Int8        `json:"winner_team_id"`
+	LoserTeamID        pgtype.Int8        `json:"loser_team_id"`
+	WinReason          *string            `json:"win_reason"`
+	NextMatchID        pgtype.Int8        `json:"next_match_id"`
+	NextMatchSlot      pgtype.Int4        `json:"next_match_slot"`
+	LoserNextMatchID   pgtype.Int8        `json:"loser_next_match_id"`
+	LoserNextMatchSlot pgtype.Int4        `json:"loser_next_match_slot"`
+	RefereeUserID      pgtype.Int8        `json:"referee_user_id"`
+	Notes              *string            `json:"notes"`
+	ExpiresAt          pgtype.Timestamptz `json:"expires_at"`
+	ScheduledAt        pgtype.Timestamptz `json:"scheduled_at"`
+	CreatedAt          time.Time          `json:"created_at"`
+	UpdatedAt          time.Time          `json:"updated_at"`
+}
+
+type MatchEvent struct {
+	ID              int64       `json:"id"`
+	MatchID         int64       `json:"match_id"`
+	SequenceID      int32       `json:"sequence_id"`
+	EventType       string      `json:"event_type"`
+	Team1Score      int32       `json:"team1_score"`
+	Team2Score      int32       `json:"team2_score"`
+	CurrentSet      int32       `json:"current_set"`
+	CurrentGame     int32       `json:"current_game"`
+	ServingTeam     pgtype.Int4 `json:"serving_team"`
+	ServerNumber    pgtype.Int4 `json:"server_number"`
+	SetScores       []byte      `json:"set_scores"`
+	Payload         []byte      `json:"payload"`
+	CreatedByUserID pgtype.Int8 `json:"created_by_user_id"`
+	CreatedAt       time.Time   `json:"created_at"`
+}
+
 type OrgBlock struct {
 	ID        int64     `json:"id"`
 	PlayerID  int64     `json:"player_id"`
@@ -217,6 +285,27 @@ type Registration struct {
 	ApprovedAt         pgtype.Timestamptz `json:"approved_at"`
 	WithdrawnAt        pgtype.Timestamptz `json:"withdrawn_at"`
 	CheckedInAt        pgtype.Timestamptz `json:"checked_in_at"`
+}
+
+type ScoringPreset struct {
+	ID                 int64       `json:"id"`
+	Name               string      `json:"name"`
+	Description        *string     `json:"description"`
+	Sport              string      `json:"sport"`
+	IsSystem           bool        `json:"is_system"`
+	IsActive           bool        `json:"is_active"`
+	GamesPerSet        int32       `json:"games_per_set"`
+	SetsToWin          int32       `json:"sets_to_win"`
+	PointsToWin        int32       `json:"points_to_win"`
+	WinBy              int32       `json:"win_by"`
+	MaxPoints          pgtype.Int4 `json:"max_points"`
+	RallyScoring       bool        `json:"rally_scoring"`
+	TimeoutsPerGame    int32       `json:"timeouts_per_game"`
+	TimeoutDurationSec int32       `json:"timeout_duration_sec"`
+	FreezeAt           pgtype.Int4 `json:"freeze_at"`
+	CreatedByUserID    pgtype.Int8 `json:"created_by_user_id"`
+	CreatedAt          time.Time   `json:"created_at"`
+	UpdatedAt          time.Time   `json:"updated_at"`
 }
 
 type Season struct {
