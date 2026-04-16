@@ -1,0 +1,239 @@
+// frontend/src/features/scoring/hooks.ts
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiGet, apiPost } from '../../lib/api'
+import type {
+  CourtSummary,
+  Match,
+  MatchEvent,
+  MatchSeriesSummary,
+  ScoringActionResult,
+} from './types'
+
+// ----- Queries -----
+
+export function useMatch(publicId: string | undefined) {
+  return useQuery<Match>({
+    queryKey: ['matches', publicId],
+    queryFn: () => apiGet<Match>(`/api/v1/matches/${publicId}`),
+    enabled: !!publicId,
+  })
+}
+
+export function useMatchEvents(publicId: string | undefined) {
+  return useQuery<MatchEvent[]>({
+    queryKey: ['match-events', publicId],
+    queryFn: () => apiGet<MatchEvent[]>(`/api/v1/matches/${publicId}/events`),
+    enabled: !!publicId,
+  })
+}
+
+export function useCourtMatches(courtId: number | undefined) {
+  return useQuery<Match[]>({
+    queryKey: ['courts', courtId, 'matches'],
+    queryFn: () => apiGet<Match[]>(`/api/v1/courts/${courtId}/matches`),
+    enabled: !!courtId,
+  })
+}
+
+export function useCourtsForTournament(tournamentId: number | undefined) {
+  return useQuery<CourtSummary[]>({
+    queryKey: ['tournaments', tournamentId, 'courts'],
+    queryFn: () =>
+      apiGet<CourtSummary[]>(`/api/v1/tournaments/${tournamentId}/courts`),
+    enabled: !!tournamentId,
+  })
+}
+
+export function useMatchSeries(publicId: string | undefined) {
+  return useQuery<MatchSeriesSummary>({
+    queryKey: ['match-series', publicId],
+    queryFn: () =>
+      apiGet<MatchSeriesSummary>(`/api/v1/match-series/${publicId}`),
+    enabled: !!publicId,
+  })
+}
+
+// ----- Helper for invalidating after a scoring action -----
+
+function invalidateMatch(
+  qc: ReturnType<typeof useQueryClient>,
+  publicId: string,
+) {
+  qc.invalidateQueries({ queryKey: ['match-events', publicId] })
+  // match cache is updated via setQueryData below
+}
+
+function applyResult(
+  qc: ReturnType<typeof useQueryClient>,
+  publicId: string,
+  result: ScoringActionResult,
+) {
+  qc.setQueryData(['matches', publicId], result.match)
+  invalidateMatch(qc, publicId)
+}
+
+// ----- Mutations -----
+
+export function useStartMatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      publicId,
+      scored_by_name,
+      first_serving_team,
+      first_serving_player_id,
+    }: {
+      publicId: string
+      scored_by_name?: string
+      first_serving_team?: 1 | 2
+      first_serving_player_id?: number | null
+    }) =>
+      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/start`, {
+        scored_by_name,
+        first_serving_team,
+        first_serving_player_id,
+      }),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
+
+export function useScorePoint() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, team }: { publicId: string; team?: 1 | 2 }) =>
+      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/point`, {
+        team,
+      }),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
+
+export function useSideOut() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId }: { publicId: string }) =>
+      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/sideout`, {}),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
+
+export function useUndo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId }: { publicId: string }) =>
+      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/undo`, {}),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
+
+export function useRemovePoint() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId }: { publicId: string }) =>
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/${publicId}/remove-point`,
+        {},
+      ),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
+
+export function useConfirmGameOver() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId }: { publicId: string }) =>
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/${publicId}/confirm-game`,
+        {},
+      ),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
+
+export function useConfirmMatchOver() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId }: { publicId: string }) =>
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/${publicId}/confirm-match`,
+        {},
+      ),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
+
+export function useCallTimeout() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, team }: { publicId: string; team: 1 | 2 }) =>
+      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/timeout`, {
+        team,
+      }),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
+
+export function usePauseMatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId }: { publicId: string }) =>
+      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/pause`, {}),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
+
+export function useResumeMatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId }: { publicId: string }) =>
+      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/resume`, {}),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
+
+export function useDeclareForfeit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      publicId,
+      forfeiting_team,
+      reason,
+    }: {
+      publicId: string
+      forfeiting_team: 1 | 2
+      reason: string
+    }) =>
+      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/forfeit`, {
+        forfeiting_team,
+        reason,
+      }),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
+
+export interface OverrideGameInput {
+  game_number: number
+  team_1_score: number
+  team_2_score: number
+  winner: 1 | 2 | null
+}
+
+export function useOverrideScore() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      publicId,
+      games,
+      reason,
+    }: {
+      publicId: string
+      games: OverrideGameInput[]
+      reason: string
+    }) =>
+      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/override`, {
+        games,
+        reason,
+      }),
+    onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
+  })
+}
