@@ -318,6 +318,24 @@ The operator-facing surfaces around the renderer + control panel. Five integrati
 
 Commits: `88478f6` (TestConnection endpoint), `5fab31a` (Source Profile CRUD + Test Connection UI), `9572b76` (Producer Monitor), `d5e214d` (TV/Kiosk bracket + court + `useSlideRotation`), `db16bdd` (Setup Wizard + overlay landing). Main bundle unchanged at ~281 kB / 86.6 kB gzip. New route chunks: `source-profiles` 5.3 kB / 2.2 kB gzip, `SourceProfileEditor` 13.6 kB / 4.3 kB gzip, `monitor` 12.6 kB / 3.8 kB gzip, `tv-tournaments` + `tv-courts` chunks under 10 kB each.
 
+### Frontend Phase 4E: Polish — Triggers, Demo, Resilience, Integration
+
+Final Phase 4 pass: wires the operator trigger queue into the renderer, ships a public demo route, hardens all Phase 4 surfaces with error boundaries, and nudges fresh operators toward the setup wizard.
+
+- **Trigger queue → renderer** (`frontend/src/features/overlay/OverlayRenderer.tsx` + 4 element components) — `useTriggerQueue(courtID)` now drives `PlayerCard`, `TeamCard`, `MatchResult`, and `CustomText` via a newest-per-kind lookup. Each element gains a `trigger?: OverlayTrigger | null` prop and computes `effectiveVisible = trigger != null || config.visible`, so triggers force-show the element for their auto-dismiss lifetime without mutating `config.elements[kind].visible`. `CustomText` honours `trigger.payload.text` + `trigger.payload.zone`. `PlayerCard` falls back to a name-based lookup across both teams before defaulting to the serving team's `server_number` index. `TeamCard` accepts `payload.team_id` (`'1'|1|'2'|2`) to show a single column instead of both. `MatchResult` force-fires regardless of `MATCH_STATUS.COMPLETED` so operators can preview the celebration on demand.
+- **Public demo route** `/overlay/demo/$themeId` (`frontend/src/features/overlay/OverlayDemo.tsx`, `frontend/src/routes/overlay/demo.$themeId.tsx`) — no auth, no court, no WebSocket. Drives off `useDemoData()` (`GET /api/v1/overlay/demo-data`) and renders a curated subset of elements (scoreboard, lower third, sponsor bug, tournament bug, coming-up-next, series score) plus null-trigger cards so each theme's palette and typography can be previewed in isolation. `OverlayWatermark` is **always** visible on demo — never makes the free-tier preview look licensed. Route pattern was already in `__root.tsx` `NO_SHELL_PATTERNS`.
+- **Error boundaries on every Phase 4 surface** (`frontend/src/components/ErrorBoundary.tsx`) — now accepts `fallback?: ReactNode | ((error, reset) => ReactNode) | null` plus `onError?: (err) => void`. `fallback={null}` renders nothing (used for on-air surfaces where a crash panel would leak into broadcast). The default fallback now exposes both Try again (resets boundary state) and Reload page (full refresh). Wrapped:
+  - `/overlay/court/$slug` (OBS renderer) — `fallback={null}`
+  - `/overlay/demo/$themeId` (public demo) — `fallback={null}`
+  - `/tv/tournaments/$id` (kiosk bracket) — `fallback={null}`
+  - `/tv/courts/$slug` (kiosk court) — `fallback={null}`
+  - `/overlay/court/$slug/settings` (control panel) — default panel
+  - `/overlay/monitor` (producer monitor) — default panel
+- **First-run banner in control panel** — dismissible Sparkles-iconed banner appears when `config.theme_id` is empty OR no elements are visible. Links to `/overlay/setup` to relaunch the wizard. Dismissal persists per-courtID in `sessionStorage` under key `cc:overlay:first-run-dismissed:{courtID}` so it doesn't nag mid-session.
+- **Integration test script** (`docs/phase-4-integration-test.md`) — 8-step walkthrough covering court creation, OBS URL, live scoring via WS, triggers, overrides, and token revocation; plus a regressions block covering monitor, TV/Kiosk, source profiles, and demo.
+
+Commits: `c9a7e25` (trigger wiring), `8fc3fa5` (demo route), `1b4aa39` (ErrorBoundary wraps + first-run banner), plus the docs commit that closes 4E. Main bundle 282.05 kB / 86.98 kB gzip (+0.5 kB from 4D). `OverlayRenderer` chunk 27.89 kB / 6.91 kB gzip (+2.6 kB — trigger prop plumbing).
+
 ### Known Deferred Defects (Phase 3)
 
 Resolved in Phase 4A Task 1 remediation batch (commit `6848d23`). Items that remain deferred to later phases:

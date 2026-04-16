@@ -121,9 +121,29 @@ All endpoints are under `/api/v1/` unless noted. WebSocket endpoints are at `/ws
 |-------|-----------|-------------|
 | Overlay Data | 2 | Live data + demo data |
 | Overlay Config | 7 | Theme, elements, tokens, data overrides |
-| Source Profiles | 6 | Third-party API connections |
+| Source Profiles | 7 | Third-party API connections (CRUD + `POST /test` auto-discovery) |
 | Webhook | 1 | Receive external score data |
 | Themes | 2 | List themes, get theme details |
+
+**Frontend surfaces** (all shipped in Phase 4A–E on the `V2` branch):
+
+| Route | Purpose |
+|-------|---------|
+| `/overlay` | Operator landing page with Your Courts + quick links |
+| `/overlay/setup` | 3-step wizard: create court → pick data source → copy OBS URL |
+| `/overlay/court/$slug` | Shell-less OBS overlay (what OBS Browser Source loads) |
+| `/overlay/court/$slug/settings` | Control panel: preview + 6 tabs (Elements, Theme, Source, Triggers, Overrides, OBS URL) |
+| `/overlay/demo/$themeId` | Public theme preview, no auth required, watermark always shown |
+| `/overlay/monitor` | Producer monitor grid with heat badges (MP / DEUCE / CLOSE) |
+| `/overlay/source-profiles` | Source profile CRUD: list, create, edit, Test Connection |
+| `/tv/tournaments/$id` | Fullscreen venue signage: hero + divisions + courts, auto-cycles |
+| `/tv/courts/$slug` | Fullscreen single-court display |
+
+12 element components (scoreboard, lower_third, player_card, team_card,
+sponsor_bug, tournament_bug, coming_up_next, match_result, custom_text,
+bracket_snapshot, pool_standings, series_score) drive the renderer. Data
+overrides span 24 keys across 5 groups. 6 backend themes ship with the
+built-in palette; custom colour overrides layer on top.
 
 ### WebSocket Channels
 
