@@ -78,7 +78,7 @@ export function MatchDetail({ publicId }: MatchDetailProps) {
             </div>
           </Card>
 
-          {match.completed_games.length > 0 && (
+          {(match.set_scores?.length ?? 0) > 0 && (
             <Card className="p-4">
               <h2 className="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wide mb-3">
                 Games
@@ -97,19 +97,19 @@ export function MatchDetail({ publicId }: MatchDetailProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {match.completed_games.map((g) => (
+                  {(match.set_scores ?? []).map((g) => (
                     <tr
-                      key={g.game_number}
+                      key={g.game_num}
                       className="border-t border-(--color-border)"
                     >
                       <td className="py-1.5 text-(--color-text-primary)">
-                        Game {g.game_number}
+                        Game {g.game_num}
                       </td>
                       <td className="py-1.5 text-right tabular-nums text-(--color-text-primary)">
-                        {g.team_1_score}
+                        {g.team_one_score}
                       </td>
                       <td className="py-1.5 text-right tabular-nums text-(--color-text-primary)">
-                        {g.team_2_score}
+                        {g.team_two_score}
                       </td>
                       <td className="py-1.5 text-right text-(--color-accent)">
                         T{g.winner}

@@ -42,9 +42,9 @@ export interface MatchTeam {
 }
 
 export interface CompletedGame {
-  game_number: number
-  team_1_score: number
-  team_2_score: number
+  game_num: number
+  team_one_score: number
+  team_two_score: number
   winner: 1 | 2
 }
 
@@ -69,7 +69,7 @@ export interface Match {
   timeouts_per_game: number
   team_1_timeouts_used: number
   team_2_timeouts_used: number
-  completed_games: CompletedGame[]
+  set_scores: CompletedGame[]
   is_paused: boolean
   is_quick_match: boolean
   match_type?: string

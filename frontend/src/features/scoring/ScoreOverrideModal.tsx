@@ -24,10 +24,11 @@ interface GameRow {
 }
 
 function buildInitialRows(match: Match): GameRow[] {
-  const rows: GameRow[] = match.completed_games.map((g) => ({
-    game_number: g.game_number,
-    team_1_score: g.team_1_score,
-    team_2_score: g.team_2_score,
+  const completed = match.set_scores ?? []
+  const rows: GameRow[] = completed.map((g) => ({
+    game_number: g.game_num,
+    team_1_score: g.team_one_score,
+    team_2_score: g.team_two_score,
     winner: String(g.winner) as '1' | '2',
   }))
   // Add the current (uncommitted) game if match is in progress

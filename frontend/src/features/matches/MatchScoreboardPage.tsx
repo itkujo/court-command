@@ -61,7 +61,7 @@ export function MatchScoreboardPage({ publicId }: MatchScoreboardPageProps) {
 
         <div className="mt-4 flex justify-center">
           <GameHistoryBar
-            completedGames={match.completed_games}
+            completedGames={match.set_scores ?? []}
             bestOf={match.best_of}
           />
         </div>

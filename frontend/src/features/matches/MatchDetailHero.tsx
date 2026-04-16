@@ -49,7 +49,7 @@ export function MatchDetailHero({ match }: MatchDetailHeroProps) {
 
       <div className="mt-4">
         <GameHistoryBar
-          completedGames={match.completed_games}
+          completedGames={match.set_scores ?? []}
           bestOf={match.best_of}
           className="justify-center"
         />

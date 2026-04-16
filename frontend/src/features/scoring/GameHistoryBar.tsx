@@ -29,11 +29,11 @@ export function GameHistoryBar({
     <div className={cn('flex items-center gap-2 flex-wrap', className)}>
       {completedGames.map((g) => (
         <span
-          key={g.game_number}
+          key={g.game_num}
           className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-(--color-bg-secondary) text-(--color-text-primary)"
-          aria-label={`Game ${g.game_number} final: ${g.team_1_score}-${g.team_2_score}, team ${g.winner} won`}
+          aria-label={`Game ${g.game_num} final: ${g.team_one_score}-${g.team_two_score}, team ${g.winner} won`}
         >
-          <span className="text-(--color-text-muted)">G{g.game_number}</span>
+          <span className="text-(--color-text-muted)">G{g.game_num}</span>
           <span
             className={
               g.winner === 1
@@ -41,7 +41,7 @@ export function GameHistoryBar({
                 : 'text-(--color-text-primary)'
             }
           >
-            {g.team_1_score}
+            {g.team_one_score}
           </span>
           <span className="text-(--color-text-muted)">–</span>
           <span
@@ -51,7 +51,7 @@ export function GameHistoryBar({
                 : 'text-(--color-text-primary)'
             }
           >
-            {g.team_2_score}
+            {g.team_two_score}
           </span>
         </span>
       ))}

@@ -186,7 +186,7 @@ function PortraitLayout(props: MatchScoreboardProps) {
         </Button>
       </div>
       <GameHistoryBar
-        completedGames={match.completed_games}
+        completedGames={match.set_scores ?? []}
         bestOf={match.best_of}
         className="mt-2 justify-center"
       />
@@ -243,7 +243,7 @@ function LandscapeLayout(props: MatchScoreboardProps) {
         <TeamRow match={match} team={2} serving={match.serving_team === 2} />
       </div>
       <GameHistoryBar
-        completedGames={match.completed_games}
+        completedGames={match.set_scores ?? []}
         bestOf={match.best_of}
         className="mt-2 justify-center"
       />
