@@ -1,6 +1,6 @@
-import { createFileRoute, Navigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+import { PublicLanding } from '../features/public/PublicLanding'
 
 export const Route = createFileRoute('/')({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  component: () => <Navigate to={'/players' as any} />,
+  component: PublicLanding,
 })

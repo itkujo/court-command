@@ -12,6 +12,8 @@ const NO_SHELL_ROUTES = ['/login', '/register']
 // Public routes: do not require auth. If a user is logged in, they get the
 // shell; otherwise the page renders without sidebar/header chrome.
 const PUBLIC_ROUTE_PATTERNS: RegExp[] = [
+  /^\/$/,
+  /^\/public(\/|$)/,
   /^\/matches\/[^/]+$/,
   /^\/match-series\/[^/]+$/,
 ]
