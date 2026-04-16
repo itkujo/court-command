@@ -28,6 +28,7 @@ import type {
 // ---------------------------------------------------------------------------
 
 export interface PlayerBrief {
+  id?: number
   name: string
 }
 
