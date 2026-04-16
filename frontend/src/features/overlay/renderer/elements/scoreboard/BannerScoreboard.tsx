@@ -45,6 +45,16 @@ const BANNER_FONT_FAMILY =
 const BODY_FONT_FAMILY =
   '"DM Sans", "Barlow Condensed", system-ui, sans-serif'
 
+/**
+ * Clamp a raw scale value into the allowed slider range [0.5, 1.5] with a
+ * 1.0 default. Applied via a CSS transform on the logo element only — the
+ * enclosing slot keeps its fixed dimensions so surrounding layout is stable.
+ */
+function clampScale(value: number | undefined): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 1
+  return Math.max(0.5, Math.min(1.5, value))
+}
+
 export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
   // Load Google Fonts once per document.
   useEffect(() => {
@@ -108,7 +118,11 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
           col 1 = tournament badge, col 2 = team rows, col 3 = score inset. */}
       <div className="grid grid-cols-[auto_1fr_auto]">
         {/* Column 1 — tournament/league badge (spans both rows). */}
-        <TournamentBadge logoUrl={badgeLogo} label={badgeLabel} />
+        <TournamentBadge
+          logoUrl={badgeLogo}
+          label={badgeLabel}
+          scale={clampScale(config.tournament_logo_scale)}
+        />
 
         {/* Column 2 — two team rows stacked with a hairline between. */}
         <div className="min-w-0">
@@ -120,6 +134,7 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
             players={data.team_1.players}
             serving={servingTeam === 1}
             winner={team1Winner}
+            logoScale={clampScale(config.team_1_logo_scale)}
           />
           <div
             className="h-px mx-4"
@@ -134,6 +149,7 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
             players={data.team_2.players}
             serving={servingTeam === 2}
             winner={team2Winner}
+            logoScale={clampScale(config.team_2_logo_scale)}
           />
         </div>
 
@@ -180,16 +196,23 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
 function TournamentBadge({
   logoUrl,
   label,
+  scale,
 }: {
   logoUrl: string
   label: string
+  scale: number
 }) {
   const [imgBroken, setImgBroken] = useState(false)
   const showImg = logoUrl && !imgBroken
 
+  // Scale is applied as a CSS transform so the slot footprint is unchanged
+  // (banner width + badge column stay stable as the logo grows/shrinks).
+  const transformStyle =
+    scale === 1 ? undefined : { transform: `scale(${scale})`, transformOrigin: 'center' }
+
   return (
     <div
-      className="flex items-center justify-center shrink-0"
+      className="flex items-center justify-center shrink-0 overflow-hidden"
       style={{
         width: '140px',
         minHeight: '112px',
@@ -204,10 +227,16 @@ function TournamentBadge({
           alt={label || 'Tournament logo'}
           draggable={false}
           onError={() => setImgBroken(true)}
-          className="pointer-events-none select-none max-h-20 max-w-full object-contain"
+          className="pointer-events-none select-none max-h-20 max-w-full object-contain transition-transform duration-200"
+          style={transformStyle}
         />
       ) : (
-        <WordmarkFallback label={label} />
+        <div
+          className="transition-transform duration-200"
+          style={transformStyle}
+        >
+          <WordmarkFallback label={label} />
+        </div>
       )}
     </div>
   )
@@ -263,6 +292,7 @@ interface TeamRowProps {
   players: { name: string }[]
   serving: boolean
   winner: boolean
+  logoScale: number
 }
 
 function TeamRow({
@@ -273,6 +303,7 @@ function TeamRow({
   players,
   serving,
   winner,
+  logoScale,
 }: TeamRowProps) {
   // Join all roster names with " & " (doubles-friendly). NCPA reference uses
   // the same convention. Filter empties so a missing entry doesn't leave a
@@ -293,8 +324,13 @@ function TeamRow({
       />
       {/* Logo slot (or abbreviation chip fallback). Fixed width keeps column
           alignment identical whether the image loads, breaks, or is absent. */}
-      <div className="shrink-0 flex items-center justify-center px-3 py-3">
-        <TeamLogoOrChip logoUrl={logoUrl} shortName={shortName} name={name} />
+      <div className="shrink-0 flex items-center justify-center px-3 py-3 overflow-hidden">
+        <TeamLogoOrChip
+          logoUrl={logoUrl}
+          shortName={shortName}
+          name={name}
+          scale={logoScale}
+        />
       </div>
       <div className="flex-1 min-w-0 flex items-center gap-3 py-3 pr-4">
         <ServeDot visible={serving} />
@@ -342,13 +378,17 @@ function TeamLogoOrChip({
   logoUrl,
   shortName,
   name,
+  scale,
 }: {
   logoUrl: string
   shortName: string
   name: string
+  scale: number
 }) {
   const [imgBroken, setImgBroken] = useState(false)
   const showImg = logoUrl && !imgBroken
+  const transformStyle =
+    scale === 1 ? undefined : { transform: `scale(${scale})`, transformOrigin: 'center' }
 
   if (showImg) {
     return (
@@ -357,31 +397,36 @@ function TeamLogoOrChip({
         alt={`${name || shortName || 'Team'} logo`}
         draggable={false}
         onError={() => setImgBroken(true)}
-        className="pointer-events-none select-none"
+        className="pointer-events-none select-none transition-transform duration-200"
         style={{
           width: '48px',
           height: '48px',
           objectFit: 'contain',
+          ...transformStyle,
         }}
       />
     )
   }
 
-  return <AbbreviationChip shortName={shortName} name={name} />
+  return <AbbreviationChip shortName={shortName} name={name} scale={scale} />
 }
 
 /** Fixed-size chip showing the short_name or computed initials. */
 function AbbreviationChip({
   shortName,
   name,
+  scale,
 }: {
   shortName: string
   name: string
+  scale: number
 }) {
   const label = shortName?.trim() || initialsFromName(name)
+  const transformStyle =
+    scale === 1 ? undefined : { transform: `scale(${scale})`, transformOrigin: 'center' }
   return (
     <span
-      className="flex items-center justify-center text-xs font-bold tracking-wider uppercase"
+      className="flex items-center justify-center text-xs font-bold tracking-wider uppercase transition-transform duration-200"
       style={{
         width: '48px',
         height: '48px',
@@ -390,6 +435,7 @@ function AbbreviationChip({
         background: 'rgba(0,0,0,0.35)',
         color: 'var(--overlay-text)',
         fontFamily: BANNER_FONT_FAMILY,
+        ...transformStyle,
       }}
       aria-hidden="true"
     >

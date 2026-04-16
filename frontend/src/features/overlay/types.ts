@@ -126,6 +126,15 @@ export type ScoreboardLayout = 'classic' | 'banner'
 
 export interface ScoreboardConfig extends ElementConfigBase {
   layout?: ScoreboardLayout
+  /**
+   * Logo scale knobs (0.5..1.5, default 1.0). Each is applied independently so
+   * operators can tune tournament branding vs. team identity without affecting
+   * the others. Applied as a CSS transform inside the slot — the slot box
+   * stays fixed so surrounding layout doesn't shift.
+   */
+  tournament_logo_scale?: number
+  team_1_logo_scale?: number
+  team_2_logo_scale?: number
 }
 
 export interface LowerThirdConfig extends ElementConfigBase {}

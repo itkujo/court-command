@@ -492,25 +492,108 @@ function ScoreboardKnobs({
     SCOREBOARD_LAYOUT_OPTIONS.find((o) => o.value === current) ??
     SCOREBOARD_LAYOUT_OPTIONS[0]
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <FormField label="Layout" htmlFor="scoreboard-layout">
-        <Select
-          id="scoreboard-layout"
-          value={current}
-          onChange={(e) =>
-            onPatch({ layout: e.target.value as ScoreboardLayout })
-          }
-        >
-          {SCOREBOARD_LAYOUT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </Select>
-        <p className="text-xs text-(--color-text-secondary) mt-1">
-          {activeOption.description}
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField label="Layout" htmlFor="scoreboard-layout">
+          <Select
+            id="scoreboard-layout"
+            value={current}
+            onChange={(e) =>
+              onPatch({ layout: e.target.value as ScoreboardLayout })
+            }
+          >
+            {SCOREBOARD_LAYOUT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+          <p className="text-xs text-(--color-text-secondary) mt-1">
+            {activeOption.description}
+          </p>
+        </FormField>
+      </div>
+
+      {/* Logo size sliders. Banner layout renders tournament + team logos;
+          Classic renders none, so these knobs are effectively no-ops there.
+          We show them regardless so the UI stays consistent across layouts. */}
+      <div className="space-y-3">
+        <div className="text-xs uppercase tracking-widest font-semibold text-(--color-text-secondary)">
+          Logo size
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <LogoScaleSlider
+            id="scoreboard-tournament-logo-scale"
+            label="Tournament"
+            value={config.tournament_logo_scale ?? 1}
+            onChange={(v) => onPatch({ tournament_logo_scale: v })}
+          />
+          <LogoScaleSlider
+            id="scoreboard-team-1-logo-scale"
+            label="Team 1"
+            value={config.team_1_logo_scale ?? 1}
+            onChange={(v) => onPatch({ team_1_logo_scale: v })}
+          />
+          <LogoScaleSlider
+            id="scoreboard-team-2-logo-scale"
+            label="Team 2"
+            value={config.team_2_logo_scale ?? 1}
+            onChange={(v) => onPatch({ team_2_logo_scale: v })}
+          />
+        </div>
+        <p className="text-xs text-(--color-text-secondary)">
+          Scales each logo 50% – 150%. Applied to the Banner layout only.
         </p>
-      </FormField>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Range slider for a 0.5..1.5 logo scale value, stepped in 10% increments.
+ * Clamps + rounds incoming values so the UI and wire contract stay coherent
+ * even if a stale override drifts outside the range.
+ */
+function LogoScaleSlider({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string
+  label: string
+  value: number
+  onChange: (v: number) => void
+}) {
+  const clamped = Math.max(0.5, Math.min(1.5, Number.isFinite(value) ? value : 1))
+  const pct = Math.round(clamped * 100)
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <label
+          htmlFor={id}
+          className="text-sm font-medium text-(--color-text-primary)"
+        >
+          {label}
+        </label>
+        <span className="text-xs tabular-nums text-(--color-text-secondary)">
+          {pct}%
+        </span>
+      </div>
+      <input
+        id={id}
+        type="range"
+        min={50}
+        max={150}
+        step={10}
+        value={pct}
+        onChange={(e) => {
+          const next = Number(e.target.value) / 100
+          if (Number.isFinite(next)) onChange(next)
+        }}
+        className="w-full accent-(--color-accent)"
+        aria-label={`${label} logo scale`}
+      />
     </div>
   )
 }
