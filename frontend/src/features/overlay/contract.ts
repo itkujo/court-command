@@ -57,12 +57,16 @@ export const OVERRIDE_KEY = {
   TEAM_1_COLOR: 'team_1_color',
   TEAM_1_LOGO_URL: 'team_1_logo_url',
   TEAM_1_GAME_WINS: 'team_1_game_wins',
+  TEAM_1_PLAYER_1_NAME: 'team_1_player_1_name',
+  TEAM_1_PLAYER_2_NAME: 'team_1_player_2_name',
   TEAM_2_NAME: 'team_2_name',
   TEAM_2_SHORT_NAME: 'team_2_short_name',
   TEAM_2_SCORE: 'team_2_score',
   TEAM_2_COLOR: 'team_2_color',
   TEAM_2_LOGO_URL: 'team_2_logo_url',
   TEAM_2_GAME_WINS: 'team_2_game_wins',
+  TEAM_2_PLAYER_1_NAME: 'team_2_player_1_name',
+  TEAM_2_PLAYER_2_NAME: 'team_2_player_2_name',
   DIVISION_NAME: 'division_name',
   TOURNAMENT_NAME: 'tournament_name',
   LEAGUE_NAME: 'league_name',
@@ -96,6 +100,10 @@ export const OVERRIDE_KEY_GROUPS: Array<{
     ],
   },
   {
+    label: 'Team 1 roster',
+    keys: [OVERRIDE_KEY.TEAM_1_PLAYER_1_NAME, OVERRIDE_KEY.TEAM_1_PLAYER_2_NAME],
+  },
+  {
     label: 'Team 2',
     keys: [
       OVERRIDE_KEY.TEAM_2_NAME,
@@ -105,6 +113,10 @@ export const OVERRIDE_KEY_GROUPS: Array<{
       OVERRIDE_KEY.TEAM_2_LOGO_URL,
       OVERRIDE_KEY.TEAM_2_GAME_WINS,
     ],
+  },
+  {
+    label: 'Team 2 roster',
+    keys: [OVERRIDE_KEY.TEAM_2_PLAYER_1_NAME, OVERRIDE_KEY.TEAM_2_PLAYER_2_NAME],
   },
   {
     label: 'Match context',

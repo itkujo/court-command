@@ -45,6 +45,14 @@ func ApplyDataOverrides(data *OverlayData, overrides json.RawMessage) {
 			if n, ok := val.(float64); ok {
 				data.Team1.GameWins = int(n)
 			}
+		case "team_1_player_1_name":
+			if s, ok := val.(string); ok {
+				setPlayerName(&data.Team1, 0, s)
+			}
+		case "team_1_player_2_name":
+			if s, ok := val.(string); ok {
+				setPlayerName(&data.Team1, 1, s)
+			}
 		// Team 2 fields
 		case "team_2_name":
 			if s, ok := val.(string); ok {
@@ -69,6 +77,14 @@ func ApplyDataOverrides(data *OverlayData, overrides json.RawMessage) {
 		case "team_2_game_wins":
 			if n, ok := val.(float64); ok {
 				data.Team2.GameWins = int(n)
+			}
+		case "team_2_player_1_name":
+			if s, ok := val.(string); ok {
+				setPlayerName(&data.Team2, 0, s)
+			}
+		case "team_2_player_2_name":
+			if s, ok := val.(string); ok {
+				setPlayerName(&data.Team2, 1, s)
 			}
 		// Match context fields
 		case "division_name":
@@ -121,6 +137,16 @@ func ApplyDataOverrides(data *OverlayData, overrides json.RawMessage) {
 			}
 		}
 	}
+}
+
+// setPlayerName assigns a player-slot name on the given team, growing the
+// Players slice with blank entries as needed so the target index is always
+// valid. Used by ApplyDataOverrides for team_N_player_M_name keys.
+func setPlayerName(team *OverlayTeamData, index int, name string) {
+	for len(team.Players) <= index {
+		team.Players = append(team.Players, PlayerBrief{})
+	}
+	team.Players[index].Name = name
 }
 
 // OverlayData is the canonical data contract that all overlay renderers consume.

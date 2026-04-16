@@ -37,12 +37,16 @@ const KEY_LABELS: Record<OverrideKey, string> = {
   team_1_color: 'Team 1 color',
   team_1_logo_url: 'Team 1 logo URL',
   team_1_game_wins: 'Team 1 game wins',
+  team_1_player_1_name: 'Team 1 — Player 1 name',
+  team_1_player_2_name: 'Team 1 — Player 2 name',
   team_2_name: 'Team 2 name',
   team_2_short_name: 'Team 2 short name',
   team_2_score: 'Team 2 score',
   team_2_color: 'Team 2 color',
   team_2_logo_url: 'Team 2 logo URL',
   team_2_game_wins: 'Team 2 game wins',
+  team_2_player_1_name: 'Team 2 — Player 1 name',
+  team_2_player_2_name: 'Team 2 — Player 2 name',
   division_name: 'Division',
   tournament_name: 'Tournament',
   league_name: 'League',
@@ -466,6 +470,10 @@ function readLiveValue(
       return data.team_1?.logo_url ?? null
     case 'team_1_game_wins':
       return data.team_1?.game_wins ?? null
+    case 'team_1_player_1_name':
+      return data.team_1?.players?.[0]?.name ?? null
+    case 'team_1_player_2_name':
+      return data.team_1?.players?.[1]?.name ?? null
     case 'team_2_name':
       return data.team_2?.name ?? null
     case 'team_2_short_name':
@@ -478,6 +486,10 @@ function readLiveValue(
       return data.team_2?.logo_url ?? null
     case 'team_2_game_wins':
       return data.team_2?.game_wins ?? null
+    case 'team_2_player_1_name':
+      return data.team_2?.players?.[0]?.name ?? null
+    case 'team_2_player_2_name':
+      return data.team_2?.players?.[1]?.name ?? null
     case 'division_name':
       return data.division_name
     case 'tournament_name':
