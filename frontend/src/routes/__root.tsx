@@ -23,6 +23,9 @@ const NO_SHELL_PATTERNS: RegExp[] = [
   // Phase 4 broadcast overlay — renders inside OBS browser source
   /^\/overlay\/court\/[^/]+$/,
   /^\/overlay\/demo\/[^/]+$/,
+  // Phase 4 TV/Kiosk — fullscreen venue displays
+  /^\/tv\/tournaments\/[^/]+$/,
+  /^\/tv\/courts\/[^/]+$/,
 ]
 
 export const Route = createRootRoute({
