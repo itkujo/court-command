@@ -9,6 +9,7 @@ import { DashboardAnnouncements } from './DashboardAnnouncements'
 import { AdSlot } from '../../components/AdSlot'
 import { Card } from '../../components/Card'
 import { Skeleton } from '../../components/Skeleton'
+import { usePageTitle } from '../../hooks/usePageTitle'
 
 function DashboardSkeleton() {
   return (
@@ -36,6 +37,7 @@ function DashboardSkeleton() {
 }
 
 export function PlayerDashboard() {
+  usePageTitle('My Dashboard')
   const { user } = useAuth()
   const { data, isLoading, isError, error } = useDashboard()
 

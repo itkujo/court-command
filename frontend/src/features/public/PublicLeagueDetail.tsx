@@ -7,6 +7,7 @@ import { StatusBadge } from '../../components/StatusBadge'
 import { RichTextDisplay } from '../../components/RichTextDisplay'
 import { AdSlot } from '../../components/AdSlot'
 import { SkeletonRow } from '../../components/Skeleton'
+import { usePageTitle } from '../../hooks/usePageTitle'
 
 interface PublicLeagueDetailProps {
   slug: string
@@ -14,6 +15,7 @@ interface PublicLeagueDetailProps {
 
 export function PublicLeagueDetail({ slug }: PublicLeagueDetailProps) {
   const { data: league, isLoading, isError } = usePublicLeagueBySlug(slug)
+  usePageTitle(league?.name ?? 'League')
 
   if (isLoading) {
     return (

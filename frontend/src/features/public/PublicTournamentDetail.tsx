@@ -16,6 +16,7 @@ import { AdSlot } from '../../components/AdSlot'
 import { SkeletonRow } from '../../components/Skeleton'
 import { Button } from '../../components/Button'
 import { useAuth } from '../auth/hooks'
+import { usePageTitle } from '../../hooks/usePageTitle'
 import { formatDate } from '../../lib/formatters'
 
 interface PublicTournamentDetailProps {
@@ -25,6 +26,7 @@ interface PublicTournamentDetailProps {
 export function PublicTournamentDetail({ slug }: PublicTournamentDetailProps) {
   const { data: tournament, isLoading, isError } = usePublicTournamentBySlug(slug)
   const { isAuthenticated } = useAuth()
+  usePageTitle(tournament?.name ?? 'Tournament')
 
   if (isLoading) {
     return (

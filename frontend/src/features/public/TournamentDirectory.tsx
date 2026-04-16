@@ -10,6 +10,7 @@ import { SkeletonRow } from '../../components/Skeleton'
 import { AdSlot } from '../../components/AdSlot'
 import { EmptyState } from '../../components/EmptyState'
 import { usePagination } from '../../hooks/usePagination'
+import { usePageTitle } from '../../hooks/usePageTitle'
 import { formatDate } from '../../lib/formatters'
 
 const TOURNAMENT_STATUS_OPTIONS = [
@@ -21,6 +22,7 @@ const TOURNAMENT_STATUS_OPTIONS = [
 ]
 
 export function TournamentDirectory() {
+  usePageTitle('Tournaments')
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const pagination = usePagination(12)

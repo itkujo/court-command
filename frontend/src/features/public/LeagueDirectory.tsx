@@ -10,8 +10,10 @@ import { SkeletonRow } from '../../components/Skeleton'
 import { AdSlot } from '../../components/AdSlot'
 import { EmptyState } from '../../components/EmptyState'
 import { usePagination } from '../../hooks/usePagination'
+import { usePageTitle } from '../../hooks/usePageTitle'
 
 export function LeagueDirectory() {
+  usePageTitle('Leagues')
   const [query, setQuery] = useState('')
   const pagination = usePagination(12)
 

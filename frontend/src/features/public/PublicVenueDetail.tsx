@@ -5,6 +5,7 @@ import { Card } from '../../components/Card'
 import { InfoRow } from '../../components/InfoRow'
 import { AdSlot } from '../../components/AdSlot'
 import { SkeletonRow } from '../../components/Skeleton'
+import { usePageTitle } from '../../hooks/usePageTitle'
 
 interface PublicVenueDetailProps {
   slug: string
@@ -12,6 +13,7 @@ interface PublicVenueDetailProps {
 
 export function PublicVenueDetail({ slug }: PublicVenueDetailProps) {
   const { data: venue, isLoading, isError } = usePublicVenueBySlug(slug)
+  usePageTitle(venue?.name ?? 'Venue')
 
   if (isLoading) {
     return (

@@ -21,8 +21,10 @@ import {
   type PublicVenue,
 } from './hooks'
 import { formatDate } from '../../lib/formatters'
+import { usePageTitle } from '../../hooks/usePageTitle'
 
 export function PublicLanding() {
+  usePageTitle()
   return (
     <div className="space-y-10">
       <PublicHero />
