@@ -64,6 +64,25 @@ func (q *Queries) CountCourts(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countCourtsFiltered = `-- name: CountCourtsFiltered :one
+SELECT count(*) FROM courts
+WHERE deleted_at IS NULL
+  AND ($1::bigint IS NULL OR venue_id = $1)
+  AND ($2::bool IS NULL OR is_active = $2)
+`
+
+type CountCourtsFilteredParams struct {
+	VenueID  pgtype.Int8 `json:"venue_id"`
+	IsActive pgtype.Bool `json:"is_active"`
+}
+
+func (q *Queries) CountCourtsFiltered(ctx context.Context, arg CountCourtsFilteredParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countCourtsFiltered, arg.VenueID, arg.IsActive)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countFloatingCourts = `-- name: CountFloatingCourts :one
 SELECT count(*) FROM courts
 WHERE venue_id IS NULL AND deleted_at IS NULL
@@ -243,6 +262,66 @@ func (q *Queries) GetFloatingCourtBySlug(ctx context.Context, slug string) (Cour
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const listCourts = `-- name: ListCourts :many
+SELECT id, name, slug, venue_id, surface_type, is_show_court, is_active, is_temporary, sort_order, notes, stream_url, stream_type, stream_is_live, stream_title, created_by_user_id, created_at, updated_at, deleted_at FROM courts
+WHERE deleted_at IS NULL
+  AND ($3::bigint IS NULL OR venue_id = $3)
+  AND ($4::bool IS NULL OR is_active = $4)
+ORDER BY name
+LIMIT $1 OFFSET $2
+`
+
+type ListCourtsParams struct {
+	Limit    int32       `json:"limit"`
+	Offset   int32       `json:"offset"`
+	VenueID  pgtype.Int8 `json:"venue_id"`
+	IsActive pgtype.Bool `json:"is_active"`
+}
+
+func (q *Queries) ListCourts(ctx context.Context, arg ListCourtsParams) ([]Court, error) {
+	rows, err := q.db.Query(ctx, listCourts,
+		arg.Limit,
+		arg.Offset,
+		arg.VenueID,
+		arg.IsActive,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Court{}
+	for rows.Next() {
+		var i Court
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.VenueID,
+			&i.SurfaceType,
+			&i.IsShowCourt,
+			&i.IsActive,
+			&i.IsTemporary,
+			&i.SortOrder,
+			&i.Notes,
+			&i.StreamUrl,
+			&i.StreamType,
+			&i.StreamIsLive,
+			&i.StreamTitle,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCourtsByVenue = `-- name: ListCourtsByVenue :many

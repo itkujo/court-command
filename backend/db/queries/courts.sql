@@ -77,3 +77,17 @@ WHERE venue_id = $1 AND is_temporary = true AND deleted_at IS NULL;
 -- name: CountCourts :one
 SELECT count(*) FROM courts
 WHERE deleted_at IS NULL;
+
+-- name: ListCourts :many
+SELECT * FROM courts
+WHERE deleted_at IS NULL
+  AND (sqlc.narg('venue_id')::bigint IS NULL OR venue_id = sqlc.narg('venue_id'))
+  AND (sqlc.narg('is_active')::bool IS NULL OR is_active = sqlc.narg('is_active'))
+ORDER BY name
+LIMIT $1 OFFSET $2;
+
+-- name: CountCourtsFiltered :one
+SELECT count(*) FROM courts
+WHERE deleted_at IS NULL
+  AND (sqlc.narg('venue_id')::bigint IS NULL OR venue_id = sqlc.narg('venue_id'))
+  AND (sqlc.narg('is_active')::bool IS NULL OR is_active = sqlc.narg('is_active'));

@@ -28,12 +28,57 @@ func NewCourtHandler(venueService *service.VenueService) *CourtHandler {
 func (h *CourtHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 
+	r.Get("/", h.ListCourts)
 	r.Post("/", h.CreateFloatingCourt)
 	r.Get("/{courtID}", h.GetCourt)
 	r.Patch("/{courtID}", h.UpdateCourt)
 	r.Delete("/{courtID}", h.DeleteCourt)
 
 	return r
+}
+
+// ListCourts lists all courts across the platform with pagination.
+//
+// Query parameters:
+//   - limit, offset: standard pagination (limit 1-100, default 20).
+//   - venue_id: filter to a single venue's courts.
+//   - is_active: "true" or "false" — filter by active status.
+func (h *CourtHandler) ListCourts(w http.ResponseWriter, r *http.Request) {
+	limit, offset := parsePagination(r)
+
+	filters := service.CourtListFilters{}
+	q := r.URL.Query()
+
+	if v := q.Get("venue_id"); v != "" {
+		id, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			WriteError(w, http.StatusBadRequest, "INVALID_VENUE_ID", "venue_id must be an integer")
+			return
+		}
+		filters.VenueID = &id
+	}
+
+	if v := q.Get("is_active"); v != "" {
+		switch v {
+		case "true":
+			t := true
+			filters.IsActive = &t
+		case "false":
+			f := false
+			filters.IsActive = &f
+		default:
+			WriteError(w, http.StatusBadRequest, "INVALID_IS_ACTIVE", "is_active must be 'true' or 'false'")
+			return
+		}
+	}
+
+	courts, total, err := h.venueService.ListCourts(r.Context(), filters, limit, offset)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	Paginated(w, courts, total, int(limit), int(offset))
 }
 
 // CreateFloatingCourt creates a court not attached to any venue.

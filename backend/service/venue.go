@@ -448,6 +448,54 @@ func (s *VenueService) ListCourtsByVenue(ctx context.Context, venueID int64) ([]
 	return result, nil
 }
 
+// CourtListFilters narrows the platform-wide ListCourts query.
+type CourtListFilters struct {
+	VenueID  *int64
+	IsActive *bool
+}
+
+// ListCourts lists all courts across the platform with optional filters
+// and pagination. Returns the list and the total count for pagination.
+func (s *VenueService) ListCourts(
+	ctx context.Context,
+	filters CourtListFilters,
+	limit, offset int32,
+) ([]CourtResponse, int64, error) {
+	listParams := generated.ListCourtsParams{
+		Limit:  limit,
+		Offset: offset,
+	}
+	countParams := generated.CountCourtsFilteredParams{}
+
+	if filters.VenueID != nil {
+		v := pgtype.Int8{Int64: *filters.VenueID, Valid: true}
+		listParams.VenueID = v
+		countParams.VenueID = v
+	}
+	if filters.IsActive != nil {
+		v := pgtype.Bool{Bool: *filters.IsActive, Valid: true}
+		listParams.IsActive = v
+		countParams.IsActive = v
+	}
+
+	courts, err := s.queries.ListCourts(ctx, listParams)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list courts: %w", err)
+	}
+
+	total, err := s.queries.CountCourtsFiltered(ctx, countParams)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count courts: %w", err)
+	}
+
+	result := make([]CourtResponse, len(courts))
+	for i, c := range courts {
+		result[i] = toCourtResponse(c)
+	}
+
+	return result, total, nil
+}
+
 // UpdateCourt updates a court's details.
 func (s *VenueService) UpdateCourt(ctx context.Context, courtID int64, params generated.UpdateCourtParams) (CourtResponse, error) {
 	params.CourtID = courtID
