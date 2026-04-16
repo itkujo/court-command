@@ -232,25 +232,25 @@ function OverlaySettingsLayout({
   // scroll. This is the classic "flexbox/grid scroll" gotcha.
   const bodyGridClass =
     layoutMode === 'side'
-      ? 'grid grid-cols-[minmax(0,40%)_minmax(0,1fr)] gap-6 items-start'
+      ? 'grid grid-cols-[minmax(0,40%)_minmax(0,1fr)] gap-3 items-start'
       : layoutMode === 'top'
-        ? 'flex flex-col gap-6'
-        : 'flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,40%)_minmax(0,1fr)] lg:items-start'
+        ? 'flex flex-col gap-2'
+        : 'flex flex-col gap-2 lg:grid lg:grid-cols-[minmax(0,40%)_minmax(0,1fr)] lg:gap-3 lg:items-start'
 
   // Top mode: the preview is a sticky block above the tabs. In a
-  // normal document flow (not grid/flex), `position: sticky top-4`
-  // makes the element stick to the top of the viewport as the user
+  // normal document flow (not grid/flex), `position: sticky top-2`
+  // makes the element stick near the top of the viewport as the user
   // scrolls, then releases when its parent scrolls past. We also
   // bump z-index so the sticky preview stays above tab content.
   const previewColumnClass =
     layoutMode === 'side'
-      ? 'sticky top-4 self-start'
+      ? 'sticky top-2 self-start'
       : layoutMode === 'top'
-        ? 'sticky top-4 z-10 bg-(--color-bg-primary)'
-        : 'lg:sticky lg:top-4 lg:self-start'
+        ? 'sticky top-2 z-10 bg-(--color-bg-primary)'
+        : 'lg:sticky lg:top-2 lg:self-start'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       <Header
         slug={slug}
         courtID={courtID}
@@ -318,25 +318,25 @@ function Header({
   onLayoutModeChange: (next: LayoutMode) => void
 }) {
   return (
-    <header className="flex items-center justify-between gap-4 flex-wrap">
-      <div className="flex items-baseline gap-3 min-w-0">
-        <h1 className="text-xl font-semibold text-(--color-text-primary) truncate">
+    <header className="flex items-center justify-between gap-2 flex-wrap">
+      <div className="flex items-baseline gap-2 min-w-0">
+        <h1 className="text-sm font-semibold text-(--color-text-primary) truncate">
           {slug}
         </h1>
-        <span className="text-xs uppercase tracking-wider text-(--color-text-muted) shrink-0">
+        <span className="text-[10px] uppercase tracking-wider text-(--color-text-muted) shrink-0">
           Court #{courtID}
         </span>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0">
         <LayoutModeToggle value={layoutMode} onChange={onLayoutModeChange} />
         <Link
           to="/overlay/court/$slug"
           params={{ slug }}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-(--color-text-secondary) hover:text-(--color-text-primary) px-3 py-1.5 rounded-md border border-(--color-border) hover:bg-(--color-bg-hover)"
+          className="inline-flex items-center gap-1 text-xs font-medium text-(--color-text-secondary) hover:text-(--color-text-primary) px-2 py-1 rounded-md border border-(--color-border) hover:bg-(--color-bg-hover)"
         >
-          Open OBS view <ExternalLink className="h-3.5 w-3.5" />
+          Open OBS view <ExternalLink className="h-3 w-3" />
         </Link>
       </div>
     </header>
@@ -400,13 +400,13 @@ function LayoutModeToggle({
             aria-label={`${option.label} layout — ${option.description}`}
             title={option.description}
             onClick={() => onChange(option.value)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent) ${
+            className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent) ${
               selected
                 ? 'bg-(--color-accent) text-(--color-bg-primary)'
                 : 'text-(--color-text-secondary) hover:bg-(--color-bg-hover) hover:text-(--color-text-primary)'
             }`}
           >
-            <Icon className="h-3.5 w-3.5" aria-hidden={true} />
+            <Icon className="h-3 w-3" aria-hidden={true} />
             <span className="hidden sm:inline">{option.label}</span>
           </button>
         )
@@ -459,13 +459,13 @@ function PreviewSection({ slug, courtID }: { slug: string; courtID: number }) {
       aria-label="Live overlay preview"
       className="rounded-lg border border-(--color-border) overflow-hidden"
     >
-      <div className="flex items-center justify-between gap-3 px-3 py-2 bg-(--color-bg-secondary) border-b border-(--color-border)">
-        <div className="flex items-center gap-2 text-sm text-(--color-text-secondary) min-w-0">
-          <Eye className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <div className="flex items-center justify-between gap-2 px-2 py-1 bg-(--color-bg-secondary) border-b border-(--color-border)">
+        <div className="flex items-center gap-1.5 text-xs text-(--color-text-secondary) min-w-0">
+          <Eye className="h-3 w-3 shrink-0" aria-hidden="true" />
           <span className="font-medium text-(--color-text-primary)">
             Live preview
           </span>
-          <span className="text-xs text-(--color-text-muted) hidden sm:inline truncate">
+          <span className="text-[10px] text-(--color-text-muted) hidden sm:inline truncate">
             · 1920×1080 · synced with OBS
           </span>
         </div>
