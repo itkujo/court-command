@@ -177,7 +177,7 @@ export function ScorekeeperMatchConsole({
 
   return (
     <div className="flex flex-col min-h-screen">
-      <DisconnectBanner state={ws.state} />
+      <DisconnectBanner state={ws.state} attempt={ws.attempt} />
       {match.status === 'scheduled' ? (
         <MatchSetup
           match={match}

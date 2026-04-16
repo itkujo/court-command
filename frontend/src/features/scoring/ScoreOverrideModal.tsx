@@ -98,7 +98,15 @@ export function ScoreOverrideModal({ open, onClose, match }: ScoreOverrideModalP
 
   return (
     <Modal open={open} onClose={onClose} title="Override Score" className="max-w-2xl">
-      <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+      {/* Announce validation errors and submission status to assistive tech. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {errors.reason ?? (override.isPending ? 'Applying override…' : '')}
+      </div>
+      <div
+        className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto"
+        role="region"
+        aria-label="Score override editor"
+      >
         {match.status === 'completed' && (
           <div className="rounded bg-amber-500/10 border border-amber-500/30 text-(--color-text-primary) p-3 text-sm">
             This match is already final. Overriding will modify the recorded result.

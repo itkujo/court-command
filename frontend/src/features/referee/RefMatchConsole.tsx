@@ -232,7 +232,7 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <DisconnectBanner state={ws.state} />
+      <DisconnectBanner state={ws.state} attempt={ws.attempt} />
 
       {match.status === 'scheduled' ? (
         <MatchSetup
@@ -357,6 +357,7 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
       <GameOverConfirmModal
         open={matchOverPrompt}
         match={match}
+        kind="match"
         pending={confirmMatchOver.isPending}
         onConfirm={() =>
           confirmMatchOver.mutate(

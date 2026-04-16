@@ -30,6 +30,15 @@ interface IconSpec {
   color: string
 }
 
+/** Color token → left-border class for the events timeline rail. */
+const BORDER_FROM_COLOR: Record<string, string> = {
+  'text-(--color-success)': 'border-l-(--color-success)',
+  'text-(--color-warning)': 'border-l-(--color-warning)',
+  'text-(--color-error)': 'border-l-(--color-error)',
+  'text-(--color-accent)': 'border-l-(--color-accent)',
+  'text-(--color-text-secondary)': 'border-l-(--color-border)',
+}
+
 const EVENT_META: Record<EventType, { label: string; icon: IconSpec }> = {
   MATCH_STARTED: {
     label: 'Match started',
@@ -246,8 +255,14 @@ export function EventsTimeline({
             const isOpen = expanded.has(e.id)
             const Icon = meta?.icon.Icon ?? Square
             const summary = summarizeEvent(e)
+            const borderClass =
+              BORDER_FROM_COLOR[meta?.icon.color ?? ''] ??
+              'border-l-(--color-border)'
             return (
-              <li key={e.id} className="p-3">
+              <li
+                key={e.id}
+                className={cn('p-3 border-l-4 pl-3', borderClass)}
+              >
                 <button
                   type="button"
                   onClick={() => !compact && toggleExpanded(e.id)}

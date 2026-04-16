@@ -5,6 +5,8 @@ import type { WebSocketState } from './useMatchWebSocket'
 
 export interface DisconnectBannerProps {
   state: WebSocketState
+  /** Reconnect attempt counter. Shown after the first retry. */
+  attempt?: number
 }
 
 /**
@@ -14,7 +16,7 @@ export interface DisconnectBannerProps {
  * - on transition disconnected → open: green "Reconnected" flash for 2s
  * - state='open' (steady): no banner
  */
-export function DisconnectBanner({ state }: DisconnectBannerProps) {
+export function DisconnectBanner({ state, attempt = 0 }: DisconnectBannerProps) {
   const [showReconnectedFlash, setShowReconnectedFlash] = useState(false)
   const [wasDisconnected, setWasDisconnected] = useState(false)
 
@@ -40,7 +42,10 @@ export function DisconnectBanner({ state }: DisconnectBannerProps) {
         className="sticky top-0 z-40 bg-(--color-error) text-white px-4 py-2 flex items-center gap-2 text-sm font-medium"
       >
         <WifiOff size={16} />
-        <span>Connection lost — reconnecting…</span>
+        <span>
+          Connection lost — reconnecting
+          {attempt > 1 ? ` (attempt ${attempt})` : '…'}
+        </span>
       </div>
     )
   }

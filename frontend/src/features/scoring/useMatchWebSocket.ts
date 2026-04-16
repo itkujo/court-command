@@ -26,10 +26,13 @@ function buildWsUrl(publicId: string): string {
 export function useMatchWebSocket(publicId: string | undefined): {
   state: WebSocketState
   lastUpdate: Match | undefined
+  /** Number of reconnect attempts since the last successful open. */
+  attempt: number
 } {
   const qc = useQueryClient()
   const [state, setState] = useState<WebSocketState>('connecting')
   const [lastUpdate, setLastUpdate] = useState<Match | undefined>(undefined)
+  const [attempt, setAttempt] = useState(0)
   const attemptsRef = useRef(0)
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimerRef = useRef<number | null>(null)
@@ -48,6 +51,7 @@ export function useMatchWebSocket(publicId: string | undefined): {
 
       ws.onopen = () => {
         attemptsRef.current = 0
+        setAttempt(0)
         setState('open')
         // Re-fetch match on reconnect to pick up missed updates
         qc.invalidateQueries({ queryKey: ['matches', publicId] })
@@ -78,6 +82,7 @@ export function useMatchWebSocket(publicId: string | undefined): {
         const idx = Math.min(attemptsRef.current, BACKOFF_STEPS_MS.length - 1)
         const delay = BACKOFF_STEPS_MS[idx]
         attemptsRef.current += 1
+        setAttempt(attemptsRef.current)
         reconnectTimerRef.current = window.setTimeout(connect, delay)
       }
     }
@@ -97,5 +102,5 @@ export function useMatchWebSocket(publicId: string | undefined): {
     }
   }, [publicId, qc])
 
-  return { state, lastUpdate }
+  return { state, lastUpdate, attempt }
 }

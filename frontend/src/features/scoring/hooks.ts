@@ -45,6 +45,9 @@ export function useMatchEvents(publicId: string | undefined) {
     queryFn: () =>
       apiGet<MatchEvent[]>(`/api/v1/matches/public/${publicId}/events`),
     enabled: !!publicId,
+    // Events can legitimately be empty for a fresh match; don't
+    // thrash the network retrying a non-transient 404.
+    retry: false,
   })
 }
 
