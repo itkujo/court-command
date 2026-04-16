@@ -16,7 +16,7 @@
 //   - ResizeObserver recomputes scale on every container resize,
 //     keeping the preview crisp on tablets, laptops, and ultrawides.
 
-import { Contrast } from 'lucide-react'
+import { Contrast, FlaskConical } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { OverlayRenderer } from './OverlayRenderer'
 
@@ -35,15 +35,21 @@ export interface PreviewPaneProps {
   slug: string
   /** Optional access token, passed through to OverlayRenderer. */
   token?: string | null
-  /** Force demo data regardless of live availability. */
+  /**
+   * Default demo-data state. Caller can force it on; otherwise the
+   * preview starts from whatever the local sessionStorage toggle
+   * says and can be flipped via the in-pane DemoToggle pill.
+   * Scope is preview-only — live OBS output is untouched.
+   */
   demo?: boolean
   className?: string
 }
 
-export function PreviewPane({ slug, token = null, demo = false, className }: PreviewPaneProps) {
+export function PreviewPane({ slug, token = null, demo: demoProp = false, className }: PreviewPaneProps) {
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [scale, setScale] = useState(1)
   const [backdrop, setBackdrop] = useBackdrop(slug)
+  const [demo, setDemo] = useDemoMode(slug, demoProp)
 
   // Recompute scale on mount + on every container resize.
   useLayoutEffect(() => {
@@ -76,6 +82,8 @@ export function PreviewPane({ slug, token = null, demo = false, className }: Pre
     const next = BACKDROP_ORDER[(BACKDROP_ORDER.indexOf(backdrop) + 1) % BACKDROP_ORDER.length]
     setBackdrop(next)
   }
+
+  const toggleDemo = () => setDemo(!demo)
 
   return (
     <div
@@ -115,8 +123,11 @@ export function PreviewPane({ slug, token = null, demo = false, className }: Pre
         />
       </div>
 
-      {/* Backdrop cycler (top-right, small, always visible). */}
-      <BackdropToggle backdrop={backdrop} onCycle={cycleBackdrop} />
+      {/* Controls cluster (top-right, small, always visible). */}
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5">
+        <DemoToggle demo={demo} onToggle={toggleDemo} />
+        <BackdropToggle backdrop={backdrop} onCycle={cycleBackdrop} />
+      </div>
 
       {/* Scale readout (bottom-right, muted) so operators know what
           they're looking at. */}
@@ -172,7 +183,7 @@ function BackdropToggle({
       type="button"
       onClick={onCycle}
       className={
-        'absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded ' +
+        'inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded ' +
         'bg-black/60 text-white/90 hover:bg-black/75 hover:text-white ' +
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent) transition-colors'
       }
@@ -181,6 +192,52 @@ function BackdropToggle({
     >
       <Contrast size={12} />
       <span>{BACKDROP_LABEL[backdrop]}</span>
+    </button>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Demo-data toggle. Preview-only; does NOT affect live OBS output.
+// sessionStorage key is per-slug so turning on demo for one court doesn't
+// cross-contaminate others. Default off unless caller forces it via props.
+// -----------------------------------------------------------------------------
+
+function useDemoMode(slug: string, fallback: boolean) {
+  const storageKey = `cc:overlay:preview-demo:${slug}`
+  const [demo, setDemo] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return fallback
+    const raw = window.sessionStorage.getItem(storageKey)
+    if (raw === '1') return true
+    if (raw === '0') return false
+    return fallback
+  })
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.sessionStorage.setItem(storageKey, demo ? '1' : '0')
+  }, [storageKey, demo])
+
+  return [demo, setDemo] as const
+}
+
+function DemoToggle({ demo, onToggle }: { demo: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={demo}
+      className={
+        'inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded ' +
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent) transition-colors ' +
+        (demo
+          ? 'bg-amber-500/90 text-black hover:bg-amber-400 '
+          : 'bg-black/60 text-white/90 hover:bg-black/75 hover:text-white ')
+      }
+      aria-label={demo ? 'Demo data enabled — click to show live match data' : 'Live match data — click to switch preview to demo data'}
+      title={demo ? 'Demo data (preview only) — click for live' : 'Live data — click for demo preview'}
+    >
+      <FlaskConical size={12} />
+      <span>{demo ? 'Demo' : 'Live'}</span>
     </button>
   )
 }

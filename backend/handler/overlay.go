@@ -56,7 +56,10 @@ func (h *OverlayHandler) GetOverlayData(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	useDemoData := r.URL.Query().Get("demo") == "true"
+	// Accept demo={true|1} as equivalent truthy values so frontend callers
+	// can use either spelling.
+	demoParam := r.URL.Query().Get("demo")
+	useDemoData := demoParam == "true" || demoParam == "1"
 
 	data, err := h.overlayService.GetOverlayData(r.Context(), courtID, useDemoData)
 	if err != nil {

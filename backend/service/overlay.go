@@ -220,23 +220,32 @@ func (s *OverlayService) ClearDataOverrides(ctx context.Context, courtID int64) 
 }
 
 // GetOverlayData returns the canonical overlay data for a court.
-// If the court has an active match, resolves from match data.
-// Otherwise returns idle data or demo data.
-// Per-court data_overrides are applied on top of the resolved data.
+// Resolution order:
+//  1. If `useDemoData` is set, short-circuit to the seeded DemoData payload.
+//     This makes the demo toggle authoritative — operators can flip the
+//     preview to mock content even while a live match is in progress so
+//     they can style elements against a fully-populated canvas.
+//  2. Otherwise, if the court has an active match, resolve from match data.
+//  3. Otherwise, fall back to idle data.
+//
+// Per-court data_overrides are applied on top of whichever base data was
+// resolved, so overrides still shape demo previews (useful for testing
+// override behaviour without a live match).
 func (s *OverlayService) GetOverlayData(ctx context.Context, courtID int64, useDemoData bool) (overlay.OverlayData, error) {
 	var data overlay.OverlayData
 
-	// Check for active match on this court using GetActiveMatchOnCourt
-	match, err := s.queries.GetActiveMatchOnCourt(ctx, pgtype.Int8{Int64: courtID, Valid: true})
-	if err == nil {
-		data, err = s.resolver.ResolveFromMatch(ctx, match)
-		if err != nil {
-			return overlay.OverlayData{}, err
-		}
-	} else if useDemoData {
+	if useDemoData {
 		data = overlay.DemoData()
 	} else {
-		data = s.resolver.ResolveIdle(ctx, courtID)
+		match, err := s.queries.GetActiveMatchOnCourt(ctx, pgtype.Int8{Int64: courtID, Valid: true})
+		if err == nil {
+			data, err = s.resolver.ResolveFromMatch(ctx, match)
+			if err != nil {
+				return overlay.OverlayData{}, err
+			}
+		} else {
+			data = s.resolver.ResolveIdle(ctx, courtID)
+		}
 	}
 
 	// Apply per-court data overrides if any are configured

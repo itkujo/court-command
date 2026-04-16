@@ -224,7 +224,13 @@ type NextMatchData struct {
 }
 
 // DemoData returns a hardcoded sample OverlayData for preview rendering
-// when no live match is active.
+// when no live match is active. Populates every field a renderer element
+// can consume so /overlay/demo/$themeId can show all 12 elements at once
+// without going through the trigger queue or a live match.
+//
+// Logo URLs use via.placeholder.co so the demo renders real art out of
+// the box without needing operator uploads. If we ever need offline
+// demos, swap these for checked-in SVG assets under /frontend/public.
 func DemoData() OverlayData {
 	return OverlayData{
 		MatchStatus: "in_progress",
@@ -233,7 +239,7 @@ func DemoData() OverlayData {
 			ShortName: "FIRE",
 			Score:     7,
 			Color:     "#dc2626",
-			LogoURL:   "",
+			LogoURL:   "https://placehold.co/200x200/dc2626/ffffff/png?text=FIRE&font=roboto",
 			Players:   []PlayerBrief{{Name: "Alex Johnson"}, {Name: "Sam Rivera"}},
 			GameWins:  1,
 		},
@@ -242,7 +248,7 @@ func DemoData() OverlayData {
 			ShortName: "THDR",
 			Score:     5,
 			Color:     "#2563eb",
-			LogoURL:   "",
+			LogoURL:   "https://placehold.co/200x200/2563eb/ffffff/png?text=THDR&font=roboto",
 			Players:   []PlayerBrief{{Name: "Jordan Lee"}, {Name: "Casey Morgan"}},
 			GameWins:  0,
 		},
@@ -257,10 +263,26 @@ func DemoData() OverlayData {
 		LeagueName:         "Metro Pickleball League",
 		RoundLabel:         "Semifinal",
 		MatchInfo:          "Court 3 · Best of 3",
-		SponsorLogos:       []SponsorLogo{{Name: "JOOLA", LogoURL: "", Tier: "title"}},
-		TournamentLogoURL:  "",
-		LeagueLogoURL:      "",
-		IsPaused:           false,
-		CourtName:          "Court 3",
+		SponsorLogos: []SponsorLogo{
+			{Name: "JOOLA", LogoURL: "https://placehold.co/400x160/0f172a/ffffff/png?text=JOOLA&font=roboto", LinkURL: "", Tier: "title"},
+			{Name: "Selkirk", LogoURL: "https://placehold.co/400x160/7c2d12/ffffff/png?text=SELKIRK&font=roboto", LinkURL: "", Tier: "presenting"},
+			{Name: "Paddletek", LogoURL: "https://placehold.co/400x160/1e3a8a/ffffff/png?text=PADDLETEK&font=roboto", LinkURL: "", Tier: "gold"},
+			{Name: "Dink Life", LogoURL: "https://placehold.co/400x160/166534/ffffff/png?text=DINK+LIFE&font=roboto", LinkURL: "", Tier: "silver"},
+		},
+		TournamentLogoURL: "https://placehold.co/240x240/facc15/0f172a/png?text=SS26&font=roboto",
+		LeagueLogoURL:     "https://placehold.co/240x240/0f172a/facc15/png?text=MPL&font=roboto",
+		IsPaused:          false,
+		CourtName:         "Court 3",
+		SeriesScore: &SeriesScoreData{
+			Team1Wins: 1,
+			Team2Wins: 0,
+			BestOf:    3,
+		},
+		NextMatch: &NextMatchData{
+			Team1Name:    "Dink Dynasty",
+			Team2Name:    "Lob City",
+			DivisionName: "Open Doubles",
+			RoundLabel:   "Final",
+		},
 	}
 }
