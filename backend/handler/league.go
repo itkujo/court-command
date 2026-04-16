@@ -53,18 +53,20 @@ func (h *LeagueHandler) CreateLeague(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Name             string  `json:"name"`
-		LogoURL          *string `json:"logo_url"`
-		BannerURL        *string `json:"banner_url"`
-		Description      *string `json:"description"`
-		WebsiteURL       *string `json:"website_url"`
-		ContactEmail     *string `json:"contact_email"`
-		ContactPhone     *string `json:"contact_phone"`
-		City             *string `json:"city"`
-		StateProvince    *string `json:"state_province"`
-		Country          *string `json:"country"`
-		RulesDocumentURL *string `json:"rules_document_url"`
-		Notes            *string `json:"notes"`
+		Name             string          `json:"name"`
+		LogoURL          *string         `json:"logo_url"`
+		BannerURL        *string         `json:"banner_url"`
+		Description      *string         `json:"description"`
+		WebsiteURL       *string         `json:"website_url"`
+		ContactEmail     *string         `json:"contact_email"`
+		ContactPhone     *string         `json:"contact_phone"`
+		City             *string         `json:"city"`
+		StateProvince    *string         `json:"state_province"`
+		Country          *string         `json:"country"`
+		RulesDocumentURL *string         `json:"rules_document_url"`
+		Notes            *string         `json:"notes"`
+		SocialLinks      json.RawMessage `json:"social_links"`
+		SponsorInfo      json.RawMessage `json:"sponsor_info"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -85,6 +87,8 @@ func (h *LeagueHandler) CreateLeague(w http.ResponseWriter, r *http.Request) {
 		Country:          body.Country,
 		RulesDocumentUrl: body.RulesDocumentURL,
 		Notes:            body.Notes,
+		SocialLinks:      body.SocialLinks,
+		SponsorInfo:      body.SponsorInfo,
 		CreatedByUserID:  sess.UserID,
 	}
 
@@ -155,18 +159,20 @@ func (h *LeagueHandler) UpdateLeague(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Name             *string `json:"name"`
-		LogoURL          *string `json:"logo_url"`
-		BannerURL        *string `json:"banner_url"`
-		Description      *string `json:"description"`
-		WebsiteURL       *string `json:"website_url"`
-		ContactEmail     *string `json:"contact_email"`
-		ContactPhone     *string `json:"contact_phone"`
-		City             *string `json:"city"`
-		StateProvince    *string `json:"state_province"`
-		Country          *string `json:"country"`
-		RulesDocumentURL *string `json:"rules_document_url"`
-		Notes            *string `json:"notes"`
+		Name             *string         `json:"name"`
+		LogoURL          *string         `json:"logo_url"`
+		BannerURL        *string         `json:"banner_url"`
+		Description      *string         `json:"description"`
+		WebsiteURL       *string         `json:"website_url"`
+		ContactEmail     *string         `json:"contact_email"`
+		ContactPhone     *string         `json:"contact_phone"`
+		City             *string         `json:"city"`
+		StateProvince    *string         `json:"state_province"`
+		Country          *string         `json:"country"`
+		RulesDocumentURL *string         `json:"rules_document_url"`
+		Notes            *string         `json:"notes"`
+		SocialLinks      json.RawMessage `json:"social_links"`
+		SponsorInfo      json.RawMessage `json:"sponsor_info"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -187,6 +193,8 @@ func (h *LeagueHandler) UpdateLeague(w http.ResponseWriter, r *http.Request) {
 		Country:          body.Country,
 		RulesDocumentUrl: body.RulesDocumentURL,
 		Notes:            body.Notes,
+		SocialLinks:      body.SocialLinks,
+		SponsorInfo:      body.SponsorInfo,
 	}
 
 	league, err := h.leagueSvc.Update(r.Context(), leagueID, params)
