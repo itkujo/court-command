@@ -1,6 +1,6 @@
 // frontend/src/features/scoring/hooks.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiGet, apiPost } from '../../lib/api'
+import { apiGet, apiGetPaginated, apiPost } from '../../lib/api'
 import type {
   CourtSummary,
   Match,
@@ -16,6 +16,26 @@ export function useMatch(publicId: string | undefined) {
     queryKey: ['matches', publicId],
     queryFn: () => apiGet<Match>(`/api/v1/matches/${publicId}`),
     enabled: !!publicId,
+  })
+}
+
+/**
+ * Fetches all courts visible to the user (for the ref/scorekeeper home grids).
+ *
+ * Uses the paginated `/api/v1/courts` endpoint. The backend may not yet
+ * expose a list endpoint — if it returns 404/empty, the query will error
+ * and the UI should fall back to the jump-by-public-id input.
+ */
+export function useAllCourts() {
+  return useQuery<CourtSummary[]>({
+    queryKey: ['courts', 'all'],
+    queryFn: async () => {
+      const page = await apiGetPaginated<CourtSummary>(
+        '/api/v1/courts?limit=200&offset=0',
+      )
+      return page.items
+    },
+    retry: false,
   })
 }
 
