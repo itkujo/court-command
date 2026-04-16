@@ -13,7 +13,7 @@
 // scan the UI and understand where each element lives on-screen.
 
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, Eye, Loader2 } from 'lucide-react'
 import { Input } from '../../../components/Input'
 import { Select } from '../../../components/Select'
 import { FormField } from '../../../components/FormField'
@@ -209,48 +209,10 @@ export function ElementsTab({ courtID, config, loading }: ElementsTabProps) {
     <div className="space-y-8">
       <SaveIndicator pending={updateElements.isPending} />
 
-      {/* Top: scannable toggle grid grouped by zone. */}
-      <section aria-label="Element visibility">
-        <header className="mb-3">
-          <h2 className="text-sm font-semibold text-(--color-text-primary) uppercase tracking-wider">
-            Visibility
-          </h2>
-          <p className="text-xs text-(--color-text-secondary) mt-0.5">
-            Toggle elements on or off. Changes go live to the OBS view
-            immediately after the debounce flushes.
-          </p>
-        </header>
-
-        <div className="space-y-5">
-          {ELEMENT_GROUPS.map((group) => (
-            <div key={group.label}>
-              <div className="mb-2 flex items-baseline gap-2">
-                <h3 className="text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider">
-                  {group.label}
-                </h3>
-                <p className="text-xs text-(--color-text-muted) truncate">
-                  {group.description}
-                </p>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {group.keys.map((key) => (
-                  <ToggleCell
-                    key={key}
-                    elementKey={key}
-                    visible={draft[key].visible}
-                    hasKnobs={elementHasKnobs(key)}
-                    onToggle={(visible) =>
-                      patch(key, { visible } as Partial<
-                        ElementsConfig[typeof key]
-                      >)
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Top: scannable toggle grid grouped by zone, collapsible so
+          operators can keep the preview visible while working the
+          Settings section below. */}
+      <VisibilitySection courtID={courtID} draft={draft} patch={patch} />
 
       {/* Bottom: collapsibles for elements that have knobs. */}
       <section aria-label="Element settings">
@@ -281,6 +243,123 @@ export function ElementsTab({ courtID, config, loading }: ElementsTabProps) {
 // Flat iteration order mirroring ELEMENT_GROUPS so settings appear in
 // the same visual order as the toggle grid above.
 const ALL_KEYS_FLAT: ElementKey[] = ELEMENT_GROUPS.flatMap((g) => g.keys)
+
+// ---------------------------------------------------------------------------
+// VisibilitySection — collapsible wrapper around the toggle grid.
+// Persists its open/closed state in sessionStorage keyed by courtID so
+// the operator's preference sticks when flipping between tabs.
+// ---------------------------------------------------------------------------
+
+interface VisibilitySectionProps {
+  courtID: number
+  draft: ElementsConfig
+  patch: <K extends ElementKey>(
+    key: K,
+    patchValue: Partial<ElementsConfig[K]>,
+  ) => void
+}
+
+function VisibilitySection({ courtID, draft, patch }: VisibilitySectionProps) {
+  const storageKey = `cc:overlay:elements-visibility-collapsed:${courtID}`
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      return window.sessionStorage.getItem(storageKey) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      window.sessionStorage.setItem(storageKey, collapsed ? '1' : '0')
+    } catch {
+      // sessionStorage can throw in private mode — ignore
+    }
+  }, [collapsed, storageKey])
+
+  const regionId = `elements-visibility-${courtID}`
+
+  return (
+    <section aria-label="Element visibility">
+      <header
+        className={cn(
+          'flex items-center justify-between gap-4 rounded-lg border border-(--color-border) bg-(--color-bg-secondary) px-4 py-3',
+          collapsed ? 'rounded-lg' : 'rounded-b-none border-b-0',
+        )}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <Eye className="h-4 w-4 text-(--color-text-secondary) shrink-0" />
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-(--color-text-primary) uppercase tracking-wider">
+              Visibility
+            </h2>
+            <p className="text-xs text-(--color-text-secondary) truncate">
+              Toggle elements on or off. Collapse to give the preview more
+              room while editing settings.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-expanded={!collapsed}
+          aria-controls={regionId}
+          className="inline-flex items-center gap-1.5 shrink-0 text-xs font-medium text-(--color-text-secondary) hover:text-(--color-text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent) rounded px-2 py-1"
+        >
+          {collapsed ? (
+            <>
+              <ChevronDown className="h-3.5 w-3.5" />
+              Show
+            </>
+          ) : (
+            <>
+              <ChevronUp className="h-3.5 w-3.5" />
+              Hide
+            </>
+          )}
+        </button>
+      </header>
+
+      {!collapsed && (
+        <div
+          id={regionId}
+          className="space-y-5 rounded-b-lg border border-t-0 border-(--color-border) bg-(--color-bg-secondary) px-4 pt-4 pb-5"
+        >
+          {ELEMENT_GROUPS.map((group) => (
+            <div key={group.label}>
+              <div className="mb-2 flex items-baseline gap-2">
+                <h3 className="text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider">
+                  {group.label}
+                </h3>
+                <p className="text-xs text-(--color-text-muted) truncate">
+                  {group.description}
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {group.keys.map((key) => (
+                  <ToggleCell
+                    key={key}
+                    elementKey={key}
+                    visible={draft[key].visible}
+                    hasKnobs={elementHasKnobs(key)}
+                    onToggle={(visible) =>
+                      patch(key, { visible } as Partial<
+                        ElementsConfig[typeof key]
+                      >)
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // ToggleCell — compact visibility toggle used in the grid
