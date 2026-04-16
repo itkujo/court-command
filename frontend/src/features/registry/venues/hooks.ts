@@ -97,7 +97,7 @@ export function useDeleteVenue(id: string) {
 export function useSubmitForReview(id: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => apiPatch<Venue>(`/api/v1/venues/${id}/submit-for-review`, {}),
+    mutationFn: () => apiPost<Venue>(`/api/v1/venues/${id}/submit-for-review`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] })
     },

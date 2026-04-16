@@ -3,6 +3,7 @@ import { apiGet, apiPatch, apiPost, apiGetPaginated, type PaginatedData } from '
 import { buildQueryString } from '../../../lib/formatters'
 
 export interface Player {
+  id: number
   public_id: string
   email: string | null
   first_name: string

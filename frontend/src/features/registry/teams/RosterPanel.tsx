@@ -147,7 +147,7 @@ export function RosterPanel({ teamId }: RosterPanelProps) {
             {searchResults.items.map((p) => (
               <li key={p.public_id}>
                 <button
-                  onClick={() => handleAdd(Number(p.public_id))}
+                  onClick={() => handleAdd(p.id)}
                   disabled={addPlayer.isPending}
                   className="w-full text-left px-3 py-2 rounded-lg hover:bg-(--color-bg-hover) transition-colors text-sm text-(--color-text-primary)"
                 >

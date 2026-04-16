@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useMatchRoute } from '@tanstack/react-router'
+import { Link, useMatchRoute, useLocation } from '@tanstack/react-router'
 import { cn } from '../lib/cn'
 import { useIsMobile } from '../hooks/useMediaQuery'
 import { ThemeToggle } from './ThemeToggle'
@@ -36,6 +36,7 @@ const navGroups: NavGroup[] = [
 export function Sidebar({ user, onLogout }: SidebarProps) {
   const isMobile = useIsMobile()
   const matchRoute = useMatchRoute()
+  const location = useLocation()
   const [expanded, setExpanded] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem(STORAGE_KEY) === 'true'
@@ -46,7 +47,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
     if (!isMobile) localStorage.setItem(STORAGE_KEY, String(expanded))
   }, [expanded, isMobile])
 
-  useEffect(() => { setMobileOpen(false) }, [matchRoute])
+  useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
   const isActive = (path: string) => {
     if (path === '/') return matchRoute({ to: '/', fuzzy: false })

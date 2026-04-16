@@ -69,7 +69,7 @@ interface AdPlaceholderProps {
 function AdPlaceholder({ width, height, label, slot }: AdPlaceholderProps) {
   return (
     <div
-      className="mx-auto flex items-center justify-center rounded-lg border border-dashed border-(--color-border) bg-(--color-bg-tertiary)/50 text-(--color-text-muted) select-none"
+      className="mx-auto flex items-center justify-center rounded-lg border border-dashed border-(--color-border) bg-(--color-bg-secondary)/50 text-(--color-text-secondary) select-none"
       style={{ maxWidth: width, height }}
       data-ad-slot={slot}
       data-ad-size={label}

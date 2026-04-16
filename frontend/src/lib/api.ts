@@ -19,24 +19,11 @@ export class ApiRequestError extends Error {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    let code = 'unknown_error'
-    let message = `Request failed with status ${response.status}`
-
-    try {
-      const body = await response.json()
-      if (body.error) {
-        code = body.error.code || code
-        message = body.error.message || message
-      }
-    } catch {
-      // Response body was not JSON — use defaults
-    }
-
-    throw new ApiRequestError(response.status, code, message)
+    await throwApiError(response)
   }
 
   if (response.status === 204) {
-    return undefined as T
+    return undefined as unknown as T
   }
 
   const body = await response.json()
@@ -80,7 +67,7 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   return handleResponse<T>(response)
 }
 
-export async function apiDelete<T>(path: string): Promise<T> {
+export async function apiDelete<T = void>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'DELETE',
     credentials: 'include',
@@ -101,18 +88,7 @@ export async function apiGetPaginated<T>(path: string): Promise<PaginatedData<T>
   })
 
   if (!response.ok) {
-    let code = 'unknown_error'
-    let message = `Request failed with status ${response.status}`
-    try {
-      const body = await response.json()
-      if (body.error) {
-        code = body.error.code || code
-        message = body.error.message || message
-      }
-    } catch {
-      // not JSON
-    }
-    throw new ApiRequestError(response.status, code, message)
+    await throwApiError(response)
   }
 
   const body = await response.json()
@@ -122,4 +98,19 @@ export async function apiGetPaginated<T>(path: string): Promise<PaginatedData<T>
     limit: body.pagination?.limit || 20,
     offset: body.pagination?.offset || 0,
   }
+}
+
+async function throwApiError(response: Response): Promise<never> {
+  let code = 'unknown_error'
+  let message = `Request failed with status ${response.status}`
+  try {
+    const body = await response.json()
+    if (body.error) {
+      code = body.error.code || code
+      message = body.error.message || message
+    }
+  } catch {
+    // not JSON
+  }
+  throw new ApiRequestError(response.status, code, message)
 }

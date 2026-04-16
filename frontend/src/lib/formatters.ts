@@ -36,8 +36,10 @@ export function formatPlayerName(
 }
 
 export function getInitials(name: string): string {
+  if (!name.trim()) return '?'
   return name
     .split(' ')
+    .filter(Boolean)
     .map((word) => word[0])
     .join('')
     .toUpperCase()

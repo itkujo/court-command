@@ -121,7 +121,7 @@ export function useUpdateMemberRole(orgId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ userId, role }: { userId: number; role: string }) =>
-      apiPatch<OrgMember>(`/api/v1/organizations/${orgId}/members/${userId}`, { role }),
+      apiPatch<OrgMember>(`/api/v1/organizations/${orgId}/members/${userId}/role`, { role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'members'] })
     },
@@ -151,7 +151,7 @@ export function useBlockOrg(orgId: string) {
 export function useUnblockOrg(orgId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => apiPost<void>(`/api/v1/organizations/${orgId}/unblock`),
+    mutationFn: () => apiDelete<void>(`/api/v1/organizations/${orgId}/block`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
