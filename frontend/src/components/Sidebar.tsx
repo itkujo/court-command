@@ -6,13 +6,20 @@ import { ThemeToggle } from './ThemeToggle'
 import { Avatar } from './Avatar'
 import {
   LayoutDashboard, Trophy, Medal, MapPin, Users, UsersRound, Building2, Tv, Menu, ChevronLeft, LogOut,
-  Gavel, ClipboardList, Zap, Search,
+  Gavel, ClipboardList, Zap, Search, LogIn,
 } from 'lucide-react'
 import { useSearchModal } from '../features/search/SearchContext'
 
+interface SidebarUser {
+  first_name: string
+  last_name: string
+  public_id: string
+  display_name?: string | null
+}
+
 interface SidebarProps {
-  user: { first_name: string; last_name: string; public_id: string; display_name?: string | null }
-  onLogout: () => void
+  user?: SidebarUser | null
+  onLogout?: () => void
 }
 
 const STORAGE_KEY = 'cc_sidebar_expanded'
@@ -20,7 +27,8 @@ const STORAGE_KEY = 'cc_sidebar_expanded'
 interface NavItem { label: string; icon: typeof LayoutDashboard; path: string }
 interface NavGroup { label?: string; items: NavItem[] }
 
-const navGroups: NavGroup[] = [
+// Full nav for authenticated users
+const authNavGroups: NavGroup[] = [
   { items: [{ label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' }] },
   { label: 'Events', items: [
     { label: 'Tournaments', icon: Trophy, path: '/tournaments' },
@@ -40,10 +48,22 @@ const navGroups: NavGroup[] = [
   { label: 'Broadcast', items: [{ label: 'Overlay', icon: Tv, path: '/overlay' }] },
 ]
 
+// Reduced nav for logged-out users
+const publicNavGroups: NavGroup[] = [
+  { label: 'Browse', items: [
+    { label: 'Tournaments', icon: Trophy, path: '/public/tournaments' },
+    { label: 'Leagues', icon: Medal, path: '/public/leagues' },
+    { label: 'Venues', icon: MapPin, path: '/public/venues' },
+  ]},
+]
+
 export function Sidebar({ user, onLogout }: SidebarProps) {
   const isMobile = useIsMobile()
   const matchRoute = useMatchRoute()
   const location = useLocation()
+  const isAuthenticated = !!user
+  const navGroups = isAuthenticated ? authNavGroups : publicNavGroups
+
   const [expanded, setExpanded] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem(STORAGE_KEY) === 'true'
@@ -70,7 +90,9 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
     return matchRoute({ to: path, fuzzy: true })
   }
 
-  const displayName = user.display_name || `${user.first_name} ${user.last_name}`
+  const displayName = user
+    ? (user.display_name || `${user.first_name} ${user.last_name}`)
+    : ''
 
   if (isMobile) {
     return (
@@ -81,7 +103,13 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
           </button>
           <img src="/logo-wordmark.svg" alt="Court Command" className="h-6 dark:block hidden" />
           <img src="/logo-wordmark-dark.svg" alt="Court Command" className="h-6 dark:hidden" />
-          <Avatar name={displayName} size="sm" />
+          {user ? (
+            <Avatar name={displayName} size="sm" />
+          ) : (
+            <Link to="/login" search={{ redirect: '/' }} className="text-sm font-medium text-cyan-400 hover:text-cyan-300">
+              Sign In
+            </Link>
+          )}
         </header>
         {mobileOpen && (
           <>
@@ -95,9 +123,13 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                 </div>
-                <NavContent expanded={true} isActive={isActive} />
+                <NavContent expanded={true} isActive={isActive} navGroups={navGroups} />
               </div>
-              <SidebarFooter expanded={true} displayName={displayName} publicId={user.public_id} onLogout={onLogout} />
+              {user && onLogout ? (
+                <SidebarFooter expanded={true} displayName={displayName} publicId={user.public_id} onLogout={onLogout} />
+              ) : (
+                <PublicFooter expanded={true} />
+              )}
             </nav>
           </>
         )}
@@ -123,14 +155,18 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         )}
       </div>
       <div className="flex-1 overflow-y-auto py-2 px-2">
-        <NavContent expanded={expanded} isActive={isActive} />
+        <NavContent expanded={expanded} isActive={isActive} navGroups={navGroups} />
       </div>
-      <SidebarFooter expanded={expanded} displayName={displayName} publicId={user.public_id} onLogout={onLogout} />
+      {user && onLogout ? (
+        <SidebarFooter expanded={expanded} displayName={displayName} publicId={user.public_id} onLogout={onLogout} />
+      ) : (
+        <PublicFooter expanded={expanded} />
+      )}
     </nav>
   )
 }
 
-function NavContent({ expanded, isActive }: { expanded: boolean; isActive: (path: string) => unknown }) {
+function NavContent({ expanded, isActive, navGroups }: { expanded: boolean; isActive: (path: string) => unknown; navGroups: NavGroup[] }) {
   const { openSearch } = useSearchModal()
 
   return (
@@ -202,6 +238,26 @@ function SidebarFooter({ expanded, displayName, publicId, onLogout }: { expanded
           <LogOut className="h-5 w-5" />
         </button>
       )}
+    </div>
+  )
+}
+
+function PublicFooter({ expanded }: { expanded: boolean }) {
+  return (
+    <div className={cn('border-t border-(--color-border) p-2 space-y-1')}>
+      <ThemeToggle collapsed={!expanded} />
+      <Link
+        to="/login"
+        search={{ redirect: '/' }}
+        className={cn(
+          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-cyan-400 hover:bg-cyan-500/10',
+          expanded ? '' : 'justify-center px-2',
+        )}
+        title={!expanded ? 'Sign In' : undefined}
+      >
+        <LogIn className="h-5 w-5 shrink-0" />
+        {expanded && <span>Sign In</span>}
+      </Link>
     </div>
   )
 }
