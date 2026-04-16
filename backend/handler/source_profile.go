@@ -28,12 +28,48 @@ func (h *SourceProfileHandler) Routes() chi.Router {
 
 	r.Get("/", h.ListMine)
 	r.Post("/", h.Create)
+	r.Post("/test", h.TestConnection)
 	r.Get("/{profileID}", h.GetByID)
 	r.Put("/{profileID}", h.Update)
 	r.Delete("/{profileID}", h.Delete)
 	r.Post("/{profileID}/deactivate", h.Deactivate)
 
 	return r
+}
+
+// TestConnection handles POST /api/v1/source-profiles/test.
+//
+// Accepts a partial SourceProfileInput and returns discovery metadata
+// (discovered_paths, sample_payload, status_code, error). Used by the
+// Source Profile editor's Test Connection button before persisting.
+func (h *SourceProfileHandler) TestConnection(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	var req struct {
+		SourceType    string          `json:"source_type"`
+		ApiURL        string          `json:"api_url"`
+		WebhookSecret string          `json:"webhook_secret"`
+		AuthType      string          `json:"auth_type"`
+		AuthConfig    json.RawMessage `json:"auth_config"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_JSON", "Invalid request body")
+		return
+	}
+
+	result := h.service.TestConnection(r.Context(), service.TestConnectionInput{
+		SourceType:    req.SourceType,
+		APIURL:        req.ApiURL,
+		WebhookSecret: req.WebhookSecret,
+		AuthType:      req.AuthType,
+		AuthConfig:    req.AuthConfig,
+	})
+
+	Success(w, result)
 }
 
 func (h *SourceProfileHandler) parseProfileID(r *http.Request) (int64, error) {
