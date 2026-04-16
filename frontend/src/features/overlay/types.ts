@@ -108,6 +108,13 @@ export interface OverlayData {
 export interface ElementConfigBase {
   visible: boolean
   auto_animate?: boolean
+  /**
+   * Universal size knob. Applied to the element's outer wrapper as
+   * `transform: scale(N)`. Range 0.25..3.0, default 1.0 (no effect).
+   * Slot footprint does not reserve extra space — oversized elements
+   * bleed outside, which is the intended broadcast-producer behavior.
+   */
+  element_scale?: number
 }
 
 /**

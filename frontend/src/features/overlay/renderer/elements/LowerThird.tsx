@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import type { LowerThirdConfig, OverlayData } from '../../types'
+import { clampElementScale } from '../elementScale'
 
 export interface LowerThirdProps {
   data: OverlayData
@@ -47,7 +48,9 @@ export function LowerThird({ data, config }: LowerThirdProps) {
           color: 'var(--overlay-text)',
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
-          transform: shown ? 'translateY(0)' : 'translateY(110%)',
+          // Chain entry-slide with user scale knob.
+          transform: `${shown ? 'translateY(0)' : 'translateY(110%)'} scale(${clampElementScale(config.element_scale)})`,
+          transformOrigin: 'bottom center',
           opacity: shown ? 1 : 0,
           transition:
             'transform 500ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease',

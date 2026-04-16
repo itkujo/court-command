@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { OverlayData, SeriesScoreConfig } from '../../types'
+import { elementScaleStyle } from '../elementScale'
 
 export interface SeriesScoreProps {
   data: OverlayData
@@ -59,6 +60,7 @@ export function SeriesScore({ data, config }: SeriesScoreProps) {
         color: 'var(--overlay-text)',
         borderRadius: 'var(--overlay-radius)',
         fontFamily: 'var(--overlay-font-family)',
+        ...elementScaleStyle(config, 'top right'),
       }}
       aria-label={`Series score ${series.team_1_wins} to ${series.team_2_wins}, best of ${series.best_of}`}
     >

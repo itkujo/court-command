@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react'
 import type { MatchResultConfig, OverlayData, OverlayTrigger } from '../../types'
 import { MATCH_STATUS } from '../../contract'
+import { clampElementScale } from '../elementScale'
 
 export interface MatchResultProps {
   data: OverlayData
@@ -108,7 +109,8 @@ export function MatchResult({ data, config, trigger }: MatchResultProps) {
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
           borderTop: `6px solid ${winner.color || 'var(--overlay-accent)'}`,
-          transform: visible ? 'scale(1)' : 'scale(0.92)',
+          transform: `scale(${(visible ? 1 : 0.92) * clampElementScale(config.element_scale)})`,
+          transformOrigin: 'center',
           opacity: visible ? 1 : 0,
           transition:
             'transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 300ms ease',

@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react'
 import type { ComingUpNextConfig, OverlayData } from '../../types'
+import { clampElementScale } from '../elementScale'
 
 export interface ComingUpNextProps {
   data: OverlayData
@@ -42,7 +43,10 @@ export function ComingUpNext({ data, config }: ComingUpNextProps) {
           color: 'var(--overlay-text)',
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
-          transform: shown ? 'translateY(0)' : 'translateY(-110%)',
+          // Chain entry-slide with user scale knob. translateY first so
+          // scale doesn't amplify the off-screen offset.
+          transform: `${shown ? 'translateY(0)' : 'translateY(-110%)'} scale(${clampElementScale(config.element_scale)})`,
+          transformOrigin: 'top center',
           opacity: shown ? 1 : 0,
           transition:
             'transform 450ms cubic-bezier(0.16, 1, 0.3, 1), opacity 250ms ease',

@@ -40,6 +40,18 @@ import {
   clampScale,
   positionClasses,
 } from './transforms'
+import { elementScaleStyle } from '../../elementScale'
+
+/** Map a scoreboard anchor to the most natural transform-origin. */
+function originForPosition(position: ScoreboardPosition): string {
+  switch (position) {
+    case 'top-left': return 'top left'
+    case 'top-right': return 'top right'
+    case 'bottom-left': return 'bottom left'
+    case 'bottom-right': return 'bottom right'
+    case 'bottom-center': return 'bottom center'
+  }
+}
 
 const FONT_LINK_ID = 'cc-banner-scoreboard-fonts'
 const FONT_HREF =
@@ -133,9 +145,9 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
     config.team_2_logo_offset_y,
   )
 
-  const positionClassName = positionClasses(
-    config.position ?? BANNER_DEFAULT_POSITION,
-  )
+  const effectivePosition = config.position ?? BANNER_DEFAULT_POSITION
+  const positionClassName = positionClasses(effectivePosition)
+  const scaleStyle = elementScaleStyle(config, originForPosition(effectivePosition))
 
   return (
     <div
@@ -152,6 +164,7 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
         transition: 'box-shadow 600ms ease',
         // NOTE: intentionally no overflow clip — oversized logos should be
         // allowed to bleed outside the banner rectangle (matches NCPA).
+        ...scaleStyle,
       }}
       data-match-status={data.match_status}
       data-scoreboard-layout="banner"

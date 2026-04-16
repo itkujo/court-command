@@ -13,6 +13,7 @@ import type {
   OverlayTrigger,
   TeamCardConfig,
 } from '../../types'
+import { clampElementScale } from '../elementScale'
 
 export interface TeamCardProps {
   data: OverlayData
@@ -58,7 +59,8 @@ export function TeamCard({ data, config, trigger }: TeamCardProps) {
           color: 'var(--overlay-text)',
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
-          transform: shown ? 'scale(1)' : 'scale(0.9)',
+          transform: `scale(${(shown ? 1 : 0.9) * clampElementScale(config.element_scale)})`,
+          transformOrigin: 'center',
           opacity: shown ? 1 : 0,
           transition:
             'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 250ms ease',

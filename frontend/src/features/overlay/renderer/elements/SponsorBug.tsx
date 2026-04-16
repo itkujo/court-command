@@ -5,10 +5,12 @@
 //   1. config.logos (operator-curated list for this court)
 //   2. data.sponsor_logos (backend-resolved from tournament/league)
 //
-// Tier badge is shown under the name when present.
+// Broadcast convention: logo only, no "Sponsor" label, no tier badge.
+// Each rotation fills the chip so the logo reads at distance.
 
 import { useEffect, useRef, useState } from 'react'
 import type { OverlayData, SponsorBugConfig, SponsorLogo } from '../../types'
+import { elementScaleStyle } from '../elementScale'
 
 export interface SponsorBugProps {
   data: OverlayData
@@ -59,28 +61,21 @@ export function SponsorBug({ data, config }: SponsorBugProps) {
   // sponsor chip on broadcast). In the control-panel preview we
   // surface a dashed placeholder so operators can see the element is
   // enabled and know where to drop a logo.
-  if (logos.length === 0) return <SponsorBugPlaceholder />
+  if (logos.length === 0) return <SponsorBugPlaceholder config={config} />
 
   const active = logos[activeIndex]
   if (!active) return null
 
   return (
     <div
-      className="absolute top-6 right-6 z-20 flex items-center gap-3 px-4 py-2.5 shadow-xl backdrop-blur-md"
+      className="absolute top-6 right-6 z-20 flex items-center justify-center px-3 py-2 shadow-xl backdrop-blur-md"
       style={{
         background: 'var(--overlay-primary)',
-        color: 'var(--overlay-text)',
         borderRadius: 'var(--overlay-radius)',
-        fontFamily: 'var(--overlay-font-family)',
+        ...elementScaleStyle(config, 'top right'),
       }}
-      aria-label="Sponsor"
+      aria-label={active.name || 'Sponsor'}
     >
-      <span
-        className="text-[10px] uppercase tracking-widest font-bold opacity-70"
-        style={{ color: 'var(--overlay-accent)' }}
-      >
-        Sponsor
-      </span>
       <SponsorLogoSlot logo={active} key={`${active.name}-${activeIndex}`} />
     </div>
   )
@@ -89,7 +84,7 @@ export function SponsorBug({ data, config }: SponsorBugProps) {
 function SponsorLogoSlot({ logo }: { logo: SponsorLogo }) {
   return (
     <div
-      className="flex items-center gap-2 min-w-0"
+      className="flex items-center justify-center"
       style={{
         animation: 'overlay-sponsor-fade 450ms ease-out both',
       }}
@@ -97,23 +92,23 @@ function SponsorLogoSlot({ logo }: { logo: SponsorLogo }) {
       {logo.logo_url ? (
         <img
           src={logo.logo_url}
-          alt={logo.name}
-          className="h-8 w-auto object-contain shrink-0"
-          style={{ maxWidth: 120 }}
+          alt={logo.name || ''}
+          className="h-14 w-auto object-contain"
+          style={{ maxWidth: 220 }}
           onError={(e) => {
             // Gracefully hide broken images — don't leak alt-text.
             ;(e.currentTarget as HTMLImageElement).style.display = 'none'
           }}
         />
       ) : (
-        <span className="text-sm font-bold truncate">{logo.name}</span>
-      )}
-      {logo.tier && (
         <span
-          className="text-[9px] uppercase tracking-widest font-bold opacity-60 shrink-0"
-          style={{ color: 'var(--overlay-accent)' }}
+          className="text-base font-bold tracking-wide"
+          style={{
+            color: 'var(--overlay-text)',
+            fontFamily: 'var(--overlay-font-family)',
+          }}
         >
-          {logo.tier}
+          {logo.name}
         </span>
       )}
       <style>{`
@@ -132,7 +127,7 @@ function SponsorLogoSlot({ logo }: { logo: SponsorLogo }) {
 // data is still empty. Invisible on real OBS output.
 // -----------------------------------------------------------------------------
 
-function SponsorBugPlaceholder() {
+function SponsorBugPlaceholder({ config }: { config: SponsorBugConfig }) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [visible, setVisible] = useState(false)
 
@@ -155,6 +150,7 @@ function SponsorBugPlaceholder() {
         fontFamily: 'var(--overlay-font-family)',
         opacity: visible ? 0.6 : 0,
         pointerEvents: 'none',
+        ...elementScaleStyle(config, 'top right'),
       }}
     >
       <span style={{ color: 'var(--overlay-accent)' }}>Sponsor</span>

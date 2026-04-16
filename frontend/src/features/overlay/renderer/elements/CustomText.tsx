@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import type { CustomTextConfig, OverlayTrigger } from '../../types'
+import { clampElementScale } from '../elementScale'
 
 export interface CustomTextProps {
   config: CustomTextConfig
@@ -61,7 +62,8 @@ export function CustomText({ config, trigger }: CustomTextProps) {
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
           opacity: shown ? 1 : 0,
-          transform: shown ? 'translateY(0)' : 'translateY(8px)',
+          transform: `translateY(${shown ? 0 : 8}px) scale(${clampElementScale(config.element_scale)})`,
+          transformOrigin: 'center',
           transition: 'opacity 300ms ease, transform 300ms ease',
         }}
       >

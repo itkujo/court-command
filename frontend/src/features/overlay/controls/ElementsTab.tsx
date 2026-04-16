@@ -42,7 +42,12 @@ import {
   SCALE_MIN,
   SCALE_STEP,
 } from '../renderer/elements/scoreboard/transforms'
-import type { ScoreboardPosition } from '../types'
+import type { ElementConfigBase, ScoreboardPosition } from '../types'
+import {
+  ELEMENT_SCALE_MAX,
+  ELEMENT_SCALE_MIN,
+  ELEMENT_SCALE_STEP,
+} from '../renderer/elementScale'
 
 // Debounce interval for text / number inputs before firing the PUT.
 const COMMIT_DEBOUNCE_MS = 400
@@ -493,7 +498,8 @@ function settingsHint(key: ElementKey): string {
     case ELEMENT_KEY.CUSTOM_TEXT:
       return 'Default text · placement zone · auto-dismiss'
     default:
-      return 'No additional settings'
+      // Elements without bespoke knobs still expose the universal size slider.
+      return 'Size'
   }
 }
 
@@ -501,15 +507,10 @@ function settingsHint(key: ElementKey): string {
 // Knob renderers per element kind
 // ---------------------------------------------------------------------------
 
-function elementHasKnobs(key: ElementKey): boolean {
-  return (
-    key === ELEMENT_KEY.SCOREBOARD ||
-    key === ELEMENT_KEY.SPONSOR_BUG ||
-    key === ELEMENT_KEY.PLAYER_CARD ||
-    key === ELEMENT_KEY.TEAM_CARD ||
-    key === ELEMENT_KEY.MATCH_RESULT ||
-    key === ELEMENT_KEY.CUSTOM_TEXT
-  )
+// Every element now exposes at minimum a universal Size knob, so the
+// settings section mirrors the visibility grid one-to-one.
+function elementHasKnobs(_key: ElementKey): boolean {
+  return true
 }
 
 interface KnobsProps<K extends ElementKey> {
@@ -519,6 +520,26 @@ interface KnobsProps<K extends ElementKey> {
 }
 
 function ElementKnobs<K extends ElementKey>({ elementKey, config, onPatch }: KnobsProps<K>) {
+  // Universal Size slider wired into every element. Specific knobs (when any)
+  // render above it. Elements without bespoke knobs get just the Size slider.
+  const specific = renderSpecificKnobs(elementKey, config, onPatch)
+  return (
+    <div className="space-y-5">
+      {specific}
+      <ElementSizeSlider
+        elementKey={elementKey}
+        config={config as ElementConfigBase}
+        onPatch={onPatch as (p: Partial<ElementConfigBase>) => void}
+      />
+    </div>
+  )
+}
+
+function renderSpecificKnobs<K extends ElementKey>(
+  elementKey: K,
+  config: ElementsConfig[K],
+  onPatch: (p: Partial<ElementsConfig[K]>) => void,
+) {
   switch (elementKey) {
     case ELEMENT_KEY.SCOREBOARD:
       return (
@@ -567,6 +588,69 @@ function ElementKnobs<K extends ElementKey>({ elementKey, config, onPatch }: Kno
     default:
       return null
   }
+}
+
+/**
+ * Universal per-element size slider. Ranges 25% – 300% in 10% steps, the same
+ * range everywhere, so operators don't have to relearn per element. Applied
+ * as a CSS `transform: scale(N)` on each element's outer wrapper by the
+ * renderer — slot footprint does not reserve extra space, so oversized
+ * elements bleed past their anchor the way broadcast overlays do.
+ */
+function ElementSizeSlider({
+  elementKey,
+  config,
+  onPatch,
+}: {
+  elementKey: ElementKey
+  config: ElementConfigBase
+  onPatch: (p: Partial<ElementConfigBase>) => void
+}) {
+  const value = config.element_scale ?? 1
+  const clamped = Math.max(
+    ELEMENT_SCALE_MIN,
+    Math.min(ELEMENT_SCALE_MAX, Number.isFinite(value) ? value : 1),
+  )
+  const pct = Math.round(clamped * 100)
+  const minPct = Math.round(ELEMENT_SCALE_MIN * 100)
+  const maxPct = Math.round(ELEMENT_SCALE_MAX * 100)
+  const stepPct = Math.round(ELEMENT_SCALE_STEP * 100)
+  const id = `size-${elementKey}`
+  return (
+    <div className="rounded-md border border-(--color-border) bg-(--color-bg-secondary) p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <label
+          htmlFor={id}
+          className="text-sm font-medium text-(--color-text-primary)"
+        >
+          Size
+        </label>
+        <span className="text-xs tabular-nums text-(--color-text-secondary)">
+          {pct}%
+        </span>
+      </div>
+      <input
+        id={id}
+        type="range"
+        min={minPct}
+        max={maxPct}
+        step={stepPct}
+        value={pct}
+        onChange={(e) => {
+          const next = Number(e.target.value) / 100
+          if (Number.isFinite(next)) {
+            onPatch({ element_scale: next })
+          }
+        }}
+        className="w-full accent-(--color-accent)"
+        aria-label={`${ELEMENT_LABELS[elementKey]} size`}
+      />
+      <p className="text-xs text-(--color-text-muted)">
+        Scales the whole element {minPct}%–{maxPct}%. Bleeds outside its
+        anchor box — layout doesn't shift.
+      </p>
+    </div>
+  )
 }
 
 function ScoreboardKnobs({

@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import type { OverlayData, PoolStandingsConfig } from '../../types'
+import { clampElementScale } from '../elementScale'
 
 export interface PoolStandingsProps {
   data: OverlayData
@@ -41,7 +42,8 @@ export function PoolStandings({ data, config }: PoolStandingsProps) {
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
           opacity: shown ? 1 : 0,
-          transform: shown ? 'translateY(0)' : 'translateY(10px)',
+          transform: `translateY(${shown ? 0 : 10}px) scale(${clampElementScale(config.element_scale)})`,
+          transformOrigin: 'center',
           transition: 'opacity 400ms ease, transform 400ms ease',
         }}
       >

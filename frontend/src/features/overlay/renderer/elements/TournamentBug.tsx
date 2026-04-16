@@ -5,6 +5,7 @@
 // If neither logo is available but names are, shows text-only badge.
 
 import type { OverlayData, TournamentBugConfig } from '../../types'
+import { elementScaleStyle } from '../elementScale'
 
 export interface TournamentBugProps {
   data: OverlayData
@@ -27,6 +28,7 @@ export function TournamentBug({ data, config }: TournamentBugProps) {
         color: 'var(--overlay-text)',
         borderRadius: 'var(--overlay-radius)',
         fontFamily: 'var(--overlay-font-family)',
+        ...elementScaleStyle(config, 'top left'),
       }}
       aria-label={name || 'Tournament'}
     >

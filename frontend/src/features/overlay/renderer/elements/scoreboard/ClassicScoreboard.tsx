@@ -24,6 +24,18 @@ import type { OverlayData, ScoreboardPosition } from '../../../types'
 import { MATCH_STATUS } from '../../../contract'
 import type { ScoreboardLayoutProps } from './types'
 import { positionClasses } from './transforms'
+import { elementScaleStyle } from '../../elementScale'
+
+/** Map a scoreboard anchor to the most natural transform-origin. */
+function originForPosition(position: ScoreboardPosition): string {
+  switch (position) {
+    case 'top-left': return 'top left'
+    case 'top-right': return 'top right'
+    case 'bottom-left': return 'bottom left'
+    case 'bottom-right': return 'bottom right'
+    case 'bottom-center': return 'bottom center'
+  }
+}
 
 const CLASSIC_DEFAULT_POSITION: ScoreboardPosition = 'bottom-left'
 
@@ -35,9 +47,9 @@ export function ClassicScoreboard({ data, config }: ScoreboardLayoutProps) {
   const isCompleted = data.match_status === MATCH_STATUS.COMPLETED
   const isPaused = data.is_paused
 
-  const positionClassName = positionClasses(
-    config.position ?? CLASSIC_DEFAULT_POSITION,
-  )
+  const effectivePosition = config.position ?? CLASSIC_DEFAULT_POSITION
+  const positionClassName = positionClasses(effectivePosition)
+  const scaleStyle = elementScaleStyle(config, originForPosition(effectivePosition))
 
   return (
     <div
@@ -51,6 +63,7 @@ export function ClassicScoreboard({ data, config }: ScoreboardLayoutProps) {
           ? '0 0 40px var(--overlay-accent), 0 10px 30px rgba(0,0,0,0.5)'
           : '0 10px 30px rgba(0,0,0,0.5)',
         transition: 'box-shadow 600ms ease',
+        ...scaleStyle,
       }}
       data-match-status={data.match_status}
       data-scoreboard-layout="classic"
