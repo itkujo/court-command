@@ -174,12 +174,36 @@ export interface ScoreboardConfig extends ElementConfigBase {
 
 export interface LowerThirdConfig extends ElementConfigBase {}
 
+/**
+ * Player slots live on OverlayTeamData.players[] (0 = P1, 1 = P2).
+ * The four-string union covers Doubles; Singles ignores P2 entries.
+ */
+export type PlayerCardSlot =
+  | 'team_1_player_1'
+  | 'team_1_player_2'
+  | 'team_2_player_1'
+  | 'team_2_player_2'
+
 export interface PlayerCardConfig extends ElementConfigBase {
   auto_dismiss_seconds?: number
+  /**
+   * When config.visible is true (not a trigger), which player to show.
+   * Trigger payload.player_id still wins over this when present.
+   * Unset falls back to the current server / team_1 captain.
+   */
+  selected_player?: PlayerCardSlot
 }
+
+export type TeamCardSelection = 'both' | 'team_1' | 'team_2'
 
 export interface TeamCardConfig extends ElementConfigBase {
   auto_dismiss_seconds?: number
+  /**
+   * When config.visible is true (not a trigger), which team(s) to show.
+   * 'both' renders side-by-side. Trigger payload.team_id still wins
+   * over this when present.
+   */
+  selected_team?: TeamCardSelection
 }
 
 export interface SponsorBugConfig extends ElementConfigBase {

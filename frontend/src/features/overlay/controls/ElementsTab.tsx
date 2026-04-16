@@ -12,7 +12,7 @@
 // Grouping: elements are organized by visual zone so the operator can
 // scan the UI and understand where each element lives on-screen.
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, ChevronUp, Eye, Loader2 } from 'lucide-react'
 import { Input } from '../../../components/Input'
 import { Select } from '../../../components/Select'
@@ -25,13 +25,15 @@ import type {
   ElementsConfig,
   MatchResultConfig,
   PlayerCardConfig,
+  PlayerCardSlot,
   ScoreboardConfig,
   ScoreboardLayout,
   SponsorBugConfig,
   TeamCardConfig,
+  TeamCardSelection,
 } from '../types'
 import { ELEMENT_KEY, type ElementKey } from '../contract'
-import { useUpdateElements } from '../hooks'
+import { useOverlayData, useUpdateElements } from '../hooks'
 import { SCOREBOARD_LAYOUT_OPTIONS } from '../renderer/elements/scoreboard'
 import {
   OFFSET_MAX,
@@ -237,6 +239,7 @@ export function ElementsTab({ courtID, config, loading }: ElementsTabProps) {
               elementKey={key}
               config={draft[key]}
               onPatch={(p) => patch(key, p)}
+              courtID={courtID}
             />
           ))}
         </div>
@@ -429,12 +432,14 @@ interface SettingsRowProps<K extends ElementKey> {
   elementKey: K
   config: ElementsConfig[K]
   onPatch: (patch: Partial<ElementsConfig[K]>) => void
+  courtID: number
 }
 
 function SettingsRow<K extends ElementKey>({
   elementKey,
   config,
   onPatch,
+  courtID,
 }: SettingsRowProps<K>) {
   const [expanded, setExpanded] = useState(false)
   const rowId = `settings-${elementKey}`
@@ -474,6 +479,7 @@ function SettingsRow<K extends ElementKey>({
             elementKey={elementKey}
             config={config}
             onPatch={onPatch}
+            courtID={courtID}
           />
         </div>
       )}
@@ -490,9 +496,9 @@ function settingsHint(key: ElementKey): string {
     case ELEMENT_KEY.SPONSOR_BUG:
       return 'Rotation cadence · auto-animate'
     case ELEMENT_KEY.PLAYER_CARD:
-      return 'Default auto-dismiss timer'
+      return 'Selected player · auto-dismiss timer'
     case ELEMENT_KEY.TEAM_CARD:
-      return 'Default auto-dismiss timer'
+      return 'Selected team · auto-dismiss timer'
     case ELEMENT_KEY.MATCH_RESULT:
       return 'Show delay · dismiss timer'
     case ELEMENT_KEY.CUSTOM_TEXT:
@@ -517,12 +523,13 @@ interface KnobsProps<K extends ElementKey> {
   elementKey: K
   config: ElementsConfig[K]
   onPatch: (patch: Partial<ElementsConfig[K]>) => void
+  courtID: number
 }
 
-function ElementKnobs<K extends ElementKey>({ elementKey, config, onPatch }: KnobsProps<K>) {
+function ElementKnobs<K extends ElementKey>({ elementKey, config, onPatch, courtID }: KnobsProps<K>) {
   // Universal Size slider wired into every element. Specific knobs (when any)
   // render above it. Elements without bespoke knobs get just the Size slider.
-  const specific = renderSpecificKnobs(elementKey, config, onPatch)
+  const specific = renderSpecificKnobs(elementKey, config, onPatch, courtID)
   return (
     <div className="space-y-5">
       {specific}
@@ -539,6 +546,7 @@ function renderSpecificKnobs<K extends ElementKey>(
   elementKey: K,
   config: ElementsConfig[K],
   onPatch: (p: Partial<ElementsConfig[K]>) => void,
+  courtID: number,
 ) {
   switch (elementKey) {
     case ELEMENT_KEY.SCOREBOARD:
@@ -557,16 +565,16 @@ function renderSpecificKnobs<K extends ElementKey>(
       )
     case ELEMENT_KEY.PLAYER_CARD:
       return (
-        <CardDismissKnobs
-          label="Player card"
+        <PlayerCardKnobs
+          courtID={courtID}
           config={config as PlayerCardConfig}
           onPatch={onPatch as (p: Partial<PlayerCardConfig>) => void}
         />
       )
     case ELEMENT_KEY.TEAM_CARD:
       return (
-        <CardDismissKnobs
-          label="Team card"
+        <TeamCardKnobs
+          courtID={courtID}
           config={config as TeamCardConfig}
           onPatch={onPatch as (p: Partial<TeamCardConfig>) => void}
         />
@@ -993,21 +1001,83 @@ function SponsorBugKnobs({
   )
 }
 
-function CardDismissKnobs({
-  label,
+/**
+ * PlayerCard knobs: which player to show when config.visible is true
+ * (Elements-tab "always on" mode) + default auto-dismiss timer for
+ * trigger-fired pops. Trigger payload.player_id still wins over config
+ * when fired from the Triggers tab.
+ */
+function PlayerCardKnobs({
+  courtID,
   config,
   onPatch,
 }: {
-  label: string
-  config: PlayerCardConfig | TeamCardConfig
-  onPatch: (p: Partial<PlayerCardConfig | TeamCardConfig>) => void
+  courtID: number
+  config: PlayerCardConfig
+  onPatch: (p: Partial<PlayerCardConfig>) => void
 }) {
+  const dataQuery = useOverlayData(courtID, {})
+  const data = dataQuery.data
   const seconds = config.auto_dismiss_seconds ?? 0
+  const selected = config.selected_player ?? ''
+
+  // Build slot options with live player names when we have them.
+  const options = useMemo<Array<{ value: PlayerCardSlot; label: string; disabled: boolean }>>(() => {
+    const slot = (
+      team: 'team_1' | 'team_2',
+      idx: 0 | 1,
+      slotValue: PlayerCardSlot,
+      teamLabel: string,
+    ): { value: PlayerCardSlot; label: string; disabled: boolean } => {
+      const name = data?.[team]?.players?.[idx]?.name?.trim() ?? ''
+      return {
+        value: slotValue,
+        label: name ? `${teamLabel} — ${name}` : `${teamLabel} — Player ${idx + 1}`,
+        disabled: !name,
+      }
+    }
+    const t1Label = data?.team_1?.name || data?.team_1?.short_name || 'Team 1'
+    const t2Label = data?.team_2?.name || data?.team_2?.short_name || 'Team 2'
+    return [
+      slot('team_1', 0, 'team_1_player_1', t1Label),
+      slot('team_1', 1, 'team_1_player_2', t1Label),
+      slot('team_2', 0, 'team_2_player_1', t2Label),
+      slot('team_2', 1, 'team_2_player_2', t2Label),
+    ]
+  }, [data])
+
+  const allDisabled = options.every((o) => o.disabled)
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <FormField label="Default dismiss" htmlFor={`${label}-dismiss`}>
+    <div className="space-y-4">
+      <FormField label="Selected player" htmlFor="player-card-selected">
         <Select
-          id={`${label}-dismiss`}
+          id="player-card-selected"
+          value={selected}
+          onChange={(e) => {
+            const v = e.target.value
+            onPatch({ selected_player: v === '' ? undefined : (v as PlayerCardSlot) })
+          }}
+          disabled={allDisabled}
+        >
+          <option value="">Auto — current server</option>
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+              {opt.label}
+              {opt.disabled ? ' (empty slot)' : ''}
+            </option>
+          ))}
+        </Select>
+        <p className="text-xs text-(--color-text-secondary) mt-1">
+          {allDisabled
+            ? 'No roster — add players to each team from the team page before selecting.'
+            : 'Player shown when visibility is on. Triggers tab can override with a one-off pick.'}
+        </p>
+      </FormField>
+
+      <FormField label="Default dismiss" htmlFor="player-card-dismiss">
+        <Select
+          id="player-card-dismiss"
           value={String(seconds)}
           onChange={(e) =>
             onPatch({ auto_dismiss_seconds: parseInt(e.target.value, 10) || 0 })
@@ -1020,8 +1090,73 @@ function CardDismissKnobs({
           ))}
         </Select>
         <p className="text-xs text-(--color-text-secondary) mt-1">
-          When a trigger fires this card, this is the default timer.
-          Operators can still override per-trigger.
+          Default timer when a trigger fires this card. Operators can still
+          override per trigger.
+        </p>
+      </FormField>
+    </div>
+  )
+}
+
+/**
+ * TeamCard knobs: which team(s) to show when config.visible is true +
+ * default auto-dismiss timer. 'Both' keeps the original side-by-side
+ * render. Trigger payload.team_id still wins over config when fired.
+ */
+function TeamCardKnobs({
+  courtID,
+  config,
+  onPatch,
+}: {
+  courtID: number
+  config: TeamCardConfig
+  onPatch: (p: Partial<TeamCardConfig>) => void
+}) {
+  const dataQuery = useOverlayData(courtID, {})
+  const data = dataQuery.data
+  const seconds = config.auto_dismiss_seconds ?? 0
+  const selected: TeamCardSelection = config.selected_team ?? 'both'
+
+  const t1Label = data?.team_1?.name || data?.team_1?.short_name || 'Team 1'
+  const t2Label = data?.team_2?.name || data?.team_2?.short_name || 'Team 2'
+
+  return (
+    <div className="space-y-4">
+      <FormField label="Selected team" htmlFor="team-card-selected">
+        <Select
+          id="team-card-selected"
+          value={selected}
+          onChange={(e) =>
+            onPatch({ selected_team: e.target.value as TeamCardSelection })
+          }
+        >
+          <option value="both">Both teams side-by-side</option>
+          <option value="team_1">Team 1 — {t1Label}</option>
+          <option value="team_2">Team 2 — {t2Label}</option>
+        </Select>
+        <p className="text-xs text-(--color-text-secondary) mt-1">
+          Team(s) shown when visibility is on. Triggers tab can override
+          with a one-off pick.
+        </p>
+      </FormField>
+
+      <FormField label="Default dismiss" htmlFor="team-card-dismiss">
+        <Select
+          id="team-card-dismiss"
+          value={String(seconds)}
+          onChange={(e) =>
+            onPatch({ auto_dismiss_seconds: parseInt(e.target.value, 10) || 0 })
+          }
+        >
+          {DISMISS_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </Select>
+        <p className="text-xs text-(--color-text-secondary) mt-1">
+          Default timer when a trigger fires this card. Operators can still
+          override per trigger.
         </p>
       </FormField>
     </div>

@@ -38,12 +38,13 @@ export function PlayerCard({ data, config, trigger }: PlayerCardProps) {
 
   if (!effectiveVisible) return null
 
-  // Trigger payload may specify a player_id or team side.
-  // For Phase 4E we resolve by searching both teams; fall back to
-  // team_1's server/first player.
+  // Selection priority (first non-null wins):
+  //   1. Trigger payload.player_id (one-shot, beats config)
+  //   2. config.selected_player slot (Elements tab dropdown)
+  //   3. Serving team's current server (original default)
   const playerId =
     typeof trigger?.payload?.player_id === 'string' ? trigger.payload.player_id : null
-  const { player, team } = resolvePlayer(data, playerId)
+  const { player, team } = resolvePlayer(data, playerId, config.selected_player ?? null)
   if (!player) return null
 
   return (
@@ -92,6 +93,7 @@ export function PlayerCard({ data, config, trigger }: PlayerCardProps) {
 function resolvePlayer(
   data: OverlayData,
   playerId: string | null,
+  slot: import('../../types').PlayerCardSlot | null,
 ): { player: OverlayData['team_1']['players'][number] | null; team: OverlayData['team_1'] } {
   if (playerId) {
     // Name-based lookup as a best-effort fallback; players currently
@@ -104,6 +106,13 @@ function resolvePlayer(
       (p) => p.name === playerId || p.name.toLowerCase().includes(playerId.toLowerCase()),
     )
     if (t2Match) return { player: t2Match, team: data.team_2 }
+  }
+  if (slot) {
+    const team = slot.startsWith('team_1') ? data.team_1 : data.team_2
+    const idx = slot.endsWith('player_2') ? 1 : 0
+    const p = team.players[idx]
+    if (p) return { player: p, team }
+    // Slot selected but roster too short — fall through to server default.
   }
   const servingTeam = data.serving_team === 2 ? data.team_2 : data.team_1
   const serverIdx = Math.max(0, (data.server_number ?? 1) - 1)

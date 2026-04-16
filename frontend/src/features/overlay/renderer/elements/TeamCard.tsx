@@ -37,15 +37,24 @@ export function TeamCard({ data, config, trigger }: TeamCardProps) {
 
   if (!effectiveVisible) return null
 
-  // If trigger specifies team_id, render only that team's column full-width;
-  // otherwise show both teams side-by-side.
+  // Selection priority:
+  //   1. Trigger payload.team_id (one-shot, beats config) — '1' | 1 | '2' | 2
+  //   2. config.selected_team ('team_1' | 'team_2' | 'both')
+  //   3. Default: both teams side-by-side
   const teamIdRaw = trigger?.payload?.team_id
-  const onlyTeam =
+  const triggerOnlyTeam =
     teamIdRaw === '1' || teamIdRaw === 1
       ? data.team_1
       : teamIdRaw === '2' || teamIdRaw === 2
         ? data.team_2
         : null
+  const configOnlyTeam =
+    config.selected_team === 'team_1'
+      ? data.team_1
+      : config.selected_team === 'team_2'
+        ? data.team_2
+        : null
+  const onlyTeam = triggerOnlyTeam ?? configOnlyTeam
 
   return (
     <div
