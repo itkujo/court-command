@@ -480,3 +480,27 @@ Every registry entity follows the same UI pattern:
 
 ### Health
 - `GET /api/v1/health` — health check
+
+---
+
+## Addendum: Implementation-Phase Decisions
+
+### Ad Slot Component (Added During Build)
+- `AdSlot` component with 6 IAB sizes: leaderboard (728×90), mobile-banner (320×50), medium-rectangle (300×250), skyscraper (160×600), billboard (970×250), responsive-banner (auto desktop/mobile)
+- Wired into: all list pages (responsive-banner), all detail pages (medium-rectangle), auth pages (medium-rectangle)
+- Excluded from: broadcast overlays, referee, scorekeeper, broadcast operator, overlay config, admin, settings
+- TV/kiosk bracket view gets billboard ad slot (built in later frontend phase)
+
+### Community Theme Presets (Added During Build)
+- Ship presets: Catppuccin (Mocha/Latte/Frappe/Macchiato), Dracula, Nord, Gruvbox, Tokyo Night, One Dark, Solarized
+- Each overrides CSS custom properties; overlay themes get community palettes as color presets within structural themes
+- Persisted in localStorage, system-preference fallback
+
+### CC Logo (Decided During Brainstorm)
+- Interlocking C's with dashed net divider; first C cyan (#06b6d4), second C white (#e2e8f0)
+- 3 SVG files: `logo-icon.svg` (48px mark), `logo-wordmark.svg` (dark bg), `logo-wordmark-dark.svg` (light bg)
+- Located in `frontend/public/`
+
+### Safari/WebKit Compatibility
+- All overlay rendering must work in Safari/WebKit (Larix streaming app on iOS uses WebKit)
+- Entire website mobile-ready from launch

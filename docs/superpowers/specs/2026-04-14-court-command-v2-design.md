@@ -1343,7 +1343,37 @@ GitHub Actions:
 
 ---
 
-## 29. Competitive Differentiation
+## 29. Advertising & Monetization (Added During Implementation)
+
+### Ad Slot System
+- **AdSlot component** with 6 IAB standard sizes: leaderboard (728×90), mobile-banner (320×50), medium-rectangle (300×250), skyscraper (160×600), billboard (970×250), responsive-banner (auto desktop/mobile)
+- Each slot renders `data-ad-slot` and `data-ad-size` attributes for ad network targeting
+- Ad slots appear on **public-facing and registry pages only**: list pages (responsive-banner below title), detail pages (medium-rectangle below content), auth pages (medium-rectangle below form)
+- **Explicitly excluded from ads**: broadcast overlays, referee console, scorekeeper console, broadcast operator control panel, overlay config pages, platform admin panel, all settings pages
+- **Exception**: TV/kiosk bracket view gets a dedicated ad slot (billboard size)
+- Placeholder ads render with dashed border and "Advertisement" label until real ad network is configured
+
+### Community Theme Presets (Added During Implementation)
+- Ship with presets based on popular community color palettes: **Catppuccin** (Mocha, Latte, Frappe, Macchiato), **Dracula**, **Nord**, **Gruvbox**, **Tokyo Night**, **One Dark**, **Solarized**
+- Each preset overrides CSS custom properties (--color-bg-primary, --color-text-primary, etc.)
+- For overlay themes, community color palettes stack as color presets within each structural overlay theme (Classic, Modern, Minimal, Bold, Dark, Broadcast Pro)
+- User selects theme in profile settings; persisted in localStorage with system-preference fallback
+
+### Data Overrides for Broadcast Operators (Added During Implementation)
+- `data_overrides JSONB` column on `court_overlay_configs` table (migration 00025)
+- Broadcast Operator can override any canonical overlay field (team names, scores, player names, custom text, etc.) from the control panel without modifying tournament/match settings
+- Overrides applied after resolver populates data from match state — operator overrides always win
+- `PUT /api/v1/overlay/court/{courtID}/config/data-overrides` to set, `DELETE` to clear
+- Use case: last-minute corrections visible on stream without changing official records
+
+### Live Stream Embed (Locked in Brainstorm)
+- `stream_url`, `stream_type` (youtube/twitch/vimeo/hls/other), `stream_is_live`, `stream_title` on Court entity
+- Auto-detection of platform from URL pattern
+- Displays on court public page + match detail page
+
+---
+
+## 30. Competitive Differentiation
 
 1. **Unified platform** — tournaments + leagues + overlay in one app (competitors fragment across 5+ sites)
 2. **Standalone overlay product** — no pickleball-specific broadcast overlay exists in market; third-party API adapter enables selling overlay independently
@@ -1355,3 +1385,5 @@ GitHub Actions:
 8. **Freemium with zero feature gating** — free tier is the full product with a brand mark; paid just removes it
 9. **MLP-style team match support** — MatchSeries entity handles multi-format team events natively
 10. **Producer monitor** — real-time multi-court overview for broadcast directors, a feature no competitor offers
+11. **Ad monetization built-in** — IAB-standard ad slots on public/registry pages, excluded from broadcast surfaces and admin
+12. **Community theme presets** — popular palettes (Catppuccin, Dracula, Nord, etc.) ship out of the box for app UI and overlay color customization

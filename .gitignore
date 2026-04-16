@@ -18,3 +18,4 @@ uploads/
 node_modules/
 frontend/dist/
 frontend/src/routeTree.gen.ts
+*.tsbuildinfo
