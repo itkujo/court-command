@@ -1,35 +1,35 @@
 // frontend/src/features/overlay/renderer/elements/scoreboard/BannerScoreboard.tsx
 //
-// Banner layout: wide horizontal broadcast-style scoreboard modeled on
-// classic college-sports tickers (e.g. NCPA Ticker). The anatomy is:
+// Banner layout — modeled on brandon-relentnet/ncpa-ticker Scoreboard.jsx.
+// Anatomy (3-column grid inside a horizontal banner):
 //
-//   ┌──────────────────────────────────────────────────────────────┐
-//   │ Court · Tournament · Venue                       (top strip) │
-//   ├───────────────────────────────────┬──────────────────────────┤
-//   │ ▍ Team 1 name                     │                          │
-//   │   Player 1 name                   │        [ Score 1 ]       │
-//   ├───────────────────────────────────┤        ( dark inset )    │
-//   │ ▍ Team 2 name                     │        [ Score 2 ]       │
-//   │   Player 2 name                   │                          │
-//   ├───────────────────────────────────┴──────────────────────────┤
-//   │ Round · Bracket · Match state              (bottom strip)    │
-//   └──────────────────────────────────────────────────────────────┘
+//   ┌────────────────────────────────────────────────────────────────────┐
+//   │ Court · Tournament · Venue                           (top strip)   │
+//   ├────────┬──────────────────────────────────────────┬────────────────┤
+//   │        │ [logo|▍] Team 1 name                     │                │
+//   │ TOURN  │           Player 1                       │    Score 1     │
+//   │ LOGO   ├──────────────────────────────────────────┤   (dark inset) │
+//   │ BADGE  │ [logo|▍] Team 2 name                     │                │
+//   │        │           Player 2                       │    Score 2     │
+//   ├────────┴──────────────────────────────────────────┴────────────────┤
+//   │ Round · Bracket · Match state                      (bottom strip)  │
+//   └────────────────────────────────────────────────────────────────────┘
 //
-// Design decisions worth preserving across future iterations:
-//   - Body background uses `--overlay-primary` (themeable) — no pure
-//     black. Score inset is `rgba(0,0,0,0.6)` on top of that so team
-//     color can bleed through if a theme chooses a translucent primary.
-//   - Serve indicator is a small filled dot inside the team's row,
-//     left-adjacent to the name. More compact than the classic triangle
-//     and reads clearly at banner scale.
-//   - Typography: Barlow Condensed (display + score) and DM Sans (body)
-//     loaded once per mount via a `<link>` injected at document head.
-//     Scoped in the sense that the preload cost only happens on the
-//     routes that render this layout.
-//   - Score numerals use Barlow Condensed 800 + tabular-nums so the
-//     column doesn't shift when values change.
-//   - Pause / winner / completed states reuse the classic accent
-//     vocabulary so theme changes flow through uniformly.
+// Design decisions preserved across iterations:
+//   - The left column is the TOURNAMENT/LEAGUE logo badge. It's baked into
+//     the panel (not floating outside) and uses `--overlay-primary` so it
+//     matches the header/footer strips visually. Falls back to wordmark
+//     text when neither tournament nor league logo is available.
+//   - Team logo sits inside each team row, left of the name. When the logo
+//     is missing we fall back to the short_name abbreviation in a bordered
+//     chip so the column stays balanced.
+//   - Score column is a narrow dark inset spanning both rows. Barlow
+//     Condensed 800 + tabular-nums locks the column width against digit
+//     changes. Pulse on change via 300ms bounce.
+//   - Top + bottom context strips use `rgba(0,0,0,0.35)` overlays and the
+//     DM Sans body font for a softer contrast against display type.
+//   - Fonts injected once per document via a `<link>` in the head. Never
+//     cleaned up on unmount (browser caches + next court may need them).
 
 import { useEffect, useRef, useState } from 'react'
 import type { OverlayData } from '../../../types'
@@ -55,9 +55,6 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
     link.rel = 'stylesheet'
     link.href = FONT_HREF
     document.head.appendChild(link)
-    // Do NOT remove on unmount — other scoreboards on the same page /
-    // next court may need the same font, and the browser caches the
-    // sheet anyway.
   }, [])
 
   if (!config.visible) return null
@@ -83,6 +80,9 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
   const team2Winner =
     isCompleted && data.team_2.game_wins > data.team_1.game_wins
 
+  const badgeLogo = data.tournament_logo_url || data.league_logo_url || ''
+  const badgeLabel = data.tournament_name || data.league_name || 'Live'
+
   return (
     <div
       className="absolute bottom-8 left-1/2 z-20 -translate-x-1/2 overflow-hidden shadow-2xl"
@@ -91,7 +91,7 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
         color: 'var(--overlay-text)',
         borderRadius: 'var(--overlay-radius)',
         fontFamily: BANNER_FONT_FAMILY,
-        width: 'min(880px, 92vw)',
+        width: 'min(980px, 94vw)',
         boxShadow: isCompleted
           ? '0 0 50px var(--overlay-accent), 0 12px 40px rgba(0,0,0,0.55)'
           : '0 12px 40px rgba(0,0,0,0.55)',
@@ -104,14 +104,19 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
         <ContextStrip parts={topStripParts} position="top" />
       )}
 
-      {/* Body: two team rows + score inset column on the right. */}
-      <div className="grid grid-cols-[1fr_auto]">
-        {/* Teams column — stacked rows with a hairline between. */}
-        <div>
+      {/* Body: 3-column grid.
+          col 1 = tournament badge, col 2 = team rows, col 3 = score inset. */}
+      <div className="grid grid-cols-[auto_1fr_auto]">
+        {/* Column 1 — tournament/league badge (spans both rows). */}
+        <TournamentBadge logoUrl={badgeLogo} label={badgeLabel} />
+
+        {/* Column 2 — two team rows stacked with a hairline between. */}
+        <div className="min-w-0">
           <TeamRow
             name={data.team_1.name}
             shortName={data.team_1.short_name}
             color={data.team_1.color}
+            logoUrl={data.team_1.logo_url}
             players={data.team_1.players}
             serving={servingTeam === 1}
             winner={team1Winner}
@@ -125,18 +130,19 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
             name={data.team_2.name}
             shortName={data.team_2.short_name}
             color={data.team_2.color}
+            logoUrl={data.team_2.logo_url}
             players={data.team_2.players}
             serving={servingTeam === 2}
             winner={team2Winner}
           />
         </div>
 
-        {/* Score inset — single dark column spanning both rows. */}
+        {/* Column 3 — dark score inset spanning both rows. */}
         <div
           className="flex flex-col justify-stretch"
           style={{
             background: 'rgba(0,0,0,0.6)',
-            minWidth: '108px',
+            minWidth: '112px',
           }}
         >
           <ScoreCell value={data.team_1.score} highlight={team1Winner} />
@@ -167,13 +173,93 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
 }
 
 // ---------------------------------------------------------------------------
-// TeamRow — color bar + name stack + serve dot
+// TournamentBadge — left column. Shows tournament/league logo if available,
+// otherwise falls back to a stacked wordmark.
+// ---------------------------------------------------------------------------
+
+function TournamentBadge({
+  logoUrl,
+  label,
+}: {
+  logoUrl: string
+  label: string
+}) {
+  const [imgBroken, setImgBroken] = useState(false)
+  const showImg = logoUrl && !imgBroken
+
+  return (
+    <div
+      className="flex items-center justify-center shrink-0"
+      style={{
+        width: '140px',
+        minHeight: '112px',
+        padding: '12px 16px',
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+      }}
+      aria-label={label ? `${label} logo` : undefined}
+    >
+      {showImg ? (
+        <img
+          src={logoUrl}
+          alt={label || 'Tournament logo'}
+          draggable={false}
+          onError={() => setImgBroken(true)}
+          className="pointer-events-none select-none max-h-20 max-w-full object-contain"
+        />
+      ) : (
+        <WordmarkFallback label={label} />
+      )}
+    </div>
+  )
+}
+
+function WordmarkFallback({ label }: { label: string }) {
+  if (!label) {
+    return null
+  }
+  // Pick the first two significant words for a compact wordmark, otherwise
+  // just uppercase the full label. This reads cleanly whether the string is
+  // "Spring Open 2026" or just "Live".
+  const words = label.split(/\s+/).filter(Boolean)
+  const top = words.length > 1 ? words.slice(0, -1).join(' ') : words[0] ?? ''
+  const bottom = words.length > 1 ? words[words.length - 1] : ''
+
+  return (
+    <div
+      className="flex flex-col items-center gap-0.5 text-center"
+      style={{
+        fontFamily: BANNER_FONT_FAMILY,
+        fontWeight: 800,
+        letterSpacing: '0.06em',
+      }}
+    >
+      <span
+        className="uppercase text-sm leading-tight truncate max-w-full"
+        style={{ opacity: 0.7 }}
+      >
+        {top}
+      </span>
+      {bottom && (
+        <span
+          className="uppercase text-xl leading-none truncate max-w-full"
+          style={{ color: 'var(--overlay-accent)' }}
+        >
+          {bottom}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// TeamRow — team logo (or short-name chip) + name stack + serve dot
 // ---------------------------------------------------------------------------
 
 interface TeamRowProps {
   name: string
   shortName: string
   color: string
+  logoUrl: string
   players: { name: string }[]
   serving: boolean
   winner: boolean
@@ -183,6 +269,7 @@ function TeamRow({
   name,
   shortName,
   color,
+  logoUrl,
   players,
   serving,
   winner,
@@ -192,34 +279,30 @@ function TeamRow({
 
   return (
     <div className="flex items-stretch">
+      {/* Team color accent bar — identical to NCPA reference visual hierarchy */}
       <div
         className="w-1.5 shrink-0"
         style={{ background: color || 'var(--overlay-accent)' }}
         aria-hidden="true"
       />
-      <div className="flex-1 min-w-0 flex items-center gap-3 px-4 py-3">
+      {/* Logo slot (or abbreviation chip fallback). Fixed width keeps column
+          alignment identical whether the image loads, breaks, or is absent. */}
+      <div className="shrink-0 flex items-center justify-center px-3 py-3">
+        <TeamLogoOrChip logoUrl={logoUrl} shortName={shortName} name={name} />
+      </div>
+      <div className="flex-1 min-w-0 flex items-center gap-3 py-3 pr-4">
         <ServeDot visible={serving} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <span
               className="text-xl font-bold uppercase leading-none truncate"
-              style={{
-                letterSpacing: '0.02em',
-              }}
+              style={{ letterSpacing: '0.02em' }}
             >
               {displayName}
             </span>
-            {shortName && shortName !== displayName && (
-              <span
-                className="text-xs font-semibold uppercase tracking-widest opacity-70"
-                style={{ fontFamily: BODY_FONT_FAMILY }}
-              >
-                {shortName}
-              </span>
-            )}
             {winner && (
               <span
-                className="text-[10px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded"
+                className="text-[10px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded shrink-0"
                 style={{
                   background: 'var(--overlay-accent)',
                   color: 'var(--overlay-primary)',
@@ -242,6 +325,81 @@ function TeamRow({
       </div>
     </div>
   )
+}
+
+/**
+ * Render the team logo if available, else an abbreviation chip built from
+ * short_name / first-letter fallback. The outer size is fixed so the layout
+ * is identical in all three states (image / chip / broken-image chip).
+ */
+function TeamLogoOrChip({
+  logoUrl,
+  shortName,
+  name,
+}: {
+  logoUrl: string
+  shortName: string
+  name: string
+}) {
+  const [imgBroken, setImgBroken] = useState(false)
+  const showImg = logoUrl && !imgBroken
+
+  if (showImg) {
+    return (
+      <img
+        src={logoUrl}
+        alt={`${name || shortName || 'Team'} logo`}
+        draggable={false}
+        onError={() => setImgBroken(true)}
+        className="pointer-events-none select-none"
+        style={{
+          width: '48px',
+          height: '48px',
+          objectFit: 'contain',
+        }}
+      />
+    )
+  }
+
+  return <AbbreviationChip shortName={shortName} name={name} />
+}
+
+/** Fixed-size chip showing the short_name or computed initials. */
+function AbbreviationChip({
+  shortName,
+  name,
+}: {
+  shortName: string
+  name: string
+}) {
+  const label = shortName?.trim() || initialsFromName(name)
+  return (
+    <span
+      className="flex items-center justify-center text-xs font-bold tracking-wider uppercase"
+      style={{
+        width: '48px',
+        height: '48px',
+        border: '2px solid rgba(255,255,255,0.25)',
+        borderRadius: 'var(--overlay-radius)',
+        background: 'rgba(0,0,0,0.35)',
+        color: 'var(--overlay-text)',
+        fontFamily: BANNER_FONT_FAMILY,
+      }}
+      aria-hidden="true"
+    >
+      {label || '—'}
+    </span>
+  )
+}
+
+/** Best-effort initials from a full team name. Matches ClassicScoreboard. */
+function initialsFromName(name: string): string {
+  if (!name) return ''
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+  return name.slice(0, 3).toUpperCase()
 }
 
 function ServeDot({ visible }: { visible: boolean }) {
@@ -281,9 +439,7 @@ function ScoreCell({ value, highlight }: { value: number; highlight: boolean }) 
   return (
     <div
       className="flex-1 flex items-center justify-center px-5"
-      style={{
-        minHeight: '58px',
-      }}
+      style={{ minHeight: '58px' }}
     >
       <span
         className="tabular-nums leading-none"
@@ -358,10 +514,7 @@ function BottomStrip({
   t2Remaining,
 }: BottomStripProps) {
   const showExtras =
-    paused ||
-    games.length > 0 ||
-    t1Remaining < 2 ||
-    t2Remaining < 2
+    paused || games.length > 0 || t1Remaining < 2 || t2Remaining < 2
 
   return (
     <div
