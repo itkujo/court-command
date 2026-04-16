@@ -185,6 +185,70 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Multi-stage Docker build with health checks
 - Docker Compose for development (db + redis) and full stack deployment
 
+### Frontend Phase 1: Shell, Auth, Registry
+
+- Vite + React 19 + TanStack Router + TanStack Query + Tailwind CSS v4
+- Toggleable sidebar app shell (collapsed 56px icon rail / expanded 220px, mobile overlay mode)
+- Centered-card auth pages (Login, Register)
+- Registry CRUD for Players, Teams, Organizations, Venues, Courts
+- Shared primitive components (Button, Input, Select, DateInput, Textarea, FormField, Badge, Avatar, Skeleton)
+- Compound components (Modal, ConfirmDialog, Toast, Table, Card, SearchInput, EmptyState, ErrorBoundary, ThemeToggle, Pagination)
+- Dark/light theme with system preference + user override (CSS custom properties)
+- Community theme presets (Catppuccin, Dracula, Nord, Gruvbox, Tokyo Night, One Dark, Solarized)
+- AdSlot component for non-overlay, non-settings pages (6 IAB sizes)
+
+### Frontend Phase 2: Tournaments & Leagues
+
+- Tournament create wizard (3-step: Basic Info → Divisions → Review)
+- Tournament detail hub with tabbed layout (Overview, Divisions, Registrations, Announcements, Settings, Courts)
+- Division detail (Overview, Registrations, Seeds, Bracket/Pools)
+- League detail hub (Overview, Seasons, Division Templates, Registrations, Announcements)
+- Season detail with tournaments list + confirmations
+- Registration management (approve/reject/waitlist, bulk no-show, check-in)
+- Tournament clone feature
+- Shared components (InfoRow, StatusBadge, TabLayout, ImageUpload, RichTextDisplay, SponsorEditor, ScoringPresetPicker, VenuePicker)
+- Inline file upload on Phase 1 entity forms (team logo, org logo, venue logo/photo/map)
+
+### Frontend Phase 3: Scoring & Match Operations
+
+- Referee console with mobile-first portrait + tablet landscape layouts
+- Scorekeeper console (simplified ref with auto-confirm)
+- Open-pool court model (any ref can enter any court, soft lock only)
+- Scoring primitives (MatchScoreboard, ScoringButtons, ServeIndicator, ScoreCall, GameHistoryBar, TimeoutBadge)
+- Keyboard shortcuts (1/2 point, S side-out, Z undo, T timeout) with input-focus guard
+- Haptic + sound feedback (50ms vibrate, synthesized 100ms WebAudio tick), toggleable
+- WebSocket hook with exponential reconnect (1s→30s capped) and attempt counter
+- Score preferences persisted to localStorage (`cc_scoring_prefs`)
+- Game-over + match-over confirmation modals with re-prompt-on-continue
+- Match-complete banner
+- Score override modal (role-gated: platform_admin, tournament_director, head_referee)
+- Match detail page (public, optional auth) with hero + info panel + events timeline
+- OBS scoreboard page (transparent background, no chrome)
+- Match series detail (read-only for team-format MLP-style events)
+- Events timeline (filterable, expandable, color-coded borders)
+- Disconnect banner with attempt counter
+- Quick Match (ephemeral 24hr matches, no tournament context)
+- Scoring settings page (keyboard/haptic/sound toggles)
+- Tournament Courts tab + inline Score buttons on bracket match cards
+
+### Known Deferred Defects (Phase 3)
+
+The Phase 3 frontend passed both spec and code-quality reviews with items marked for remediation. The following items were **not** fully resolved in the Phase 3 remediation batch (commits `d0b665b..beb282a`) and are scheduled for fold-in as Phase 4A Task 1:
+
+- **CR-1** Event type casing inconsistent (backend writers vs frontend `EventType` union)
+- **CR-2** `MatchEventResponse` wire shape mismatch (`timestamp` / `score_snapshot`)
+- **CR-3** Timeout event type typo (reader queries `"TIMEOUT_CALLED"`, writer emits `"timeout"`)
+- **CR-4** Double enrichment on scoring hot path (~10 extra DB round-trips per point)
+- **CR-6** Platform-wide `ListCourts` returns unenriched courts (no `active_match`)
+- **CR-7** `MatchResponse.ScoredByName` declared but never populated
+- **CR-8** Winner inference tie case falls through silently (match committed without `winner_team_id`)
+
+Deferred as Phase 7 tech debt:
+- **CR-5** Structured logging in `enrichedMatchResponse` error branches
+- **I-7** Test backfill for contract invariants (no tests accompanied the remediation commits)
+
+See `docs/superpowers/lessons/2026-04-16-phase-3-review-defects.md` for prevention checklist.
+
 ---
 
 ## [v1] - Legacy (Reference Only)
