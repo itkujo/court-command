@@ -1,0 +1,108 @@
+import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import { useGetTournament, useListDivisions } from './hooks'
+import { TabLayout } from '../../components/TabLayout'
+import { Skeleton } from '../../components/Skeleton'
+import { EmptyState } from '../../components/EmptyState'
+import { Button } from '../../components/Button'
+import { StatusBadge } from '../../components/StatusBadge'
+import { TournamentOverview } from './TournamentOverview'
+import { TournamentSettings } from './TournamentSettings'
+import { DivisionList } from './DivisionList'
+import { RegistrationTable } from './RegistrationTable'
+import { AnnouncementFeed } from './AnnouncementFeed'
+import { ChevronLeft } from 'lucide-react'
+
+interface TournamentDetailProps {
+  tournamentId: string
+}
+
+export function TournamentDetail({ tournamentId }: TournamentDetailProps) {
+  const [activeTab, setActiveTab] = useState('overview')
+  const { data: tournament, isLoading, error } = useGetTournament(tournamentId)
+  const { data: divisions } = useListDivisions(tournamentId)
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    )
+  }
+
+  if (error || !tournament) {
+    return (
+      <EmptyState
+        title="Failed to load tournament"
+        description={(error as Error)?.message || 'Tournament not found.'}
+        action={
+          <Link to="/tournaments">
+            <Button variant="secondary">Back to Tournaments</Button>
+          </Link>
+        }
+      />
+    )
+  }
+
+  const divisionCount = divisions?.length ?? 0
+
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'divisions', label: 'Divisions', count: divisionCount },
+    { id: 'registrations', label: 'Registrations' },
+    { id: 'announcements', label: 'Announcements' },
+    { id: 'settings', label: 'Settings' },
+  ]
+
+  return (
+    <div>
+      <div className="mb-6">
+        <Link
+          to="/tournaments"
+          className="inline-flex items-center gap-1 text-sm text-(--color-text-secondary) hover:text-(--color-text-primary) mb-3"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to Tournaments
+        </Link>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-(--color-text-primary)">
+            {tournament.name}
+          </h1>
+          <StatusBadge status={tournament.status} type="tournament" />
+        </div>
+      </div>
+
+      <TabLayout tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
+        {activeTab === 'overview' && (
+          <TournamentOverview
+            tournament={tournament}
+            divisions={divisions ?? []}
+          />
+        )}
+        {activeTab === 'divisions' && (
+          <DivisionList
+            tournamentId={tournamentId}
+            divisions={divisions ?? []}
+          />
+        )}
+        {activeTab === 'registrations' && (
+          <RegistrationTable
+            tournamentId={tournamentId}
+            divisions={divisions ?? []}
+          />
+        )}
+        {activeTab === 'announcements' && (
+          <AnnouncementFeed tournamentId={tournamentId} />
+        )}
+        {activeTab === 'settings' && (
+          <TournamentSettings
+            tournament={tournament}
+            tournamentId={tournamentId}
+          />
+        )}
+      </TabLayout>
+    </div>
+  )
+}
