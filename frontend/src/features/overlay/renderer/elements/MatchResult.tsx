@@ -13,21 +13,25 @@
 // defense-in-depth).
 
 import { useEffect, useState } from 'react'
-import type { MatchResultConfig, OverlayData } from '../../types'
+import type { MatchResultConfig, OverlayData, OverlayTrigger } from '../../types'
 import { MATCH_STATUS } from '../../contract'
 
 export interface MatchResultProps {
   data: OverlayData
   config: MatchResultConfig
+  /** Optional one-shot trigger from the Control Panel Triggers tab. */
+  trigger?: OverlayTrigger | null
 }
 
 type Phase = 'idle' | 'entering' | 'shown' | 'leaving'
 
-export function MatchResult({ data, config }: MatchResultProps) {
+export function MatchResult({ data, config, trigger }: MatchResultProps) {
   const [phase, setPhase] = useState<Phase>('idle')
 
   const isComplete = data.match_status === MATCH_STATUS.COMPLETED
-  const isActive = config.visible && isComplete
+  // A trigger force-fires the banner regardless of match status so
+  // operators can preview / replay the result screen on demand.
+  const isActive = trigger != null || (config.visible && isComplete)
 
   const showDelayMs = Math.max(0, (config.auto_show_delay_seconds ?? 0) * 1000)
   const dismissMs =

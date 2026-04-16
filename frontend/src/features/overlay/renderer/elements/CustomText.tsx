@@ -7,10 +7,12 @@
 // Default: 'bottom'.
 
 import { useEffect, useState } from 'react'
-import type { CustomTextConfig } from '../../types'
+import type { CustomTextConfig, OverlayTrigger } from '../../types'
 
 export interface CustomTextProps {
   config: CustomTextConfig
+  /** Optional one-shot trigger from the Control Panel Triggers tab. */
+  trigger?: OverlayTrigger | null
 }
 
 type Zone =
@@ -22,22 +24,29 @@ type Zone =
   | 'bottom-left'
   | 'bottom-right'
 
-export function CustomText({ config }: CustomTextProps) {
+export function CustomText({ config, trigger }: CustomTextProps) {
   const [shown, setShown] = useState(false)
-  const text = config.text?.trim() ?? ''
+
+  // Trigger payload takes precedence over config when present.
+  const payloadText = typeof trigger?.payload?.text === 'string' ? trigger.payload.text : null
+  const payloadZone =
+    typeof trigger?.payload?.zone === 'string' ? (trigger.payload.zone as string) : null
+  const rawText = payloadText ?? config.text ?? ''
+  const text = rawText.trim()
+  const effectiveVisible = trigger != null || config.visible
 
   useEffect(() => {
-    if (!config.visible || !text) {
+    if (!effectiveVisible || !text) {
       setShown(false)
       return
     }
     const t = setTimeout(() => setShown(true), 16)
     return () => clearTimeout(t)
-  }, [config.visible, text])
+  }, [effectiveVisible, text])
 
-  if (!config.visible || !text) return null
+  if (!effectiveVisible || !text) return null
 
-  const zone = normalizeZone(config.zone)
+  const zone = normalizeZone(payloadZone ?? config.zone)
 
   return (
     <div

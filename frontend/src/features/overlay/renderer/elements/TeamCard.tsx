@@ -7,26 +7,44 @@
 // Default dismiss: MANUAL (same contract as PlayerCard).
 
 import { useEffect, useState } from 'react'
-import type { OverlayData, OverlayTeamData, TeamCardConfig } from '../../types'
+import type {
+  OverlayData,
+  OverlayTeamData,
+  OverlayTrigger,
+  TeamCardConfig,
+} from '../../types'
 
 export interface TeamCardProps {
   data: OverlayData
   config: TeamCardConfig
+  /** Optional one-shot trigger from the Control Panel Triggers tab. */
+  trigger?: OverlayTrigger | null
 }
 
-export function TeamCard({ data, config }: TeamCardProps) {
+export function TeamCard({ data, config, trigger }: TeamCardProps) {
   const [shown, setShown] = useState(false)
+  const effectiveVisible = trigger != null || config.visible
 
   useEffect(() => {
-    if (!config.visible) {
+    if (!effectiveVisible) {
       setShown(false)
       return
     }
     const t = setTimeout(() => setShown(true), 16)
     return () => clearTimeout(t)
-  }, [config.visible])
+  }, [effectiveVisible])
 
-  if (!config.visible) return null
+  if (!effectiveVisible) return null
+
+  // If trigger specifies team_id, render only that team's column full-width;
+  // otherwise show both teams side-by-side.
+  const teamIdRaw = trigger?.payload?.team_id
+  const onlyTeam =
+    teamIdRaw === '1' || teamIdRaw === 1
+      ? data.team_1
+      : teamIdRaw === '2' || teamIdRaw === 2
+        ? data.team_2
+        : null
 
   return (
     <div
@@ -46,13 +64,19 @@ export function TeamCard({ data, config }: TeamCardProps) {
             'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 250ms ease',
         }}
       >
-        <TeamColumn team={data.team_1} side="left" />
-        <div
-          className="w-px"
-          style={{ background: 'rgba(255,255,255,0.15)' }}
-          aria-hidden="true"
-        />
-        <TeamColumn team={data.team_2} side="right" />
+        {onlyTeam ? (
+          <TeamColumn team={onlyTeam} side="left" />
+        ) : (
+          <>
+            <TeamColumn team={data.team_1} side="left" />
+            <div
+              className="w-px"
+              style={{ background: 'rgba(255,255,255,0.15)' }}
+              aria-hidden="true"
+            />
+            <TeamColumn team={data.team_2} side="right" />
+          </>
+        )}
       </div>
     </div>
   )

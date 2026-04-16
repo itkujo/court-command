@@ -13,11 +13,13 @@
 //   6. All element components return null when config.visible===false
 //      so on-air state is silent-by-default.
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { OverlayThemeProvider } from './ThemeProvider'
 import { OverlayWatermark } from './OverlayWatermark'
 import { useOverlayConfig, useOverlayDataBySlug } from './hooks'
 import { useOverlayWebSocket } from './useOverlayWebSocket'
+import { useTriggerQueue } from './useTriggerQueue'
+import type { OverlayTrigger, TriggerKind } from './types'
 import {
   BracketSnapshot,
   ComingUpNext,
@@ -108,6 +110,47 @@ export function OverlayRenderer({
       overrides={config.color_overrides ?? null}
       fullscreen={fullscreen}
     >
+      <RenderedOverlay
+        courtID={courtID}
+        data={data}
+        elements={elements}
+      />
+      {!isLicensed && <OverlayWatermark />}
+    </OverlayThemeProvider>
+  )
+}
+
+/**
+ * Inner body, split out so we can run useTriggerQueue only once the
+ * courtID is resolved. Kept in the same file because it shares the
+ * same rendering contract and saves a round-trip through an extra
+ * module boundary.
+ */
+function RenderedOverlay({
+  courtID,
+  data,
+  elements,
+}: {
+  courtID: number
+  data: NonNullable<ReturnType<typeof useOverlayDataBySlug>['overlayQuery']['data']>
+  elements: NonNullable<ReturnType<typeof useOverlayConfig>['data']>['elements']
+}) {
+  const queue = useTriggerQueue(courtID)
+
+  // Pick the newest trigger of each kind (triggers arrive head-first).
+  const triggerByKind = useMemo(() => {
+    const pick = (kind: TriggerKind): OverlayTrigger | null =>
+      queue.triggers.find((t) => t.kind === kind) ?? null
+    return {
+      player_card: pick('player_card'),
+      team_card: pick('team_card'),
+      match_result: pick('match_result'),
+      custom_text: pick('custom_text'),
+    }
+  }, [queue.triggers])
+
+  return (
+    <>
       {/* Fixed positioning elements (corners + banners) */}
       <Scoreboard data={data} config={elements.scoreboard} />
       <LowerThird data={data} config={elements.lower_third} />
@@ -116,19 +159,29 @@ export function OverlayRenderer({
       <ComingUpNext data={data} config={elements.coming_up_next} />
       <SeriesScore data={data} config={elements.series_score} />
 
-      {/* Card-family (center-bottom overlays) */}
-      <PlayerCard data={data} config={elements.player_card} />
-      <TeamCard data={data} config={elements.team_card} />
+      {/* Card-family (center-bottom overlays) — trigger-driven */}
+      <PlayerCard
+        data={data}
+        config={elements.player_card}
+        trigger={triggerByKind.player_card}
+      />
+      <TeamCard
+        data={data}
+        config={elements.team_card}
+        trigger={triggerByKind.team_card}
+      />
 
       {/* Full-center narrative elements */}
       <BracketSnapshot data={data} config={elements.bracket_snapshot} />
       <PoolStandings data={data} config={elements.pool_standings} />
-      <MatchResult data={data} config={elements.match_result} />
+      <MatchResult
+        data={data}
+        config={elements.match_result}
+        trigger={triggerByKind.match_result}
+      />
 
-      {/* Operator free-form */}
-      <CustomText config={elements.custom_text} />
-
-      {!isLicensed && <OverlayWatermark />}
-    </OverlayThemeProvider>
+      {/* Operator free-form — trigger-driven */}
+      <CustomText config={elements.custom_text} trigger={triggerByKind.custom_text} />
+    </>
   )
 }
