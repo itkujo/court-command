@@ -20,6 +20,9 @@ const PUBLIC_ROUTE_PATTERNS: RegExp[] = [
 // Used for embed/OBS targets and pre-auth pages.
 const NO_SHELL_PATTERNS: RegExp[] = [
   /^\/matches\/[^/]+\/scoreboard$/,
+  // Phase 4 broadcast overlay — renders inside OBS browser source
+  /^\/overlay\/court\/[^/]+$/,
+  /^\/overlay\/demo\/[^/]+$/,
 ]
 
 export const Route = createRootRoute({
