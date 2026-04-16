@@ -24,8 +24,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!isAuthenticated) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return <Navigate to={'/login' as any} search={{ redirect: location.pathname } as any} />
+    return <Navigate to="/login" search={{ redirect: location.pathname }} />
   }
 
   return <>{children}</>
