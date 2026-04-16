@@ -12,7 +12,7 @@
 // Grouping: elements are organized by visual zone so the operator can
 // scan the UI and understand where each element lives on-screen.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 import { Input } from '../../../components/Input'
 import { Select } from '../../../components/Select'
@@ -196,119 +196,211 @@ export function ElementsTab({ courtID, config, loading }: ElementsTabProps) {
     <div className="space-y-8">
       <SaveIndicator pending={updateElements.isPending} />
 
-      {ELEMENT_GROUPS.map((group) => (
-        <section key={group.label} aria-labelledby={`grp-${group.label}`}>
-          <div className="mb-3">
-            <h2
-              id={`grp-${group.label}`}
-              className="text-sm font-semibold text-(--color-text-primary) uppercase tracking-wider"
-            >
-              {group.label}
-            </h2>
-            <p className="text-xs text-(--color-text-secondary) mt-0.5">
-              {group.description}
-            </p>
-          </div>
-          <div className="space-y-2">
-            {group.keys.map((key) => (
-              <ElementRow
-                key={key}
-                elementKey={key}
-                config={draft[key]}
-                onToggle={(visible) =>
-                  patch(key, { visible } as Partial<ElementsConfig[typeof key]>)
-                }
-                onPatch={(p) => patch(key, p)}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {/* Top: scannable toggle grid grouped by zone. */}
+      <section aria-label="Element visibility">
+        <header className="mb-3">
+          <h2 className="text-sm font-semibold text-(--color-text-primary) uppercase tracking-wider">
+            Visibility
+          </h2>
+          <p className="text-xs text-(--color-text-secondary) mt-0.5">
+            Toggle elements on or off. Changes go live to the OBS view
+            immediately after the debounce flushes.
+          </p>
+        </header>
+
+        <div className="space-y-5">
+          {ELEMENT_GROUPS.map((group) => (
+            <div key={group.label}>
+              <div className="mb-2 flex items-baseline gap-2">
+                <h3 className="text-xs font-semibold text-(--color-text-secondary) uppercase tracking-wider">
+                  {group.label}
+                </h3>
+                <p className="text-xs text-(--color-text-muted) truncate">
+                  {group.description}
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {group.keys.map((key) => (
+                  <ToggleCell
+                    key={key}
+                    elementKey={key}
+                    visible={draft[key].visible}
+                    hasKnobs={elementHasKnobs(key)}
+                    onToggle={(visible) =>
+                      patch(key, { visible } as Partial<
+                        ElementsConfig[typeof key]
+                      >)
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Bottom: collapsibles for elements that have knobs. */}
+      <section aria-label="Element settings">
+        <header className="mb-3">
+          <h2 className="text-sm font-semibold text-(--color-text-primary) uppercase tracking-wider">
+            Settings
+          </h2>
+          <p className="text-xs text-(--color-text-secondary) mt-0.5">
+            Expand an element below to adjust its knobs (rotation speed,
+            auto-dismiss timers, default text).
+          </p>
+        </header>
+        <div className="space-y-2">
+          {ALL_KEYS_FLAT.filter(elementHasKnobs).map((key) => (
+            <SettingsRow
+              key={key}
+              elementKey={key}
+              config={draft[key]}
+              onPatch={(p) => patch(key, p)}
+            />
+          ))}
+        </div>
+      </section>
     </div>
   )
 }
 
+// Flat iteration order mirroring ELEMENT_GROUPS so settings appear in
+// the same visual order as the toggle grid above.
+const ALL_KEYS_FLAT: ElementKey[] = ELEMENT_GROUPS.flatMap((g) => g.keys)
+
 // ---------------------------------------------------------------------------
-// Per-element row with expand/collapse for knobs
+// ToggleCell — compact visibility toggle used in the grid
 // ---------------------------------------------------------------------------
 
-interface ElementRowProps<K extends ElementKey> {
-  elementKey: K
-  config: ElementsConfig[K]
+interface ToggleCellProps {
+  elementKey: ElementKey
+  visible: boolean
+  hasKnobs: boolean
   onToggle: (visible: boolean) => void
-  onPatch: (patch: Partial<ElementsConfig[K]>) => void
 }
 
-function ElementRow<K extends ElementKey>({
+function ToggleCell({
   elementKey,
-  config,
+  visible,
+  hasKnobs,
   onToggle,
-  onPatch,
-}: ElementRowProps<K>) {
-  const [expanded, setExpanded] = useState(false)
-  const hasKnobs = useMemo(() => elementHasKnobs(elementKey), [elementKey])
-  const rowId = `elem-${elementKey}`
-
+}: ToggleCellProps) {
+  const rowId = `toggle-${elementKey}`
   return (
     <div
       className={cn(
-        'rounded-lg border border-(--color-border) transition-colors',
-        config.visible
-          ? 'bg-(--color-bg-secondary)'
-          : 'bg-(--color-bg-primary)',
+        'flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors',
+        visible
+          ? 'border-cyan-500/40 bg-(--color-bg-secondary)'
+          : 'border-(--color-border) bg-(--color-bg-primary)',
       )}
     >
-      <div className="flex items-center gap-3 p-3">
-        {/* Expand toggle */}
-        {hasKnobs ? (
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="flex h-6 w-6 items-center justify-center rounded text-(--color-text-secondary) hover:bg-(--color-bg-hover) hover:text-(--color-text-primary)"
-            aria-expanded={expanded}
-            aria-controls={`${rowId}-panel`}
-            aria-label={expanded ? 'Collapse settings' : 'Expand settings'}
-          >
-            {expanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </button>
-        ) : (
-          <div className="h-6 w-6" aria-hidden="true" />
-        )}
+      <div className="flex-1 min-w-0">
+        <label
+          htmlFor={rowId}
+          className="flex items-center gap-1.5 text-sm font-medium text-(--color-text-primary) cursor-pointer"
+        >
+          <span className="truncate">{ELEMENT_LABELS[elementKey]}</span>
+          {hasKnobs && (
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400/70 flex-shrink-0"
+              aria-label="Has additional settings"
+              title="Has additional settings"
+            />
+          )}
+        </label>
+        <p className="text-xs text-(--color-text-muted) mt-0.5 truncate">
+          {ELEMENT_DESCRIPTIONS[elementKey]}
+        </p>
+      </div>
+      <Toggle
+        id={rowId}
+        checked={visible}
+        onChange={onToggle}
+        label={`Toggle ${ELEMENT_LABELS[elementKey]}`}
+      />
+    </div>
+  )
+}
 
+// ---------------------------------------------------------------------------
+// SettingsRow — collapsible per-element knobs (visibility lives in grid above)
+// ---------------------------------------------------------------------------
+
+interface SettingsRowProps<K extends ElementKey> {
+  elementKey: K
+  config: ElementsConfig[K]
+  onPatch: (patch: Partial<ElementsConfig[K]>) => void
+}
+
+function SettingsRow<K extends ElementKey>({
+  elementKey,
+  config,
+  onPatch,
+}: SettingsRowProps<K>) {
+  const [expanded, setExpanded] = useState(false)
+  const rowId = `settings-${elementKey}`
+
+  return (
+    <div className="rounded-lg border border-(--color-border) bg-(--color-bg-primary)">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        aria-controls={`${rowId}-panel`}
+        className="flex w-full items-center gap-3 p-3 text-left hover:bg-(--color-bg-hover) rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent)"
+      >
+        <div className="flex h-6 w-6 items-center justify-center text-(--color-text-secondary) flex-shrink-0">
+          {expanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </div>
         <div className="flex-1 min-w-0">
-          <label
-            htmlFor={`${rowId}-visible`}
-            className="block text-sm font-medium text-(--color-text-primary) cursor-pointer"
-          >
+          <div className="text-sm font-medium text-(--color-text-primary)">
             {ELEMENT_LABELS[elementKey]}
-          </label>
+          </div>
           <p className="text-xs text-(--color-text-secondary) mt-0.5 truncate">
-            {ELEMENT_DESCRIPTIONS[elementKey]}
+            {settingsHint(elementKey)}
           </p>
         </div>
+      </button>
 
-        <Toggle
-          id={`${rowId}-visible`}
-          checked={config.visible}
-          onChange={onToggle}
-          label={`Toggle ${ELEMENT_LABELS[elementKey]}`}
-        />
-      </div>
-
-      {hasKnobs && expanded && (
+      {expanded && (
         <div
           id={`${rowId}-panel`}
-          className="border-t border-(--color-border) p-4 bg-(--color-bg-primary)"
+          className="border-t border-(--color-border) p-4"
         >
-          <ElementKnobs elementKey={elementKey} config={config} onPatch={onPatch} />
+          <ElementKnobs
+            elementKey={elementKey}
+            config={config}
+            onPatch={onPatch}
+          />
         </div>
       )}
     </div>
   )
+}
+
+// Short descriptor shown on the collapsed settings row summarizing
+// what the operator can tune.
+function settingsHint(key: ElementKey): string {
+  switch (key) {
+    case ELEMENT_KEY.SPONSOR_BUG:
+      return 'Rotation cadence · auto-animate'
+    case ELEMENT_KEY.PLAYER_CARD:
+      return 'Default auto-dismiss timer'
+    case ELEMENT_KEY.TEAM_CARD:
+      return 'Default auto-dismiss timer'
+    case ELEMENT_KEY.MATCH_RESULT:
+      return 'Show delay · dismiss timer'
+    case ELEMENT_KEY.CUSTOM_TEXT:
+      return 'Default text · placement zone · auto-dismiss'
+    default:
+      return 'No additional settings'
+  }
 }
 
 // ---------------------------------------------------------------------------

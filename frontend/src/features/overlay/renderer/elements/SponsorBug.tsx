@@ -53,7 +53,13 @@ export function SponsorBug({ data, config }: SponsorBugProps) {
     }
   }, [activeIndex, logos.length])
 
-  if (!config.visible || logos.length === 0) return null
+  if (!config.visible) return null
+
+  // No logos to rotate. On-air we stay silent (never show an empty
+  // sponsor chip on broadcast). In the control-panel preview we
+  // surface a dashed placeholder so operators can see the element is
+  // enabled and know where to drop a logo.
+  if (logos.length === 0) return <SponsorBugPlaceholder />
 
   const active = logos[activeIndex]
   if (!active) return null
@@ -116,6 +122,43 @@ function SponsorLogoSlot({ logo }: { logo: SponsorLogo }) {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Preview-only placeholder. Renders a dashed "Add sponsor logos" chip in the
+// top-right so operators can see the sponsor bug is enabled while sponsor
+// data is still empty. Invisible on real OBS output.
+// -----------------------------------------------------------------------------
+
+function SponsorBugPlaceholder() {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    // Walk up to find a PreviewPane container. Only render inside it.
+    setVisible(!!el.closest('[data-overlay-preview="true"]'))
+  }, [])
+
+  return (
+    <div
+      ref={ref}
+      aria-hidden="true"
+      className="absolute top-6 right-6 z-20 flex items-center gap-3 px-4 py-2.5 border-2 border-dashed text-xs uppercase tracking-widest font-bold"
+      style={{
+        borderColor: 'var(--overlay-accent)',
+        color: 'var(--overlay-text)',
+        borderRadius: 'var(--overlay-radius)',
+        fontFamily: 'var(--overlay-font-family)',
+        opacity: visible ? 0.6 : 0,
+        pointerEvents: 'none',
+      }}
+    >
+      <span style={{ color: 'var(--overlay-accent)' }}>Sponsor</span>
+      <span className="opacity-70">— add logos</span>
     </div>
   )
 }

@@ -8,18 +8,28 @@
 //
 // Design notes:
 //   - Fixed design resolution: 1920 × 1080 (target broadcast size)
-//   - Transparent checkered background mimics the OBS canvas so
-//     operators can see the overlay composited on "nothing".
+//   - Backdrop cycles through transparent (checkered) → black → white
+//     so operators can sanity-check contrast against any expected
+//     broadcast background.
 //   - pointer-events: none on the renderer so nested tab controls
 //     below remain focusable.
 //   - ResizeObserver recomputes scale on every container resize,
 //     keeping the preview crisp on tablets, laptops, and ultrawides.
 
+import { Contrast } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { OverlayRenderer } from './OverlayRenderer'
 
 const DESIGN_WIDTH = 1920
 const DESIGN_HEIGHT = 1080
+
+type PreviewBackdrop = 'transparent' | 'black' | 'white'
+const BACKDROP_ORDER: PreviewBackdrop[] = ['transparent', 'black', 'white']
+const BACKDROP_LABEL: Record<PreviewBackdrop, string> = {
+  transparent: 'Transparent',
+  black: 'Black',
+  white: 'White',
+}
 
 export interface PreviewPaneProps {
   slug: string
@@ -33,6 +43,7 @@ export interface PreviewPaneProps {
 export function PreviewPane({ slug, token = null, demo = false, className }: PreviewPaneProps) {
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [scale, setScale] = useState(1)
+  const [backdrop, setBackdrop] = useBackdrop(slug)
 
   // Recompute scale on mount + on every container resize.
   useLayoutEffect(() => {
@@ -61,20 +72,26 @@ export function PreviewPane({ slug, token = null, demo = false, className }: Pre
     }
   }, [])
 
+  const cycleBackdrop = () => {
+    const next = BACKDROP_ORDER[(BACKDROP_ORDER.indexOf(backdrop) + 1) % BACKDROP_ORDER.length]
+    setBackdrop(next)
+  }
+
   return (
     <div
       ref={frameRef}
+      data-overlay-preview="true"
+      data-overlay-backdrop={backdrop}
       className={
         'relative w-full overflow-hidden rounded-lg border border-(--color-border) ' +
-        'preview-checkered ' +
+        (backdrop === 'transparent' ? 'preview-checkered ' : '') +
         (className ?? '')
       }
-      // Maintain 16:9 aspect via inline style so the container has
-      // deterministic dimensions for the ResizeObserver math above.
-      style={{ aspectRatio: '16 / 9' }}
+      style={backdropStyle(backdrop)}
       aria-label="Overlay preview"
     >
-      {/* Checkered background (transparency indicator) */}
+      {/* Checkered background CSS (only used for the transparent mode,
+          but safe to keep mounted — selector is class-scoped). */}
       <PreviewCheckerStyle />
 
       {/* The 1920×1080 "virtual" canvas, scaled via CSS transform. */}
@@ -98,10 +115,73 @@ export function PreviewPane({ slug, token = null, demo = false, className }: Pre
         />
       </div>
 
+      {/* Backdrop cycler (top-right, small, always visible). */}
+      <BackdropToggle backdrop={backdrop} onCycle={cycleBackdrop} />
+
       {/* Scale readout (bottom-right, muted) so operators know what
           they're looking at. */}
       <ScaleReadout scale={scale} />
     </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Backdrop persistence. Stored in sessionStorage per-slug so operators can
+// flip backgrounds for one court without affecting the rest.
+// -----------------------------------------------------------------------------
+
+function useBackdrop(slug: string) {
+  const storageKey = `cc:overlay:preview-backdrop:${slug}`
+  const [backdrop, setBackdrop] = useState<PreviewBackdrop>(() => {
+    if (typeof window === 'undefined') return 'transparent'
+    const raw = window.sessionStorage.getItem(storageKey)
+    if (raw === 'black' || raw === 'white' || raw === 'transparent') return raw
+    return 'transparent'
+  })
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.sessionStorage.setItem(storageKey, backdrop)
+  }, [storageKey, backdrop])
+
+  return [backdrop, setBackdrop] as const
+}
+
+function backdropStyle(backdrop: PreviewBackdrop): React.CSSProperties {
+  switch (backdrop) {
+    case 'black':
+      return { backgroundColor: '#000000', backgroundImage: 'none' }
+    case 'white':
+      return { backgroundColor: '#ffffff', backgroundImage: 'none' }
+    case 'transparent':
+    default:
+      // .preview-checkered class supplies the background.
+      return {}
+  }
+}
+
+function BackdropToggle({
+  backdrop,
+  onCycle,
+}: {
+  backdrop: PreviewBackdrop
+  onCycle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onCycle}
+      className={
+        'absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded ' +
+        'bg-black/60 text-white/90 hover:bg-black/75 hover:text-white ' +
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent) transition-colors'
+      }
+      aria-label={`Preview backdrop: ${BACKDROP_LABEL[backdrop]} — click to cycle`}
+      title={`Backdrop: ${BACKDROP_LABEL[backdrop]} (click to cycle)`}
+    >
+      <Contrast size={12} />
+      <span>{BACKDROP_LABEL[backdrop]}</span>
+    </button>
   )
 }
 

@@ -127,12 +127,12 @@ export function OverlayThemeProvider({
       // Apply font + text on the wrapper itself so bare text inherits it.
       fontFamily: r.font_family,
       color: r.text,
-      // Chroma-key friendly: explicit transparent backdrop unless the
-      // theme paints something. Callers can override via className.
-      backgroundColor:
-        r.background === 'transparent' || r.background.startsWith('rgba(0,0,0,0')
-          ? 'transparent'
-          : r.background,
+      // Overlays MUST always composite over transparent for OBS chroma
+      // keying. The theme's `background` value is still exposed as
+      // `var(--overlay-bg)` so individual elements (card surfaces,
+      // bugs) can opt into painting a colored backdrop where it makes
+      // design sense, but the wrapper never paints one itself.
+      backgroundColor: 'transparent',
       // When fullscreen, fill the OBS Browser Source viewport.
       ...(fullscreen
         ? {

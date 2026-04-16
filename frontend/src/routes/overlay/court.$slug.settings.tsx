@@ -21,7 +21,17 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { AlertCircle, ExternalLink, Loader2, Lock, Sparkles, X } from 'lucide-react'
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Eye,
+  Loader2,
+  Lock,
+  Sparkles,
+  X,
+} from 'lucide-react'
 import { Button } from '../../components/Button'
 import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { TabLayout } from '../../components/TabLayout'
@@ -142,12 +152,7 @@ function OverlaySettingsPage() {
 
       <FirstRunBanner courtID={courtID} config={config} />
 
-      {/* Preview pane — ~50vh height, falls back to min when viewport short */}
-      <section aria-label="Live overlay preview">
-        <div style={{ height: 'min(50vh, 560px)', minHeight: 280 }}>
-          <PreviewPane slug={slug} className="h-full" />
-        </div>
-      </section>
+      <PreviewSection slug={slug} courtID={courtID} />
 
       {/* Tab controls */}
       <section aria-label="Overlay configuration">
@@ -209,6 +214,90 @@ function Header({ slug, courtID }: { slug: string; courtID: number }) {
         </Link>
       </div>
     </header>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Preview section — collapsible live overlay preview
+//
+// Bordered container with a header strip (Show/Hide toggle) and a
+// height-capped body that hosts PreviewPane. The preview itself uses
+// OverlayRenderer with fullscreen={false}, and PreviewPane applies
+// transform:scale to a 1920×1080 canvas — the transform establishes
+// a new containing block so fixed-positioned overlay elements stay
+// inside the preview instead of leaking to the viewport.
+//
+// Collapse state persists per-court in sessionStorage so an operator's
+// preference survives reloads without bleeding across courts.
+// ---------------------------------------------------------------------------
+
+function PreviewSection({ slug, courtID }: { slug: string; courtID: number }) {
+  const storageKey = `cc:overlay:preview-collapsed:${courtID}`
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    try {
+      const stored = window.sessionStorage.getItem(storageKey)
+      if (stored === '1') setCollapsed(true)
+    } catch {
+      // sessionStorage unavailable — stay expanded.
+    }
+  }, [storageKey])
+
+  const toggle = () => {
+    const next = !collapsed
+    setCollapsed(next)
+    try {
+      window.sessionStorage.setItem(storageKey, next ? '1' : '0')
+    } catch {
+      // ignore storage failures — in-memory state still applies
+    }
+  }
+
+  const regionId = `overlay-preview-${courtID}`
+
+  return (
+    <section
+      aria-label="Live overlay preview"
+      className="rounded-lg border border-(--color-border) overflow-hidden"
+    >
+      <div className="flex items-center justify-between gap-3 px-3 py-2 bg-(--color-bg-secondary) border-b border-(--color-border)">
+        <div className="flex items-center gap-2 text-sm text-(--color-text-secondary)">
+          <Eye className="h-4 w-4" aria-hidden="true" />
+          <span className="font-medium text-(--color-text-primary)">
+            Live preview
+          </span>
+          <span className="text-xs text-(--color-text-muted) hidden sm:inline">
+            · scaled 1920×1080 · synced with OBS view
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={!collapsed}
+          aria-controls={regionId}
+          className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium text-(--color-text-secondary) hover:bg-(--color-bg-hover) hover:text-(--color-text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent)"
+        >
+          {collapsed ? (
+            <>
+              Show <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+            </>
+          ) : (
+            <>
+              Hide <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+            </>
+          )}
+        </button>
+      </div>
+      {!collapsed && (
+        <div
+          id={regionId}
+          style={{ height: 'min(32vh, 360px)', minHeight: 220 }}
+        >
+          <PreviewPane slug={slug} className="h-full" />
+        </div>
+      )}
+    </section>
   )
 }
 
