@@ -3,15 +3,16 @@
 // Overlay Control Panel — broadcast operator surface for tuning the
 // per-court overlay at /overlay/court/$slug/settings.
 //
-// Layout:
-//   ┌─────────────────────────────────────────────┐
-//   │                PreviewPane (50vh)           │
-//   │  (scaled live OverlayRenderer, checkered)   │
-//   ├─────────────────────────────────────────────┤
-//   │  TabLayout:                                  │
-//   │   Elements | Theme | Source | Triggers |    │
-//   │   Overrides | OBS URL                        │
-//   └─────────────────────────────────────────────┘
+// Layout (responsive + operator-overridable):
+//   • Auto (default): side-by-side on lg+ screens, sticky-top stacked below
+//   • Top: force sticky-top layout even on wide screens
+//   • Side: force side-by-side (preview left, tabs right) — lg+ only
+//
+// In side mode, the preview column is position:sticky so it never leaves
+// the operator's view while they scroll the (taller) tabs column on the
+// right. In top mode, the entire preview + tabs share vertical scroll,
+// matching the original Phase 4C layout. SessionStorage persists the
+// choice per-court.
 //
 // Auth gate: only operator-class roles get in. Backend currently only
 // accepts 'player' and 'platform_admin' via CHECK constraint (migration
@@ -25,11 +26,14 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  Columns2,
   ExternalLink,
   Eye,
+  LayoutPanelTop,
   Loader2,
   Lock,
   Sparkles,
+  SquareSplitHorizontal,
   X,
 } from 'lucide-react'
 import { Button } from '../../components/Button'
@@ -67,6 +71,10 @@ type TabId =
   | 'overrides'
   | 'obs_url'
 
+type LayoutMode = 'auto' | 'top' | 'side'
+
+const LAYOUT_MODE_VALUES: readonly LayoutMode[] = ['auto', 'top', 'side']
+
 export const Route = createFileRoute('/overlay/court/$slug/settings')({
   component: OverlaySettingsRoute,
 })
@@ -92,7 +100,7 @@ function OverlaySettingsPage() {
   const { courtID, courtsQuery } = useOverlayDataBySlug(slug, {})
   const configQuery = useOverlayConfig(courtID)
 
-  const tabs = useMemo(
+  const tabs = useMemo<Array<{ id: TabId; label: string }>>(
     () => [
       { id: 'elements', label: 'Elements' },
       { id: 'theme', label: 'Theme' },
@@ -147,73 +155,258 @@ function OverlaySettingsPage() {
   const config = configQuery.data
 
   return (
+    <OverlaySettingsLayout
+      slug={slug}
+      courtID={courtID}
+      config={config}
+      configLoading={configQuery.isLoading}
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Layout shell — owns the layout-mode toggle and composes header + body
+// ---------------------------------------------------------------------------
+
+interface OverlaySettingsLayoutProps {
+  slug: string
+  courtID: number
+  config: CourtOverlayConfig | undefined
+  configLoading: boolean
+  tabs: Array<{ id: TabId; label: string }>
+  activeTab: TabId
+  onTabChange: (id: TabId) => void
+}
+
+function OverlaySettingsLayout({
+  slug,
+  courtID,
+  config,
+  configLoading,
+  tabs,
+  activeTab,
+  onTabChange,
+}: OverlaySettingsLayoutProps) {
+  const [layoutMode, setLayoutMode] = useLayoutMode(courtID)
+
+  // Compose the tabs panel once so both layout branches can reuse it
+  // without duplicating every tab's prop plumbing.
+  const tabsPanel = (
+    <section aria-label="Overlay configuration">
+      <TabLayout
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={(id) => onTabChange(id as TabId)}
+      >
+        {activeTab === 'elements' && (
+          <ElementsTab courtID={courtID} config={config} loading={configLoading} />
+        )}
+        {activeTab === 'theme' && (
+          <ThemeTab courtID={courtID} config={config} loading={configLoading} />
+        )}
+        {activeTab === 'source' && (
+          <SourceTab courtID={courtID} config={config} loading={configLoading} />
+        )}
+        {activeTab === 'triggers' && <TriggersTab courtID={courtID} />}
+        {activeTab === 'overrides' && (
+          <OverridesTab courtID={courtID} config={config} loading={configLoading} />
+        )}
+        {activeTab === 'obs_url' && (
+          <ObsUrlTab slug={slug} courtID={courtID} config={config} loading={configLoading} />
+        )}
+      </TabLayout>
+    </section>
+  )
+
+  const previewSection = <PreviewSection slug={slug} courtID={courtID} />
+
+  // The responsive class string. 'auto' lets Tailwind's lg: prefix
+  // decide; 'top' forces stacked; 'side' forces grid at all widths.
+  //
+  // Why `min-h-0` on grid children: sticky positioning inside a grid
+  // column needs the parent grid to NOT constrain its children's
+  // intrinsic height. Without min-h-0 the tabs column can refuse to
+  // scroll. This is the classic "flexbox/grid scroll" gotcha.
+  const bodyGridClass =
+    layoutMode === 'side'
+      ? 'grid grid-cols-[minmax(0,40%)_minmax(0,1fr)] gap-6 items-start'
+      : layoutMode === 'top'
+        ? 'flex flex-col gap-6'
+        : 'flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,40%)_minmax(0,1fr)] lg:items-start'
+
+  const previewColumnClass =
+    layoutMode === 'side'
+      ? 'sticky top-4 self-start'
+      : layoutMode === 'auto'
+        ? 'lg:sticky lg:top-4 lg:self-start'
+        : ''
+
+  return (
     <div className="space-y-6">
-      <Header slug={slug} courtID={courtID} />
+      <Header
+        slug={slug}
+        courtID={courtID}
+        layoutMode={layoutMode}
+        onLayoutModeChange={setLayoutMode}
+      />
 
       <FirstRunBanner courtID={courtID} config={config} />
 
-      <PreviewSection slug={slug} courtID={courtID} />
-
-      {/* Tab controls */}
-      <section aria-label="Overlay configuration">
-        <TabLayout
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={(id) => setActiveTab(id as TabId)}
-        >
-          {activeTab === 'elements' && (
-            <ElementsTab courtID={courtID} config={config} loading={configQuery.isLoading} />
-          )}
-          {activeTab === 'theme' && (
-            <ThemeTab courtID={courtID} config={config} loading={configQuery.isLoading} />
-          )}
-          {activeTab === 'source' && (
-            <SourceTab courtID={courtID} config={config} loading={configQuery.isLoading} />
-          )}
-          {activeTab === 'triggers' && <TriggersTab courtID={courtID} />}
-          {activeTab === 'overrides' && (
-            <OverridesTab courtID={courtID} config={config} loading={configQuery.isLoading} />
-          )}
-          {activeTab === 'obs_url' && (
-            <ObsUrlTab slug={slug} courtID={courtID} config={config} loading={configQuery.isLoading} />
-          )}
-        </TabLayout>
-      </section>
+      <div className={bodyGridClass}>
+        <div className={previewColumnClass}>{previewSection}</div>
+        <div className="min-w-0">{tabsPanel}</div>
+      </div>
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Header (with "Open OBS View" action)
+// Layout mode hook — sessionStorage-backed per court
 // ---------------------------------------------------------------------------
 
-function Header({ slug, courtID }: { slug: string; courtID: number }) {
+function useLayoutMode(
+  courtID: number,
+): [LayoutMode, (next: LayoutMode) => void] {
+  const storageKey = `cc:overlay:layout-mode:${courtID}`
+
+  const [mode, setMode] = useState<LayoutMode>(() => {
+    if (typeof window === 'undefined') return 'auto'
+    try {
+      const stored = window.sessionStorage.getItem(storageKey)
+      if (stored && (LAYOUT_MODE_VALUES as readonly string[]).includes(stored)) {
+        return stored as LayoutMode
+      }
+    } catch {
+      // sessionStorage unavailable (private mode) — use default
+    }
+    return 'auto'
+  })
+
+  const update = (next: LayoutMode) => {
+    setMode(next)
+    try {
+      window.sessionStorage.setItem(storageKey, next)
+    } catch {
+      // ignore storage failures — in-memory state still applies
+    }
+  }
+
+  return [mode, update]
+}
+
+// ---------------------------------------------------------------------------
+// Header — single-line summary + layout toggle + OBS view link
+// ---------------------------------------------------------------------------
+
+function Header({
+  slug,
+  courtID,
+  layoutMode,
+  onLayoutModeChange,
+}: {
+  slug: string
+  courtID: number
+  layoutMode: LayoutMode
+  onLayoutModeChange: (next: LayoutMode) => void
+}) {
   return (
-    <header className="flex items-start justify-between gap-4 flex-wrap">
-      <div>
-        <div className="text-xs uppercase tracking-wider text-(--color-text-muted) mb-1">
-          Broadcast Overlay · Court #{courtID}
-        </div>
-        <h1 className="text-2xl font-semibold text-(--color-text-primary)">
+    <header className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex items-baseline gap-3 min-w-0">
+        <h1 className="text-xl font-semibold text-(--color-text-primary) truncate">
           {slug}
         </h1>
-        <p className="text-sm text-(--color-text-secondary) mt-1">
-          Configure the per-court OBS overlay. Changes apply live to any
-          connected browser source.
-        </p>
+        <span className="text-xs uppercase tracking-wider text-(--color-text-muted) shrink-0">
+          Court #{courtID}
+        </span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
+        <LayoutModeToggle value={layoutMode} onChange={onLayoutModeChange} />
         <Link
           to="/overlay/court/$slug"
           params={{ slug }}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-(--color-text-secondary) hover:text-(--color-text-primary)"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-(--color-text-secondary) hover:text-(--color-text-primary) px-3 py-1.5 rounded-md border border-(--color-border) hover:bg-(--color-bg-hover)"
         >
           Open OBS view <ExternalLink className="h-3.5 w-3.5" />
         </Link>
       </div>
     </header>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Layout mode toggle — 3-state pill group (Auto / Top / Side)
+// ---------------------------------------------------------------------------
+
+interface LayoutModeOption {
+  value: LayoutMode
+  label: string
+  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
+  description: string
+}
+
+const LAYOUT_MODE_OPTIONS: readonly LayoutModeOption[] = [
+  {
+    value: 'auto',
+    label: 'Auto',
+    icon: SquareSplitHorizontal,
+    description: 'Side-by-side on wide screens, stacked on narrow',
+  },
+  {
+    value: 'top',
+    label: 'Top',
+    icon: LayoutPanelTop,
+    description: 'Preview pinned to the top of the page',
+  },
+  {
+    value: 'side',
+    label: 'Side',
+    icon: Columns2,
+    description: 'Preview pinned to the left, tabs scroll on the right',
+  },
+]
+
+function LayoutModeToggle({
+  value,
+  onChange,
+}: {
+  value: LayoutMode
+  onChange: (next: LayoutMode) => void
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Layout mode"
+      className="inline-flex rounded-md border border-(--color-border) overflow-hidden bg-(--color-bg-secondary)"
+    >
+      {LAYOUT_MODE_OPTIONS.map((option) => {
+        const Icon = option.icon
+        const selected = value === option.value
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            aria-label={`${option.label} layout — ${option.description}`}
+            title={option.description}
+            onClick={() => onChange(option.value)}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent) ${
+              selected
+                ? 'bg-(--color-accent) text-(--color-bg-primary)'
+                : 'text-(--color-text-secondary) hover:bg-(--color-bg-hover) hover:text-(--color-text-primary)'
+            }`}
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden={true} />
+            <span className="hidden sm:inline">{option.label}</span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -262,13 +455,13 @@ function PreviewSection({ slug, courtID }: { slug: string; courtID: number }) {
       className="rounded-lg border border-(--color-border) overflow-hidden"
     >
       <div className="flex items-center justify-between gap-3 px-3 py-2 bg-(--color-bg-secondary) border-b border-(--color-border)">
-        <div className="flex items-center gap-2 text-sm text-(--color-text-secondary)">
-          <Eye className="h-4 w-4" aria-hidden="true" />
+        <div className="flex items-center gap-2 text-sm text-(--color-text-secondary) min-w-0">
+          <Eye className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="font-medium text-(--color-text-primary)">
             Live preview
           </span>
-          <span className="text-xs text-(--color-text-muted) hidden sm:inline">
-            · scaled 1920×1080 · synced with OBS view
+          <span className="text-xs text-(--color-text-muted) hidden sm:inline truncate">
+            · 1920×1080 · synced with OBS
           </span>
         </div>
         <button
@@ -292,7 +485,7 @@ function PreviewSection({ slug, courtID }: { slug: string; courtID: number }) {
       {!collapsed && (
         <div
           id={regionId}
-          style={{ height: 'min(32vh, 360px)', minHeight: 220 }}
+          style={{ height: 'min(42vh, 440px)', minHeight: 240 }}
         >
           <PreviewPane slug={slug} className="h-full" />
         </div>
