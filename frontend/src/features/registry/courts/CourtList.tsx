@@ -8,6 +8,7 @@ import { SkeletonTable } from '../../../components/Skeleton'
 import { Badge } from '../../../components/Badge'
 import { Button } from '../../../components/Button'
 import { LayoutGrid } from 'lucide-react'
+import { AdSlot } from '../../../components/AdSlot'
 
 const STREAM_VARIANTS: Record<string, 'error' | 'info' | 'success' | 'default'> = {
   youtube: 'error',
@@ -88,6 +89,8 @@ export function CourtList() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-(--color-text-primary)">Floating Courts</h1>
       </div>
+
+      <AdSlot size="responsive-banner" slot="courts-list-top" className="mb-4" />
 
       {isLoading ? (
         <SkeletonTable rows={8} />

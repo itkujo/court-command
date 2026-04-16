@@ -6,6 +6,7 @@ import { Button } from '../../../components/Button'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { formatDate } from '../../../lib/formatters'
+import { AdSlot } from '../../../components/AdSlot'
 
 interface OrgDetailProps {
   orgId: string
@@ -91,6 +92,8 @@ export function OrgDetail({ orgId }: OrgDetailProps) {
 
         <MembersPanel orgId={orgId} />
       </div>
+
+      <AdSlot size="medium-rectangle" slot="org-detail-bottom" className="mt-6" />
     </div>
   )
 }

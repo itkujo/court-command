@@ -5,6 +5,7 @@ import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { DateInput } from '../components/DateInput'
 import { FormField } from '../components/FormField'
+import { AdSlot } from '../components/AdSlot'
 
 export const Route = createFileRoute('/register')({
   component: RegisterPage,
@@ -83,6 +84,8 @@ function RegisterPage() {
           Already have an account?{' '}
           <Link to="/login" search={{ redirect: '/' }} className="text-cyan-400 hover:text-cyan-300 font-medium">Log in</Link>
         </p>
+
+        <AdSlot size="medium-rectangle" slot="register-bottom" className="mt-6" />
       </div>
     </div>
   )

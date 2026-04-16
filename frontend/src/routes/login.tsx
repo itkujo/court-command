@@ -4,6 +4,7 @@ import { useLogin } from '../features/auth/hooks'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { FormField } from '../components/FormField'
+import { AdSlot } from '../components/AdSlot'
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -57,6 +58,8 @@ function LoginPage() {
           Don&apos;t have an account?{' '}
           <Link to="/register" className="text-cyan-400 hover:text-cyan-300 font-medium">Register</Link>
         </p>
+
+        <AdSlot size="medium-rectangle" slot="login-bottom" className="mt-6" />
       </div>
     </div>
   )

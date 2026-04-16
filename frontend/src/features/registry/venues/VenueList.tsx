@@ -11,6 +11,7 @@ import { SkeletonTable } from '../../../components/Skeleton'
 import { Badge } from '../../../components/Badge'
 import { Button } from '../../../components/Button'
 import { MapPin, Plus } from 'lucide-react'
+import { AdSlot } from '../../../components/AdSlot'
 
 const STATUS_VARIANT: Record<string, 'default' | 'success' | 'warning'> = {
   draft: 'default',
@@ -83,6 +84,8 @@ export function VenueList() {
           </Button>
         </Link>
       </div>
+
+      <AdSlot size="responsive-banner" slot="venues-list-top" className="mb-4" />
 
       <SearchInput
         value={search}

@@ -6,6 +6,7 @@ import { Button } from '../../../components/Button'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { formatDate } from '../../../lib/formatters'
+import { AdSlot } from '../../../components/AdSlot'
 
 interface CourtDetailProps {
   courtId: string
@@ -125,6 +126,8 @@ export function CourtDetail({ courtId }: CourtDetailProps) {
           </div>
         )}
       </div>
+
+      <AdSlot size="medium-rectangle" slot="court-detail-bottom" className="mt-6" />
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { Button } from '../../../components/Button'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { formatDate, formatPlayerName } from '../../../lib/formatters'
+import { AdSlot } from '../../../components/AdSlot'
 
 interface PlayerDetailProps {
   playerId: string
@@ -91,6 +92,8 @@ export function PlayerDetail({ playerId }: PlayerDetailProps) {
           <InfoRow label="Member Since" value={formatDate(player.created_at)} />
         </dl>
       </div>
+
+      <AdSlot size="medium-rectangle" slot="player-detail-bottom" className="mt-6" />
     </div>
   )
 }

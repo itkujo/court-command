@@ -11,6 +11,7 @@ import { SkeletonTable } from '../../../components/Skeleton'
 import { Button } from '../../../components/Button'
 import { Users2, Plus } from 'lucide-react'
 import { formatDate } from '../../../lib/formatters'
+import { AdSlot } from '../../../components/AdSlot'
 
 export function TeamList() {
   const [search, setSearch] = useState('')
@@ -85,6 +86,8 @@ export function TeamList() {
           </Button>
         </Link>
       </div>
+
+      <AdSlot size="responsive-banner" slot="teams-list-top" className="mb-4" />
 
       <SearchInput
         value={search}

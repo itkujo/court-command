@@ -11,6 +11,7 @@ import { SkeletonTable } from '../../../components/Skeleton'
 import { Button } from '../../../components/Button'
 import { Users } from 'lucide-react'
 import { formatPlayerName } from '../../../lib/formatters'
+import { AdSlot } from '../../../components/AdSlot'
 
 export function PlayerList() {
   const [search, setSearch] = useState('')
@@ -82,6 +83,8 @@ export function PlayerList() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-(--color-text-primary)">Players</h1>
       </div>
+
+      <AdSlot size="responsive-banner" slot="players-list-top" className="mb-4" />
 
       <SearchInput
         value={search}

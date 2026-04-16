@@ -7,6 +7,7 @@ import { Button } from '../../../components/Button'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { formatDate } from '../../../lib/formatters'
+import { AdSlot } from '../../../components/AdSlot'
 
 interface VenueDetailProps {
   venueId: string
@@ -99,6 +100,8 @@ export function VenueDetail({ venueId }: VenueDetailProps) {
 
         <CourtListPanel venueId={venueId} />
       </div>
+
+      <AdSlot size="medium-rectangle" slot="venue-detail-bottom" className="mt-6" />
     </div>
   )
 }

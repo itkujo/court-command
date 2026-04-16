@@ -7,6 +7,7 @@ import { Button } from '../../../components/Button'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { formatDate } from '../../../lib/formatters'
+import { AdSlot } from '../../../components/AdSlot'
 
 interface TeamDetailProps {
   teamId: string
@@ -115,6 +116,8 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
 
         <RosterPanel teamId={teamId} />
       </div>
+
+      <AdSlot size="medium-rectangle" slot="team-detail-bottom" className="mt-6" />
     </div>
   )
 }

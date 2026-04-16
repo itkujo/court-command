@@ -10,6 +10,7 @@ import { EmptyState } from '../../../components/EmptyState'
 import { SkeletonTable } from '../../../components/Skeleton'
 import { Button } from '../../../components/Button'
 import { Building2, Plus } from 'lucide-react'
+import { AdSlot } from '../../../components/AdSlot'
 
 export function OrgList() {
   const [search, setSearch] = useState('')
@@ -79,6 +80,8 @@ export function OrgList() {
           </Button>
         </Link>
       </div>
+
+      <AdSlot size="responsive-banner" slot="orgs-list-top" className="mb-4" />
 
       <SearchInput
         value={search}
