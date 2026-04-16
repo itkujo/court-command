@@ -14,7 +14,7 @@ import type {
 export function useMatch(publicId: string | undefined) {
   return useQuery<Match>({
     queryKey: ['matches', publicId],
-    queryFn: () => apiGet<Match>(`/api/v1/matches/${publicId}`),
+    queryFn: () => apiGet<Match>(`/api/v1/matches/public/${publicId}`),
     enabled: !!publicId,
   })
 }
@@ -42,7 +42,8 @@ export function useAllCourts() {
 export function useMatchEvents(publicId: string | undefined) {
   return useQuery<MatchEvent[]>({
     queryKey: ['match-events', publicId],
-    queryFn: () => apiGet<MatchEvent[]>(`/api/v1/matches/${publicId}/events`),
+    queryFn: () =>
+      apiGet<MatchEvent[]>(`/api/v1/matches/public/${publicId}/events`),
     enabled: !!publicId,
   })
 }
@@ -108,11 +109,14 @@ export function useStartMatch() {
       first_serving_team?: 1 | 2
       first_serving_player_id?: number | null
     }) =>
-      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/start`, {
-        scored_by_name,
-        first_serving_team,
-        first_serving_player_id,
-      }),
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/public/${publicId}/start`,
+        {
+          scored_by_name,
+          first_serving_team,
+          first_serving_player_id,
+        },
+      ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
   })
 }
@@ -121,9 +125,10 @@ export function useScorePoint() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ publicId, team }: { publicId: string; team?: 1 | 2 }) =>
-      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/point`, {
-        team,
-      }),
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/public/${publicId}/point`,
+        { team },
+      ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
   })
 }
@@ -132,7 +137,10 @@ export function useSideOut() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ publicId }: { publicId: string }) =>
-      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/sideout`, {}),
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/public/${publicId}/sideout`,
+        {},
+      ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
   })
 }
@@ -141,7 +149,10 @@ export function useUndo() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ publicId }: { publicId: string }) =>
-      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/undo`, {}),
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/public/${publicId}/undo`,
+        {},
+      ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
   })
 }
@@ -151,7 +162,7 @@ export function useRemovePoint() {
   return useMutation({
     mutationFn: ({ publicId }: { publicId: string }) =>
       apiPost<ScoringActionResult>(
-        `/api/v1/matches/${publicId}/remove-point`,
+        `/api/v1/matches/public/${publicId}/remove-point`,
         {},
       ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
@@ -163,7 +174,7 @@ export function useConfirmGameOver() {
   return useMutation({
     mutationFn: ({ publicId }: { publicId: string }) =>
       apiPost<ScoringActionResult>(
-        `/api/v1/matches/${publicId}/confirm-game`,
+        `/api/v1/matches/public/${publicId}/confirm-game`,
         {},
       ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
@@ -175,7 +186,7 @@ export function useConfirmMatchOver() {
   return useMutation({
     mutationFn: ({ publicId }: { publicId: string }) =>
       apiPost<ScoringActionResult>(
-        `/api/v1/matches/${publicId}/confirm-match`,
+        `/api/v1/matches/public/${publicId}/confirm-match`,
         {},
       ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
@@ -186,9 +197,10 @@ export function useCallTimeout() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ publicId, team }: { publicId: string; team: 1 | 2 }) =>
-      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/timeout`, {
-        team,
-      }),
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/public/${publicId}/timeout`,
+        { team },
+      ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
   })
 }
@@ -197,7 +209,10 @@ export function usePauseMatch() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ publicId }: { publicId: string }) =>
-      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/pause`, {}),
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/public/${publicId}/pause`,
+        {},
+      ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
   })
 }
@@ -206,7 +221,10 @@ export function useResumeMatch() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ publicId }: { publicId: string }) =>
-      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/resume`, {}),
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/public/${publicId}/resume`,
+        {},
+      ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
   })
 }
@@ -223,10 +241,10 @@ export function useDeclareForfeit() {
       forfeiting_team: 1 | 2
       reason: string
     }) =>
-      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/forfeit`, {
-        forfeiting_team,
-        reason,
-      }),
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/public/${publicId}/forfeit`,
+        { forfeiting_team, reason },
+      ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
   })
 }
@@ -250,10 +268,10 @@ export function useOverrideScore() {
       games: OverrideGameInput[]
       reason: string
     }) =>
-      apiPost<ScoringActionResult>(`/api/v1/matches/${publicId}/override`, {
-        games,
-        reason,
-      }),
+      apiPost<ScoringActionResult>(
+        `/api/v1/matches/public/${publicId}/override`,
+        { games, reason },
+      ),
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
   })
 }
