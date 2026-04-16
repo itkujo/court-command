@@ -25,13 +25,17 @@ func NewMatchHandler(service *service.MatchService) *MatchHandler {
 }
 
 // Routes returns a chi.Router with top-level match routes.
+// Routes returns the chi.Router for authenticated match endpoints.
+// Public read endpoints (GET /public/{publicID}, GET /public/{publicID}/events)
+// are NOT registered here; the router mounts them directly on /matches outside
+// the RequireAuth middleware because the scoreboard and spectator match pages
+// are unauthenticated. See router/router.go for the split.
 func (h *MatchHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Post("/", h.Create)
 	r.Get("/quick", h.ListQuickMatches)
 	r.Get("/{matchID}", h.GetByID)
-	r.Get("/public/{publicID}", h.GetByPublicID)
 	r.Patch("/{matchID}/status", h.UpdateStatus)
 	r.Post("/{matchID}/start", h.StartMatch)
 	r.Post("/{matchID}/complete", h.CompleteMatch)
@@ -45,7 +49,7 @@ func (h *MatchHandler) Routes() chi.Router {
 	r.Patch("/{matchID}/teams", h.UpdateTeams)
 	r.Patch("/{matchID}/bracket-wiring", h.UpdateBracketWiring)
 
-	// Scoring engine routes (by public ID).
+	// Scoring engine routes (by public ID) — write actions, authenticated.
 	r.Post("/public/{publicID}/point", h.ScorePoint)
 	r.Post("/public/{publicID}/sideout", h.HandleSideOut)
 	r.Post("/public/{publicID}/remove-point", h.HandleRemovePoint)
@@ -56,10 +60,11 @@ func (h *MatchHandler) Routes() chi.Router {
 	r.Post("/public/{publicID}/resume", h.HandleResumeMatch)
 	r.Post("/public/{publicID}/forfeit", h.HandleDeclareForfeit)
 
-	// PublicID-based read/control routes (sibling of the numeric routes above).
+	// PublicID-based control routes (write). The public GETs for
+	// /public/{publicID} and /public/{publicID}/events live directly on the
+	// router in router/router.go (outside RequireAuth).
 	r.Post("/public/{publicID}/start", h.StartMatchByPublicID)
 	r.Post("/public/{publicID}/undo", h.UndoByPublicID)
-	r.Get("/public/{publicID}/events", h.GetMatchEventsByPublicID)
 	r.Post("/public/{publicID}/override", h.OverrideScore)
 
 	return r

@@ -198,10 +198,23 @@ func New(cfg *Config) chi.Router {
 			r.Mount("/", cfg.ScoringPresetHandler.Routes())
 		})
 
-		// Matches (authenticated)
+		// Matches: split auth posture within a single sub-router. Public reads
+		// for the spectator scoreboard (GET /public/{publicID} and
+		// /public/{publicID}/events) must NOT sit behind RequireAuth because
+		// /matches/{publicId} and /matches/{publicId}/scoreboard are public
+		// frontend routes. Everything else is authenticated. Chi only allows
+		// one Mount per path, so the public GETs are registered directly on
+		// this node via handler methods and the authed subtree uses a Group.
 		r.Route("/matches", func(r chi.Router) {
-			r.Use(middleware.RequireAuth(cfg.SessionStore))
-			r.Mount("/", cfg.MatchHandler.Routes())
+			// Public reads (no auth).
+			r.Get("/public/{publicID}", cfg.MatchHandler.GetByPublicID)
+			r.Get("/public/{publicID}/events", cfg.MatchHandler.GetMatchEventsByPublicID)
+
+			// Authenticated writes/reads.
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireAuth(cfg.SessionStore))
+				r.Mount("/", cfg.MatchHandler.Routes())
+			})
 		})
 
 		// Court-scoped matches
