@@ -91,7 +91,7 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
         color: 'var(--overlay-text)',
         borderRadius: 'var(--overlay-radius)',
         fontFamily: BANNER_FONT_FAMILY,
-        width: 'min(980px, 94vw)',
+        width: 'min(860px, 92vw)',
         boxShadow: isCompleted
           ? '0 0 50px var(--overlay-accent), 0 12px 40px rgba(0,0,0,0.55)'
           : '0 12px 40px rgba(0,0,0,0.55)',
@@ -274,7 +274,13 @@ function TeamRow({
   serving,
   winner,
 }: TeamRowProps) {
-  const player = players[0]?.name
+  // Join all roster names with " & " (doubles-friendly). NCPA reference uses
+  // the same convention. Filter empties so a missing entry doesn't leave a
+  // dangling " & " at either end.
+  const rosterLine = players
+    .map((p) => p?.name?.trim())
+    .filter((n): n is string => Boolean(n))
+    .join(' & ')
   const displayName = name || shortName || 'Team'
 
   return (
@@ -313,12 +319,12 @@ function TeamRow({
               </span>
             )}
           </div>
-          {player && (
+          {rosterLine && (
             <div
               className="text-sm opacity-80 truncate mt-0.5"
               style={{ fontFamily: BODY_FONT_FAMILY, fontWeight: 400 }}
             >
-              {player}
+              {rosterLine}
             </div>
           )}
         </div>
