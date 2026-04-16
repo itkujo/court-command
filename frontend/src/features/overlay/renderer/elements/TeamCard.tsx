@@ -1,0 +1,104 @@
+// frontend/src/features/overlay/renderer/elements/TeamCard.tsx
+//
+// Center-bottom overlay showing both teams side-by-side with all
+// players listed. Used for "introducing the teams" moments — before
+// the first serve, entering a championship game, etc.
+//
+// Default dismiss: MANUAL (same contract as PlayerCard).
+
+import { useEffect, useState } from 'react'
+import type { OverlayData, OverlayTeamData, TeamCardConfig } from '../../types'
+
+export interface TeamCardProps {
+  data: OverlayData
+  config: TeamCardConfig
+}
+
+export function TeamCard({ data, config }: TeamCardProps) {
+  const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    if (!config.visible) {
+      setShown(false)
+      return
+    }
+    const t = setTimeout(() => setShown(true), 16)
+    return () => clearTimeout(t)
+  }, [config.visible])
+
+  if (!config.visible) return null
+
+  return (
+    <div
+      className="absolute inset-0 flex items-end justify-center pb-32 z-30 pointer-events-none"
+      aria-live="polite"
+    >
+      <div
+        className="flex items-stretch overflow-hidden shadow-2xl backdrop-blur-md max-w-3xl w-[min(700px,90vw)]"
+        style={{
+          background: 'var(--overlay-primary)',
+          color: 'var(--overlay-text)',
+          borderRadius: 'var(--overlay-radius)',
+          fontFamily: 'var(--overlay-font-family)',
+          transform: shown ? 'scale(1)' : 'scale(0.9)',
+          opacity: shown ? 1 : 0,
+          transition:
+            'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 250ms ease',
+        }}
+      >
+        <TeamColumn team={data.team_1} side="left" />
+        <div
+          className="w-px"
+          style={{ background: 'rgba(255,255,255,0.15)' }}
+          aria-hidden="true"
+        />
+        <TeamColumn team={data.team_2} side="right" />
+      </div>
+    </div>
+  )
+}
+
+function TeamColumn({
+  team,
+  side,
+}: {
+  team: OverlayTeamData
+  side: 'left' | 'right'
+}) {
+  return (
+    <div
+      className="flex-1 p-6 min-w-0"
+      style={{
+        borderLeft:
+          side === 'left' ? `4px solid ${team.color || 'var(--overlay-accent)'}` : undefined,
+        borderRight:
+          side === 'right' ? `4px solid ${team.color || 'var(--overlay-accent)'}` : undefined,
+      }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className="w-3 h-3 rounded-full"
+          style={{ background: team.color || 'var(--overlay-accent)' }}
+          aria-hidden="true"
+        />
+        <div
+          className="text-[10px] uppercase tracking-widest font-bold"
+          style={{ color: 'var(--overlay-accent)' }}
+        >
+          {team.short_name || 'Team'}
+        </div>
+      </div>
+      <div className="text-xl font-bold mb-3 truncate">{team.name}</div>
+      <ul className="space-y-1.5">
+        {team.players.map((p, i) => (
+          <li key={`${p.name}-${i}`} className="text-sm opacity-90 truncate">
+            {p.name}
+          </li>
+        ))}
+        {team.players.length === 0 && (
+          <li className="text-sm opacity-50 italic">No roster</li>
+        )}
+      </ul>
+    </div>
+  )
+}
