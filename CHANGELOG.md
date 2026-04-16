@@ -231,9 +231,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Scoring settings page (keyboard/haptic/sound toggles)
 - Tournament Courts tab + inline Score buttons on bracket match cards
 
+### Frontend Phase 4A: Overlay Foundation
+
+**Contract remediation (CR-1..CR-8)** — 9 contract tests added (`backend/service/match_contract_test.go`) to prevent regression. See prevention rules in `docs/superpowers/lessons/2026-04-16-phase-3-review-defects.md`.
+
+- `backend/service/events.go` — 20 canonical `EventType*` constants (lowercase snake_case). Every match-event writer + reader now references a constant, not a string literal.
+- `broadcastMatchUpdate` now takes a pre-enriched `MatchResponse` argument (no more internal double enrichment on scoring hot path; ~10 DB round-trips saved per scoring action)
+- `applyEngineResult` returns the enriched response; every scoring caller (ScorePoint, SideOut, RemovePoint, ConfirmGameOver, ConfirmMatchOver, CallTimeout, PauseMatch, ResumeMatch, DeclareForfeit) passes it straight through
+- `MatchResponse.ScoredByName` removed (was declared but never populated)
+- `MatchEventResponse` shape: `timestamp` + nested `score_snapshot` instead of flat scalars + bare `created_at`. Legacy `created_at` alias retained for backwards read compatibility
+- `ScoreSnapshot` uses `*int32` for serving-team/server-number so the wire form is clean JSON (not pgtype blobs)
+- `ConfirmMatchOver` now returns a validation error when games are tied and no explicit `winner_team_id` is provided (was silently committing a match with NULL winner)
+- `ListCourts` (platform-wide, non-tournament) now enriches `active_match` + `on_deck_match` per court row (previously only the per-tournament variant enriched)
+- Frontend `EventType` union, `EVENT_META`, `summarizeEvent` rewritten to match backend constants exactly. `MatchInfoPanel` stripped of the phantom `scored_by_name` row.
+
+**Overlay types + contract constants** (`frontend/src/features/overlay/contract.ts`, `types.ts`)
+- `OVERLAY_FIELD` (21), `OVERRIDE_KEY` (24) + grouped UI ordering, `ELEMENT_KEY` (12), `MATCH_STATUS` (7), `SOURCE_TYPE`, `AUTH_TYPE`, `IDLE_DISPLAY`, `SPONSOR_TIER`, `OVERLAY_WS_EVENT` — every stringly-typed value lives here
+- `OverlayData`, `OverlayTeamData`, `GameResult`, `SponsorLogo`, `SeriesScoreData`, `NextMatchData` mirror `backend/overlay/contract.go`
+- `CourtOverlayConfig`, `ElementsConfig`, `ColorOverrides`, `DataOverrides`, `Theme`, `SourceProfile`, `OverlayTrigger`, `OverlayWSMessage` mirror the DB + wire shapes
+- `normalizeSourceProfileID`, `normalizePollInterval`, `normalizeTimestamptz` helpers accept either plain or pgtype-wrapped values so consumers never see raw pgtype blobs
+
+**Overlay data + config hooks** (`frontend/src/features/overlay/hooks.ts`, `useOverlayWebSocket.ts`)
+- Queries: `useOverlayConfig`, `useOverlayData`, `useOverlayDataBySlug` (client-side slug→courtID resolve), `useThemes`, `useTheme`, `useDemoData`, `useSourceProfiles`, `useSourceProfile`
+- Mutations: `useUpdateTheme`, `useUpdateElements`, `useUpdateDataOverrides`, `useClearDataOverrides`, `useUpdateSourceProfileBinding`, `useGenerateOverlayToken`, `useRevokeOverlayToken`, `useCreateSourceProfile`, `useUpdateSourceProfile`, `useDeactivateSourceProfile`, `useDeleteSourceProfile`, `useTestSourceProfileConnection` (backend `/test` endpoint mounted in Phase 4D)
+- `useOverlayWebSocket(courtID, {enabled, matchPublicID, onMessage})` multiplexes 3 channels (`overlay:{id}`, `court:{id}`, optional `match:{publicID}`) with exponential backoff 1s→30s per channel, close-by-unmount guard, aggregate connection state. Cache-merges `overlay_data`, `config_update`, `match_update` events into TanStack Query.
+
+**Theme provider** (`frontend/src/features/overlay/ThemeProvider.tsx`)
+- `<OverlayThemeProvider themeId overrides fullscreen>` applies scoped CSS custom properties (`--overlay-primary/secondary/accent/bg/text/font-family/radius/animation-style`) on a wrapper div — NOT `:root` so the control-panel preview pane doesn't leak overlay colors into app chrome
+- Auto-transparent background detection (`transparent`, `rgba(0,0,0,0...)` → no backdrop fill) for chroma-key-ready themes
+- `useOverlayTheme()` / `useOverlayThemeOptional()` expose resolved theme to element components for animation-style-driven transitions
+- Fallback classic palette baked in so there's no unstyled flicker during theme query
+
+**Overlay renderer stub + route** (`frontend/src/features/overlay/OverlayRenderer.tsx`, `OverlayWatermark.tsx`, `routes/overlay/court.$slug.tsx`)
+- New shell-less route `/overlay/court/$slug` (added to `__root.tsx` NO_SHELL_PATTERNS alongside `/overlay/demo/$themeId` for Phase 4E)
+- Transparent body via effect (cleanup restores prior styles) only when `fullscreen={true}` — preview pane embeds don't mutate global styles
+- `OverlayWatermark` "Powered By Court Command" free-tier badge (conditionally gated on `isLicensed`; hardcoded false pending Phase 6 licensing)
+- Visual stub body renders slug + match status in resolved theme colors so operators can confirm theme switching end-to-end. Phase 4B replaces with the 12 element components.
+
 ### Known Deferred Defects (Phase 3)
 
-The Phase 3 frontend passed both spec and code-quality reviews with items marked for remediation. The following items were **not** fully resolved in the Phase 3 remediation batch (commits `d0b665b..beb282a`) and are scheduled for fold-in as Phase 4A Task 1:
+Resolved in Phase 4A Task 1 remediation batch (commit `6848d23`). Items that remain deferred to later phases:
+
+- **CR-5** Structured logging in `enrichedMatchResponse` error branches — Phase 7 tech debt
+- **I-7** Test backfill — partially addressed by Phase 4A contract tests; broader integration tests still pending
+
+Original Phase 3 defect items, now resolved:
 
 - **CR-1** Event type casing inconsistent (backend writers vs frontend `EventType` union)
 - **CR-2** `MatchEventResponse` wire shape mismatch (`timestamp` / `score_snapshot`)
