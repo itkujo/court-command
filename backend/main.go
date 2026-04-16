@@ -81,7 +81,7 @@ func main() {
 
 	// Phase 4A services
 	scoringPresetService := service.NewScoringPresetService(queries)
-	matchService := service.NewMatchService(queries, pool, ps)
+	matchService := service.NewMatchService(queries, pool, ps, logger)
 	// Wire MatchService into VenueService so ListCourtsByTournament
 	// returns the fully-enriched nested match shape (team summaries,
 	// division/tournament/court names, timeouts counts, etc.).

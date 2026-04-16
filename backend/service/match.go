@@ -3,9 +3,12 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -19,11 +22,19 @@ type MatchService struct {
 	queries *generated.Queries
 	pool    *pgxpool.Pool
 	ps      *pubsub.PubSub
+	logger  *slog.Logger
 }
 
 // NewMatchService creates a new MatchService.
-func NewMatchService(queries *generated.Queries, pool *pgxpool.Pool, ps *pubsub.PubSub) *MatchService {
-	return &MatchService{queries: queries, pool: pool, ps: ps}
+//
+// logger may be nil; a slog.Default() logger is substituted. The logger is
+// used to report best-effort enrichment failures in enrichedMatchResponse
+// that would otherwise manifest as silently missing response fields (CR-5).
+func NewMatchService(queries *generated.Queries, pool *pgxpool.Pool, ps *pubsub.PubSub, logger *slog.Logger) *MatchService {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &MatchService{queries: queries, pool: pool, ps: ps, logger: logger}
 }
 
 // broadcastMatchUpdate publishes a match update to all relevant channels.
@@ -269,27 +280,58 @@ func toMatchResponse(m generated.Match) MatchResponse {
 // enrichedMatchResponse builds a MatchResponse enriched with nested teams
 // (with roster), division/tournament/court names, and timeouts-used counts.
 //
-// Best-effort: any sub-fetch failure logs silently (via zero value) rather
-// than failing the whole response. Callers that need the flat shape only
-// should call toMatchResponse directly.
+// Best-effort: any sub-fetch failure logs via s.logger.Warn and leaves the
+// corresponding response field at its zero value rather than failing the
+// whole response. Callers that need the flat shape only should call
+// toMatchResponse directly.
+//
+// pgx.ErrNoRows is treated as an expected absence (FK pointing at a row that
+// has since been deleted, for example) and is NOT logged. All other errors
+// — connection loss, permission change, schema drift, malformed payloads —
+// log a Warn with the match id and the field that failed to enrich. See
+// CR-5 in docs/superpowers/lessons/2026-04-16-phase-3-review-defects.md.
 func (s *MatchService) enrichedMatchResponse(ctx context.Context, m generated.Match) MatchResponse {
 	resp := toMatchResponse(m)
 
 	// Nested team summaries (name/colors/roster).
 	if m.Team1ID.Valid {
-		if t := s.loadTeamSummary(ctx, m.Team1ID.Int64); t != nil {
+		if t, err := s.loadTeamSummary(ctx, m.Team1ID.Int64); err != nil {
+			if !errors.Is(err, pgx.ErrNoRows) {
+				s.logger.Warn("match enrichment failed",
+					"match_id", m.ID,
+					"field", "team1",
+					"team_id", m.Team1ID.Int64,
+					"error", err)
+			}
+		} else {
 			resp.Team1 = t
 		}
 	}
 	if m.Team2ID.Valid {
-		if t := s.loadTeamSummary(ctx, m.Team2ID.Int64); t != nil {
+		if t, err := s.loadTeamSummary(ctx, m.Team2ID.Int64); err != nil {
+			if !errors.Is(err, pgx.ErrNoRows) {
+				s.logger.Warn("match enrichment failed",
+					"match_id", m.ID,
+					"field", "team2",
+					"team_id", m.Team2ID.Int64,
+					"error", err)
+			}
+		} else {
 			resp.Team2 = t
 		}
 	}
 
 	// Division name.
 	if m.DivisionID.Valid {
-		if d, err := s.queries.GetDivisionByID(ctx, m.DivisionID.Int64); err == nil {
+		if d, err := s.queries.GetDivisionByID(ctx, m.DivisionID.Int64); err != nil {
+			if !errors.Is(err, pgx.ErrNoRows) {
+				s.logger.Warn("match enrichment failed",
+					"match_id", m.ID,
+					"field", "division",
+					"division_id", m.DivisionID.Int64,
+					"error", err)
+			}
+		} else {
 			name := d.Name
 			resp.DivisionName = &name
 		}
@@ -297,7 +339,15 @@ func (s *MatchService) enrichedMatchResponse(ctx context.Context, m generated.Ma
 
 	// Tournament name.
 	if m.TournamentID.Valid {
-		if t, err := s.queries.GetTournamentByID(ctx, m.TournamentID.Int64); err == nil {
+		if t, err := s.queries.GetTournamentByID(ctx, m.TournamentID.Int64); err != nil {
+			if !errors.Is(err, pgx.ErrNoRows) {
+				s.logger.Warn("match enrichment failed",
+					"match_id", m.ID,
+					"field", "tournament",
+					"tournament_id", m.TournamentID.Int64,
+					"error", err)
+			}
+		} else {
 			name := t.Name
 			resp.TournamentName = &name
 		}
@@ -305,7 +355,15 @@ func (s *MatchService) enrichedMatchResponse(ctx context.Context, m generated.Ma
 
 	// Court name.
 	if m.CourtID.Valid {
-		if c, err := s.queries.GetCourtByID(ctx, m.CourtID.Int64); err == nil {
+		if c, err := s.queries.GetCourtByID(ctx, m.CourtID.Int64); err != nil {
+			if !errors.Is(err, pgx.ErrNoRows) {
+				s.logger.Warn("match enrichment failed",
+					"match_id", m.ID,
+					"field", "court",
+					"court_id", m.CourtID.Int64,
+					"error", err)
+			}
+		} else {
 			name := c.Name
 			resp.CourtName = &name
 		}
@@ -316,7 +374,14 @@ func (s *MatchService) enrichedMatchResponse(ctx context.Context, m generated.Ma
 		MatchID:   m.ID,
 		EventType: EventTypeTimeout,
 	})
-	if err == nil {
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.logger.Warn("match enrichment failed",
+				"match_id", m.ID,
+				"field", "timeouts",
+				"error", err)
+		}
+	} else {
 		for _, ev := range events {
 			if len(ev.Payload) == 0 {
 				continue
@@ -325,6 +390,11 @@ func (s *MatchService) enrichedMatchResponse(ctx context.Context, m generated.Ma
 				Team int32 `json:"team"`
 			}
 			if err := json.Unmarshal(ev.Payload, &payload); err != nil {
+				s.logger.Warn("match enrichment failed",
+					"match_id", m.ID,
+					"field", "timeouts",
+					"event_id", ev.ID,
+					"error", fmt.Errorf("unmarshal timeout payload: %w", err))
 				continue
 			}
 			switch payload.Team {
@@ -340,11 +410,13 @@ func (s *MatchService) enrichedMatchResponse(ctx context.Context, m generated.Ma
 }
 
 // loadTeamSummary fetches a team plus its active roster and shapes the
-// public summary. Returns nil on not-found or error.
-func (s *MatchService) loadTeamSummary(ctx context.Context, teamID int64) *TeamSummary {
+// public summary. Returns (nil, err) when the team itself can't be loaded
+// so callers can log with field-specific context. A missing roster is
+// non-fatal and logged internally.
+func (s *MatchService) loadTeamSummary(ctx context.Context, teamID int64) (*TeamSummary, error) {
 	team, err := s.queries.GetTeamByID(ctx, teamID)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	summary := &TeamSummary{
 		ID:           team.ID,
@@ -353,25 +425,33 @@ func (s *MatchService) loadTeamSummary(ctx context.Context, teamID int64) *TeamS
 		PrimaryColor: team.PrimaryColor,
 		LogoURL:      team.LogoUrl,
 	}
-	if roster, err := s.queries.GetActiveRoster(ctx, teamID); err == nil {
-		players := make([]PlayerSummary, 0, len(roster))
-		for _, r := range roster {
-			display := ""
-			if r.DisplayName != nil && *r.DisplayName != "" {
-				display = *r.DisplayName
-			} else {
-				display = fmt.Sprintf("%s %s", r.FirstName, r.LastName)
-			}
-			players = append(players, PlayerSummary{
-				ID:          r.PlayerID,
-				PublicID:    r.PublicID,
-				DisplayName: display,
-				AvatarURL:   r.AvatarUrl,
-			})
+	roster, err := s.queries.GetActiveRoster(ctx, teamID)
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.logger.Warn("match enrichment failed",
+				"field", "roster",
+				"team_id", teamID,
+				"error", err)
 		}
-		summary.Players = players
+		return summary, nil
 	}
-	return summary
+	players := make([]PlayerSummary, 0, len(roster))
+	for _, r := range roster {
+		display := ""
+		if r.DisplayName != nil && *r.DisplayName != "" {
+			display = *r.DisplayName
+		} else {
+			display = fmt.Sprintf("%s %s", r.FirstName, r.LastName)
+		}
+		players = append(players, PlayerSummary{
+			ID:          r.PlayerID,
+			PublicID:    r.PublicID,
+			DisplayName: display,
+			AvatarURL:   r.AvatarUrl,
+		})
+	}
+	summary.Players = players
+	return summary, nil
 }
 
 func toMatchEventResponse(e generated.MatchEvent) MatchEventResponse {
