@@ -6,7 +6,6 @@
 //
 // Default dismiss: MANUAL (same contract as PlayerCard).
 
-import { useEffect, useState } from 'react'
 import type {
   ElementPosition,
   OverlayData,
@@ -15,6 +14,7 @@ import type {
   TeamCardConfig,
 } from '../../types'
 import { clampElementScale } from '../elementScale'
+import { fadeStyle, useFadeMount } from '../FadeMount'
 import { originForPosition, positionClasses } from './scoreboard/transforms'
 
 const DEFAULT_POSITION: ElementPosition = 'bottom-center'
@@ -27,19 +27,9 @@ export interface TeamCardProps {
 }
 
 export function TeamCard({ data, config, trigger }: TeamCardProps) {
-  const [shown, setShown] = useState(false)
   const effectiveVisible = trigger != null || config.visible
-
-  useEffect(() => {
-    if (!effectiveVisible) {
-      setShown(false)
-      return
-    }
-    const t = setTimeout(() => setShown(true), 16)
-    return () => clearTimeout(t)
-  }, [effectiveVisible])
-
-  if (!effectiveVisible) return null
+  const { mounted, opacity } = useFadeMount(Boolean(effectiveVisible))
+  if (!mounted) return null
 
   // Selection priority:
   //   1. Trigger payload.team_id (one-shot, beats config) — '1' | 1 | '2' | 2
@@ -63,6 +53,7 @@ export function TeamCard({ data, config, trigger }: TeamCardProps) {
   const effectivePosition = config.position ?? DEFAULT_POSITION
   const origin = originForPosition(effectivePosition)
   const posClass = positionClasses(effectivePosition)
+  const scale = clampElementScale(config.element_scale)
 
   return (
     <div
@@ -76,11 +67,9 @@ export function TeamCard({ data, config, trigger }: TeamCardProps) {
           color: 'var(--overlay-text)',
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
-          transform: `scale(${(shown ? 1 : 0.9) * clampElementScale(config.element_scale)})`,
+          transform: scale !== 1 ? `scale(${scale})` : undefined,
           transformOrigin: origin,
-          opacity: shown ? 1 : 0,
-          transition:
-            'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 250ms ease',
+          ...fadeStyle(opacity),
         }}
       >
         {onlyTeam ? (

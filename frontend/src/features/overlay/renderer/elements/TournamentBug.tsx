@@ -6,6 +6,7 @@
 
 import type { ElementPosition, OverlayData, TournamentBugConfig } from '../../types'
 import { elementScaleStyle } from '../elementScale'
+import { fadeStyle, useFadeMount } from '../FadeMount'
 import {
   originForPosition,
   positionClasses,
@@ -19,7 +20,8 @@ export interface TournamentBugProps {
 }
 
 export function TournamentBug({ data, config }: TournamentBugProps) {
-  if (!config.visible) return null
+  const { mounted, opacity } = useFadeMount(Boolean(config.visible))
+  if (!mounted) return null
 
   const logo = data.tournament_logo_url || data.league_logo_url
   const name = data.tournament_name || data.league_name
@@ -37,6 +39,7 @@ export function TournamentBug({ data, config }: TournamentBugProps) {
         color: 'var(--overlay-text)',
         borderRadius: 'var(--overlay-radius)',
         fontFamily: 'var(--overlay-font-family)',
+        ...fadeStyle(opacity),
         ...elementScaleStyle(config, origin),
       }}
       aria-label={name || 'Tournament'}

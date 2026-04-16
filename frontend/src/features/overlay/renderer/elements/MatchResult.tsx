@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import type { ElementPosition, MatchResultConfig, OverlayData, OverlayTrigger } from '../../types'
 import { MATCH_STATUS } from '../../contract'
 import { clampElementScale } from '../elementScale'
+import { FADE_DURATION_MS, fadeStyle } from '../FadeMount'
 import { originForPosition, positionClasses } from './scoreboard/transforms'
 
 const DEFAULT_POSITION: ElementPosition = 'middle-center'
@@ -61,7 +62,7 @@ export function MatchResult({ data, config, trigger }: MatchResultProps) {
     if (dismissMs > 0) {
       dismissTimer = window.setTimeout(() => {
         setPhase('leaving')
-        leaveTimer = window.setTimeout(() => setPhase('idle'), 400)
+        leaveTimer = window.setTimeout(() => setPhase('idle'), FADE_DURATION_MS)
       }, showDelayMs + dismissMs)
     }
 
@@ -83,9 +84,11 @@ export function MatchResult({ data, config, trigger }: MatchResultProps) {
   if (!winner) return null
 
   const visible = phase === 'shown'
+  const opacity = visible ? 1 : 0
   const effectivePosition = config.position ?? DEFAULT_POSITION
   const origin = originForPosition(effectivePosition)
   const posClass = positionClasses(effectivePosition)
+  const scale = clampElementScale(config.element_scale)
 
   return (
     <>
@@ -98,8 +101,7 @@ export function MatchResult({ data, config, trigger }: MatchResultProps) {
           className="absolute inset-0"
           style={{
             background: `radial-gradient(ellipse at center, ${winner.color || 'var(--overlay-accent)'}22 0%, transparent 60%)`,
-            opacity: visible ? 1 : 0,
-            transition: 'opacity 600ms ease',
+            ...fadeStyle(opacity),
           }}
         />
         {visible && <ConfettiField color={winner.color || 'var(--overlay-accent)'} />}
@@ -118,11 +120,9 @@ export function MatchResult({ data, config, trigger }: MatchResultProps) {
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
           borderTop: `6px solid ${winner.color || 'var(--overlay-accent)'}`,
-          transform: `scale(${(visible ? 1 : 0.92) * clampElementScale(config.element_scale)})`,
+          transform: scale !== 1 ? `scale(${scale})` : undefined,
           transformOrigin: origin,
-          opacity: visible ? 1 : 0,
-          transition:
-            'transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 300ms ease',
+          ...fadeStyle(opacity),
           boxShadow: `0 0 80px ${winner.color || 'var(--overlay-accent)'}66, 0 20px 50px rgba(0,0,0,0.5)`,
         }}
       >

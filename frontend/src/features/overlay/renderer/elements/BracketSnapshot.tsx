@@ -10,9 +10,9 @@
 // For now the component is functionally wired (visible toggle, theme,
 // fade-in) so the Control Panel can enable/disable it without error.
 
-import { useEffect, useState } from 'react'
 import type { BracketSnapshotConfig, ElementPosition, OverlayData } from '../../types'
 import { clampElementScale } from '../elementScale'
+import { fadeStyle, useFadeMount } from '../FadeMount'
 import { originForPosition, positionClasses } from './scoreboard/transforms'
 
 const DEFAULT_POSITION: ElementPosition = 'middle-center'
@@ -23,22 +23,13 @@ export interface BracketSnapshotProps {
 }
 
 export function BracketSnapshot({ data, config }: BracketSnapshotProps) {
-  const [shown, setShown] = useState(false)
-
-  useEffect(() => {
-    if (!config.visible) {
-      setShown(false)
-      return
-    }
-    const t = setTimeout(() => setShown(true), 16)
-    return () => clearTimeout(t)
-  }, [config.visible])
-
-  if (!config.visible) return null
+  const { mounted, opacity } = useFadeMount(Boolean(config.visible))
+  if (!mounted) return null
 
   const effectivePosition = config.position ?? DEFAULT_POSITION
   const origin = originForPosition(effectivePosition)
   const posClass = positionClasses(effectivePosition)
+  const scale = clampElementScale(config.element_scale)
 
   return (
     <div
@@ -52,10 +43,9 @@ export function BracketSnapshot({ data, config }: BracketSnapshotProps) {
           color: 'var(--overlay-text)',
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
-          opacity: shown ? 1 : 0,
-          transform: `translateY(${shown ? 0 : 10}px) scale(${clampElementScale(config.element_scale)})`,
+          transform: scale !== 1 ? `scale(${scale})` : undefined,
           transformOrigin: origin,
-          transition: 'opacity 400ms ease, transform 400ms ease',
+          ...fadeStyle(opacity),
         }}
       >
         <div

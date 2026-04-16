@@ -42,6 +42,7 @@ import {
   positionClasses,
 } from './transforms'
 import { elementScaleStyle } from '../../elementScale'
+import { FADE_DURATION_MS, useFadeMount } from '../../FadeMount'
 
 const FONT_LINK_ID = 'cc-banner-scoreboard-fonts'
 const FONT_HREF =
@@ -93,7 +94,8 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
     document.head.appendChild(link)
   }, [])
 
-  if (!config.visible) return null
+  const { mounted, opacity } = useFadeMount(Boolean(config.visible))
+  if (!mounted) return null
 
   const servingTeam =
     data.serving_team === 1 || data.serving_team === 2 ? data.serving_team : 0
@@ -151,7 +153,8 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
         boxShadow: isCompleted
           ? '0 0 50px var(--overlay-accent), 0 12px 40px rgba(0,0,0,0.55)'
           : '0 12px 40px rgba(0,0,0,0.55)',
-        transition: 'box-shadow 600ms ease',
+        transition: `box-shadow 600ms ease, opacity ${FADE_DURATION_MS}ms ease-in-out`,
+        opacity,
         // NOTE: intentionally no overflow clip — oversized logos should be
         // allowed to bleed outside the banner rectangle (matches NCPA).
         ...scaleStyle,

@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ElementPosition, OverlayData, SeriesScoreConfig } from '../../types'
 import { elementScaleStyle } from '../elementScale'
+import { fadeStyle, useFadeMount } from '../FadeMount'
 import {
   originForPosition,
   positionClasses,
@@ -53,7 +54,8 @@ export function SeriesScore({ data, config }: SeriesScoreProps) {
     prevRef.current = cur
   }, [series])
 
-  if (!config.visible || !series) return null
+  const { mounted, opacity } = useFadeMount(Boolean(config.visible) && !!series)
+  if (!mounted || !series) return null
 
   const needed = Math.ceil(series.best_of / 2)
   const rowCells = Math.max(needed, 1)
@@ -69,6 +71,7 @@ export function SeriesScore({ data, config }: SeriesScoreProps) {
         color: 'var(--overlay-text)',
         borderRadius: 'var(--overlay-radius)',
         fontFamily: 'var(--overlay-font-family)',
+        ...fadeStyle(opacity),
         ...elementScaleStyle(config, origin),
       }}
       aria-label={`Series score ${series.team_1_wins} to ${series.team_2_wins}, best of ${series.best_of}`}

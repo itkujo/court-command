@@ -12,9 +12,9 @@
 // default player when config.visible is true. Phase 4E will switch to
 // trigger-driven payload selection.
 
-import { useEffect, useState } from 'react'
 import type { ElementPosition, OverlayData, OverlayTrigger, PlayerCardConfig } from '../../types'
 import { clampElementScale } from '../elementScale'
+import { fadeStyle, useFadeMount } from '../FadeMount'
 import { originForPosition, positionClasses } from './scoreboard/transforms'
 
 const DEFAULT_POSITION: ElementPosition = 'bottom-center'
@@ -27,19 +27,9 @@ export interface PlayerCardProps {
 }
 
 export function PlayerCard({ data, config, trigger }: PlayerCardProps) {
-  const [shown, setShown] = useState(false)
   const effectiveVisible = trigger != null || config.visible
-
-  useEffect(() => {
-    if (!effectiveVisible) {
-      setShown(false)
-      return
-    }
-    const t = setTimeout(() => setShown(true), 16)
-    return () => clearTimeout(t)
-  }, [effectiveVisible])
-
-  if (!effectiveVisible) return null
+  const { mounted, opacity } = useFadeMount(Boolean(effectiveVisible))
+  if (!mounted) return null
 
   // Selection priority (first non-null wins):
   //   1. Trigger payload.player_id (one-shot, beats config)
@@ -53,6 +43,7 @@ export function PlayerCard({ data, config, trigger }: PlayerCardProps) {
   const effectivePosition = config.position ?? DEFAULT_POSITION
   const origin = originForPosition(effectivePosition)
   const posClass = positionClasses(effectivePosition)
+  const scale = clampElementScale(config.element_scale)
 
   return (
     <div
@@ -66,11 +57,9 @@ export function PlayerCard({ data, config, trigger }: PlayerCardProps) {
           color: 'var(--overlay-text)',
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
-          transform: `scale(${(shown ? 1 : 0.9) * clampElementScale(config.element_scale)})`,
+          transform: scale !== 1 ? `scale(${scale})` : undefined,
           transformOrigin: origin,
-          opacity: shown ? 1 : 0,
-          transition:
-            'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 250ms ease',
+          ...fadeStyle(opacity),
           borderLeft: `4px solid ${team.color || 'var(--overlay-accent)'}`,
         }}
       >

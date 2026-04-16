@@ -13,9 +13,9 @@
 // Trigger payload (from Triggers tab) still takes precedence over
 // config for one-shot pushes.
 
-import { useEffect, useState } from 'react'
 import type { CustomTextConfig, ElementPosition, OverlayTrigger } from '../../types'
 import { clampElementScale } from '../elementScale'
+import { fadeStyle, useFadeMount } from '../FadeMount'
 import { originForPosition, positionClasses } from './scoreboard/transforms'
 
 export interface CustomTextProps {
@@ -27,8 +27,6 @@ export interface CustomTextProps {
 const DEFAULT_POSITION: ElementPosition = 'middle-center'
 
 export function CustomText({ config, trigger }: CustomTextProps) {
-  const [shown, setShown] = useState(false)
-
   // Trigger payload takes precedence over config when present.
   const payloadText = typeof trigger?.payload?.text === 'string' ? trigger.payload.text : null
   const payloadPosition =
@@ -40,17 +38,9 @@ export function CustomText({ config, trigger }: CustomTextProps) {
   const rawText = payloadText ?? config.text ?? ''
   const text = rawText.trim()
   const effectiveVisible = trigger != null || config.visible
-
-  useEffect(() => {
-    if (!effectiveVisible || !text) {
-      setShown(false)
-      return
-    }
-    const t = setTimeout(() => setShown(true), 16)
-    return () => clearTimeout(t)
-  }, [effectiveVisible, text])
-
-  if (!effectiveVisible || !text) return null
+  const hasText = text.length > 0
+  const { mounted, opacity } = useFadeMount(Boolean(effectiveVisible) && hasText)
+  if (!mounted || !hasText) return null
 
   // Position resolution priority: trigger payload → config.position → legacy zone → default.
   const effectivePosition = resolvePosition(
@@ -64,6 +54,7 @@ export function CustomText({ config, trigger }: CustomTextProps) {
   const fontFamily = resolveFontFamily(config.font_family)
   const fontColor = config.font_color || 'var(--overlay-text)'
   const backgroundColor = config.background_color || 'var(--overlay-primary)'
+  const scale = clampElementScale(config.element_scale)
 
   const chipClasses = transparent
     ? 'text-center max-w-[min(640px,80vw)]'
@@ -72,10 +63,9 @@ export function CustomText({ config, trigger }: CustomTextProps) {
   const chipStyle: React.CSSProperties = {
     color: fontColor,
     fontFamily,
-    opacity: shown ? 1 : 0,
-    transform: `translateY(${shown ? 0 : 8}px) scale(${clampElementScale(config.element_scale)})`,
+    transform: scale !== 1 ? `scale(${scale})` : undefined,
     transformOrigin: origin,
-    transition: 'opacity 300ms ease, transform 300ms ease',
+    ...fadeStyle(opacity),
     ...(transparent
       ? {}
       : {

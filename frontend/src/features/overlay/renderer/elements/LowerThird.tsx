@@ -8,9 +8,9 @@
 // meant to be shown briefly before a point or between games, not left up
 // for an entire match.
 
-import { useEffect, useState } from 'react'
 import type { LowerThirdConfig, OverlayData } from '../../types'
 import { clampElementScale } from '../elementScale'
+import { fadeStyle, useFadeMount } from '../FadeMount'
 
 export interface LowerThirdProps {
   data: OverlayData
@@ -18,23 +18,13 @@ export interface LowerThirdProps {
 }
 
 export function LowerThird({ data, config }: LowerThirdProps) {
-  const [shown, setShown] = useState(false)
-
-  useEffect(() => {
-    if (!config.visible) {
-      setShown(false)
-      return
-    }
-    // Slide-up on next frame so the transition actually plays.
-    const t = setTimeout(() => setShown(true), 16)
-    return () => clearTimeout(t)
-  }, [config.visible])
-
-  if (!config.visible) return null
+  const { mounted, opacity } = useFadeMount(Boolean(config.visible))
+  if (!mounted) return null
 
   const title = data.division_name || data.tournament_name || data.court_name
   const subtitle = [data.round_label, data.match_info].filter(Boolean).join(' · ')
   const matchup = `${data.team_1.name} vs ${data.team_2.name}`
+  const scale = clampElementScale(config.element_scale)
 
   return (
     <div
@@ -48,12 +38,9 @@ export function LowerThird({ data, config }: LowerThirdProps) {
           color: 'var(--overlay-text)',
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
-          // Chain entry-slide with user scale knob.
-          transform: `${shown ? 'translateY(0)' : 'translateY(110%)'} scale(${clampElementScale(config.element_scale)})`,
+          transform: scale !== 1 ? `scale(${scale})` : undefined,
           transformOrigin: 'bottom center',
-          opacity: shown ? 1 : 0,
-          transition:
-            'transform 500ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease',
+          ...fadeStyle(opacity),
         }}
       >
         <div className="flex items-end justify-between gap-6">

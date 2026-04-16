@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ElementPosition, OverlayData, SponsorBugConfig, SponsorLogo } from '../../types'
 import { elementScaleStyle } from '../elementScale'
+import { fadeStyle, useFadeMount } from '../FadeMount'
 import {
   originForPosition,
   positionClasses,
@@ -34,6 +35,7 @@ export function SponsorBug({ data, config }: SponsorBugProps) {
 
   const rotationSeconds = config.rotation_seconds ?? 8
   const rotationMs = Math.max(1000, rotationSeconds * 1000)
+  const { mounted, opacity } = useFadeMount(Boolean(config.visible))
 
   useEffect(() => {
     if (!config.visible || logos.length < 2) {
@@ -61,13 +63,13 @@ export function SponsorBug({ data, config }: SponsorBugProps) {
     }
   }, [activeIndex, logos.length])
 
-  if (!config.visible) return null
+  if (!mounted) return null
 
   // No logos to rotate. On-air we stay silent (never show an empty
   // sponsor chip on broadcast). In the control-panel preview we
   // surface a dashed placeholder so operators can see the element is
   // enabled and know where to drop a logo.
-  if (logos.length === 0) return <SponsorBugPlaceholder config={config} />
+  if (logos.length === 0) return <SponsorBugPlaceholder config={config} opacity={opacity} />
 
   const active = logos[activeIndex]
   if (!active) return null
@@ -83,10 +85,11 @@ export function SponsorBug({ data, config }: SponsorBugProps) {
     ? `${posClass} z-20 flex items-center justify-center`
     : `${posClass} z-20 flex items-center justify-center px-3 py-2 shadow-xl backdrop-blur-md`
   const chipStyle: React.CSSProperties = transparent
-    ? { ...elementScaleStyle(config, origin) }
+    ? { ...fadeStyle(opacity), ...elementScaleStyle(config, origin) }
     : {
         background: 'var(--overlay-primary)',
         borderRadius: 'var(--overlay-radius)',
+        ...fadeStyle(opacity),
         ...elementScaleStyle(config, origin),
       }
 
@@ -148,7 +151,13 @@ function SponsorLogoSlot({ logo }: { logo: SponsorLogo }) {
 // data is still empty. Invisible on real OBS output.
 // -----------------------------------------------------------------------------
 
-function SponsorBugPlaceholder({ config }: { config: SponsorBugConfig }) {
+function SponsorBugPlaceholder({
+  config,
+  opacity,
+}: {
+  config: SponsorBugConfig
+  opacity: number
+}) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [visible, setVisible] = useState(false)
 
@@ -172,7 +181,10 @@ function SponsorBugPlaceholder({ config }: { config: SponsorBugConfig }) {
         color: 'var(--overlay-text)',
         borderRadius: 'var(--overlay-radius)',
         fontFamily: 'var(--overlay-font-family)',
-        opacity: visible ? 0.6 : 0,
+        // Placeholder is capped at 0.6 (translucent) AND gated by preview-only
+        // visibility AND respects the fade opacity. Multiply them together.
+        opacity: (visible ? 0.6 : 0) * opacity,
+        transition: `opacity 300ms ease-in-out`,
         pointerEvents: 'none',
         ...elementScaleStyle(config, origin),
       }}

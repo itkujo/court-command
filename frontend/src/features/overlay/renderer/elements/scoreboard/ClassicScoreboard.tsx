@@ -25,11 +25,13 @@ import { MATCH_STATUS } from '../../../contract'
 import type { ScoreboardLayoutProps } from './types'
 import { originForPosition, positionClasses } from './transforms'
 import { elementScaleStyle } from '../../elementScale'
+import { FADE_DURATION_MS, useFadeMount } from '../../FadeMount'
 
 const CLASSIC_DEFAULT_POSITION: ElementPosition = 'bottom-left'
 
 export function ClassicScoreboard({ data, config }: ScoreboardLayoutProps) {
-  if (!config.visible) return null
+  const { mounted, opacity } = useFadeMount(Boolean(config.visible))
+  if (!mounted) return null
 
   const servingTeam =
     data.serving_team === 1 || data.serving_team === 2 ? data.serving_team : 0
@@ -51,7 +53,10 @@ export function ClassicScoreboard({ data, config }: ScoreboardLayoutProps) {
         boxShadow: isCompleted
           ? '0 0 40px var(--overlay-accent), 0 10px 30px rgba(0,0,0,0.5)'
           : '0 10px 30px rgba(0,0,0,0.5)',
-        transition: 'box-shadow 600ms ease',
+        // Combined transitions: box-shadow keeps its 600ms easing for
+        // the match-over glow, opacity uses our shared fade duration.
+        transition: `box-shadow 600ms ease, opacity ${FADE_DURATION_MS}ms ease-in-out`,
+        opacity,
         ...scaleStyle,
       }}
       data-match-status={data.match_status}
