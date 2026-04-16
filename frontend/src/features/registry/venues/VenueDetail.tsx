@@ -1,0 +1,121 @@
+import { useVenue } from './hooks'
+import { CourtListPanel } from './CourtListPanel'
+import { Badge } from '../../../components/Badge'
+import { Skeleton } from '../../../components/Skeleton'
+import { EmptyState } from '../../../components/EmptyState'
+import { Button } from '../../../components/Button'
+import { ArrowLeft } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { formatDate } from '../../../lib/formatters'
+
+interface VenueDetailProps {
+  venueId: string
+}
+
+const STATUS_VARIANT: Record<string, 'default' | 'success' | 'warning'> = {
+  draft: 'default',
+  pending_review: 'warning',
+  published: 'success',
+  archived: 'default',
+}
+
+export function VenueDetail({ venueId }: VenueDetailProps) {
+  const { data: venue, isLoading, error } = useVenue(venueId)
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    )
+  }
+
+  if (error || !venue) {
+    return (
+      <EmptyState
+        title="Venue not found"
+        description="This venue may have been removed or you don't have access."
+        action={
+          <Link to="/venues">
+            <Button variant="secondary">Back to Venues</Button>
+          </Link>
+        }
+      />
+    )
+  }
+
+  const address = [venue.address_line_1, venue.city, venue.state_province, venue.postal_code, venue.country]
+    .filter(Boolean)
+    .join(', ')
+
+  return (
+    <div>
+      <Link
+        to="/venues"
+        className="inline-flex items-center gap-1 text-sm text-(--color-text-secondary) hover:text-(--color-text-primary) mb-4"
+      >
+        <ArrowLeft className="h-4 w-4" /> Venues
+      </Link>
+
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-(--color-text-primary)">{venue.name}</h1>
+          <p className="text-sm text-(--color-text-secondary)">{venue.slug}</p>
+        </div>
+        <Badge variant={STATUS_VARIANT[venue.status] ?? 'default'}>
+          {venue.status.replace(/_/g, ' ')}
+        </Badge>
+      </div>
+
+      <div className="space-y-6">
+        <div className="rounded-xl border border-(--color-border) bg-(--color-bg-secondary) p-6">
+          <h2 className="text-lg font-semibold text-(--color-text-primary) mb-4">Details</h2>
+          <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <InfoRow label="Name" value={venue.name} />
+            <InfoRow label="Address" value={address} />
+            <InfoRow label="Timezone" value={venue.timezone} />
+            <InfoRow label="Contact Email" value={venue.contact_email} />
+            <InfoRow
+              label="Website"
+              value={
+                venue.website_url ? (
+                  <a
+                    href={venue.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 hover:underline"
+                  >
+                    {venue.website_url}
+                  </a>
+                ) : null
+              }
+            />
+            <InfoRow label="Court Count" value={String(venue.court_count)} />
+            <InfoRow label="Bio" value={venue.bio} />
+            <InfoRow label="Created" value={formatDate(venue.created_at)} />
+          </dl>
+        </div>
+
+        <CourtListPanel venueId={venueId} />
+      </div>
+    </div>
+  )
+}
+
+function InfoRow({
+  label,
+  value,
+}: {
+  label: string
+  value: React.ReactNode | string | null | undefined
+}) {
+  return (
+    <div>
+      <dt className="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">
+        {label}
+      </dt>
+      <dd className="mt-1 text-sm text-(--color-text-primary)">{value || '\u2014'}</dd>
+    </div>
+  )
+}
