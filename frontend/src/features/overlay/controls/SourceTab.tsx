@@ -20,6 +20,7 @@
 // refetchInterval via useOverlayData.
 
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { CheckCircle2, ExternalLink, Loader2, Wifi, WifiOff } from 'lucide-react'
 import { FormField } from '../../../components/FormField'
 import { Select } from '../../../components/Select'
@@ -216,12 +217,12 @@ export function SourceTab({ courtID, config, loading }: SourceTabProps) {
                 Pick which profile feeds this court.
               </p>
             </div>
-            <a
-              href="/overlay/source-profiles"
+            <Link
+              to="/overlay/source-profiles"
               className="inline-flex items-center gap-1 text-xs text-(--color-accent) hover:underline"
             >
               Manage profiles <ExternalLink className="h-3 w-3" />
-            </a>
+            </Link>
           </div>
 
           {profilesQuery.isLoading ? (
@@ -231,12 +232,12 @@ export function SourceTab({ courtID, config, loading }: SourceTabProps) {
           ) : (profilesQuery.data?.length ?? 0) === 0 ? (
             <p className="text-sm text-(--color-text-muted)">
               You haven&apos;t created any source profiles yet.{' '}
-              <a
-                href="/overlay/source-profiles"
+              <Link
+                to="/overlay/source-profiles"
                 className="text-(--color-accent) hover:underline"
               >
                 Create one →
-              </a>
+              </Link>
             </p>
           ) : (
             <FormField label="Profile" htmlFor="source-profile-select">
