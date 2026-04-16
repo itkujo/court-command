@@ -1,9 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Navigate } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
-  component: HomePage,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  component: () => <Navigate to={'/players' as any} />,
 })
-
-function HomePage() {
-  return <div>Court Command loading...</div>
-}
