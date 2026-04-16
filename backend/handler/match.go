@@ -1226,8 +1226,15 @@ func (h *MatchHandler) OverrideScore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if sess.Role != "platform_admin" {
-		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Only platform admins can override scores")
+	// Score overrides are privileged but not platform-admin-only:
+	// tournament directors and head referees routinely need to correct
+	// scorekeeper miscounts during an event. Keep the surface tight
+	// but allow the operational roles that own the broom.
+	switch sess.Role {
+	case "platform_admin", "tournament_director", "head_referee":
+		// allowed
+	default:
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Only platform admins, tournament directors, or head referees can override scores")
 		return
 	}
 

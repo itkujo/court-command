@@ -53,13 +53,17 @@ export function ScoreOverrideModal({ open, onClose, match }: ScoreOverrideModalP
   const [reason, setReason] = useState('')
   const [errors, setErrors] = useState<{ reason?: string }>({})
 
+  // Only reset when the modal is actually (re-)opened or the modal is
+  // switched to a different match — depending on the full `match` object
+  // made every WebSocket update wipe the admin's in-progress edits.
   useEffect(() => {
     if (open) {
       setRows(buildInitialRows(match))
       setReason('')
       setErrors({})
     }
-  }, [open, match])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, match.public_id])
 
   function updateRow(idx: number, partial: Partial<GameRow>) {
     setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...partial } : r)))
