@@ -5,6 +5,7 @@
 // Transparent body so overlay composites cleanly on any background.
 
 import { createFileRoute } from '@tanstack/react-router'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { OverlayRenderer } from '../../features/overlay/OverlayRenderer'
 
 type OverlaySearch = {
@@ -23,5 +24,10 @@ export const Route = createFileRoute('/overlay/court/$slug')({
 function OverlayCourtRoute() {
   const { slug } = Route.useParams()
   const { token, demo } = Route.useSearch()
-  return <OverlayRenderer slug={slug} token={token ?? null} demo={demo ?? false} />
+  // On-air surface: stay silent on error so OBS never shows a panel.
+  return (
+    <ErrorBoundary fallback={null}>
+      <OverlayRenderer slug={slug} token={token ?? null} demo={demo ?? false} />
+    </ErrorBoundary>
+  )
 }

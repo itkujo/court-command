@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { TVKioskBracket } from '../../features/overlay/tv/TVKioskBracket'
 
 interface KioskSearch {
@@ -22,5 +23,11 @@ export const Route = createFileRoute('/tv/tournaments/$id')({
 function KioskTournamentRoute() {
   const { id } = Route.useParams()
   const { cycle } = Route.useSearch()
-  return <TVKioskBracket tournamentID={id} cycleSeconds={cycle ?? 20} />
+  // Venue signage must stay silent on error — a crash panel on a 65"
+  // TV is worse than a blank screen.
+  return (
+    <ErrorBoundary fallback={null}>
+      <TVKioskBracket tournamentID={id} cycleSeconds={cycle ?? 20} />
+    </ErrorBoundary>
+  )
 }

@@ -5,6 +5,7 @@
 // /^\/overlay\/demo\/[^/]+$/ is already in __root.tsx NO_SHELL_PATTERNS
 // so the sidebar and auth chrome are suppressed.
 import { createFileRoute } from '@tanstack/react-router'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { OverlayDemo } from '../../features/overlay/OverlayDemo'
 
 export const Route = createFileRoute('/overlay/demo/$themeId')({
@@ -13,5 +14,12 @@ export const Route = createFileRoute('/overlay/demo/$themeId')({
 
 function OverlayDemoRoute() {
   const { themeId } = Route.useParams()
-  return <OverlayDemo themeId={themeId} />
+  // On-air preview: stay silent on error — preview pages live inside
+  // control panels, tablets, and signage; a raw error panel would leak
+  // into broadcast.
+  return (
+    <ErrorBoundary fallback={null}>
+      <OverlayDemo themeId={themeId} />
+    </ErrorBoundary>
+  )
 }

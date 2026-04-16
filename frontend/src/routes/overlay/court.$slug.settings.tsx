@@ -19,10 +19,11 @@
 // practice this page is reachable by platform_admin + any elevated
 // role once the constraint is relaxed.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { AlertCircle, ExternalLink, Loader2, Lock } from 'lucide-react'
+import { AlertCircle, ExternalLink, Loader2, Lock, Sparkles, X } from 'lucide-react'
 import { Button } from '../../components/Button'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { TabLayout } from '../../components/TabLayout'
 import { useAuth } from '../../features/auth/hooks'
 import { ElementsTab } from '../../features/overlay/controls/ElementsTab'
@@ -32,6 +33,7 @@ import { SourceTab } from '../../features/overlay/controls/SourceTab'
 import { ThemeTab } from '../../features/overlay/controls/ThemeTab'
 import { TriggersTab } from '../../features/overlay/controls/TriggersTab'
 import { PreviewPane } from '../../features/overlay/PreviewPane'
+import type { CourtOverlayConfig } from '../../features/overlay/types'
 import {
   useOverlayConfig,
   useOverlayDataBySlug,
@@ -56,8 +58,16 @@ type TabId =
   | 'obs_url'
 
 export const Route = createFileRoute('/overlay/court/$slug/settings')({
-  component: OverlaySettingsPage,
+  component: OverlaySettingsRoute,
 })
+
+function OverlaySettingsRoute() {
+  return (
+    <ErrorBoundary>
+      <OverlaySettingsPage />
+    </ErrorBoundary>
+  )
+}
 
 function OverlaySettingsPage() {
   const { slug } = Route.useParams()
@@ -130,6 +140,8 @@ function OverlaySettingsPage() {
     <div className="space-y-6">
       <Header slug={slug} courtID={courtID} />
 
+      <FirstRunBanner courtID={courtID} config={config} />
+
       {/* Preview pane — ~50vh height, falls back to min when viewport short */}
       <section aria-label="Live overlay preview">
         <div style={{ height: 'min(50vh, 560px)', minHeight: 280 }}>
@@ -200,7 +212,88 @@ function Header({ slug, courtID }: { slug: string; courtID: number }) {
   )
 }
 
+// ---------------------------------------------------------------------------
+// First-run banner
+//
+// Nudges operators who land on a fresh court toward the setup wizard so
+// they don't stare at a dead preview pane wondering what to do next.
+// The "fresh" detection is intentionally conservative: no theme_id, or
+// zero visible element toggles. Dismissal persists per-court in
+// sessionStorage so the banner does not nag during the same session.
+// ---------------------------------------------------------------------------
 
+function FirstRunBanner({
+  courtID,
+  config,
+}: {
+  courtID: number
+  config: CourtOverlayConfig | undefined
+}) {
+  const storageKey = `cc:overlay:first-run-dismissed:${courtID}`
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    try {
+      const stored = window.sessionStorage.getItem(storageKey)
+      if (stored === '1') setDismissed(true)
+    } catch {
+      // sessionStorage unavailable (private mode) — banner stays visible.
+    }
+  }, [storageKey])
+
+  if (dismissed) return null
+  if (!config) return null
+
+  const hasTheme = typeof config.theme_id === 'string' && config.theme_id.length > 0
+  const visibleCount = Object.values(config.elements ?? {}).filter(
+    (el) => el && typeof el === 'object' && (el as { visible?: boolean }).visible === true,
+  ).length
+  const needsSetup = !hasTheme || visibleCount === 0
+  if (!needsSetup) return null
+
+  const handleDismiss = () => {
+    setDismissed(true)
+    try {
+      window.sessionStorage.setItem(storageKey, '1')
+    } catch {
+      // ignore storage failures — state dismissal still holds for this render
+    }
+  }
+
+  return (
+    <section
+      role="region"
+      aria-label="Overlay setup suggestion"
+      className="flex items-start justify-between gap-4 rounded-lg border border-(--color-accent) bg-(--color-accent)/10 p-4"
+    >
+      <div className="flex items-start gap-3">
+        <Sparkles className="h-5 w-5 shrink-0 text-(--color-accent) mt-0.5" aria-hidden="true" />
+        <div>
+          <h2 className="text-sm font-semibold text-(--color-text-primary)">
+            Overlay not configured yet
+          </h2>
+          <p className="mt-0.5 text-sm text-(--color-text-secondary)">
+            This court has no theme or visible elements selected. Run the
+            setup wizard to get on-air in three steps.
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Link to="/overlay/setup">
+          <Button size="sm">Open setup wizard</Button>
+        </Link>
+        <button
+          type="button"
+          onClick={handleDismiss}
+          aria-label="Dismiss setup suggestion"
+          className="rounded p-1 text-(--color-text-muted) hover:bg-(--color-bg-hover) hover:text-(--color-text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent)"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    </section>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Shared states

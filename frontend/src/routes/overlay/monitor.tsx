@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { ProducerMonitor } from '../../features/overlay/monitor/ProducerMonitor'
 
 interface MonitorSearch {
@@ -22,15 +23,19 @@ export const Route = createFileRoute('/overlay/monitor')({
 function MonitorRoute() {
   const navigate = useNavigate()
   const { tournament } = Route.useSearch()
+  // Dashboard surface: default panel fallback is fine — operators see
+  // the reset/reload affordance and recover in-tab.
   return (
-    <ProducerMonitor
-      tournamentID={tournament ?? null}
-      onTournamentChange={(id) =>
-        navigate({
-          to: '/overlay/monitor',
-          search: id ? { tournament: id } : {},
-        })
-      }
-    />
+    <ErrorBoundary>
+      <ProducerMonitor
+        tournamentID={tournament ?? null}
+        onTournamentChange={(id) =>
+          navigate({
+            to: '/overlay/monitor',
+            search: id ? { tournament: id } : {},
+          })
+        }
+      />
+    </ErrorBoundary>
   )
 }
