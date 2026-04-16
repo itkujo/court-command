@@ -1312,3 +1312,181 @@ func (s *MatchService) DeclareForfeit(ctx context.Context, matchID int64, forfei
 func strPtr(s string) *string {
 	return &s
 }
+
+// ---------------------------------------------------------------------------
+// Score Override (admin-only audited action)
+// ---------------------------------------------------------------------------
+
+// OverrideGameInput represents a single game's overridden score.
+// A nil Winner means this game is the live (in-progress) game; a non-nil
+// Winner (1 or 2) means the game is treated as completed.
+type OverrideGameInput struct {
+	GameNumber int32
+	Team1Score int32
+	Team2Score int32
+	Winner     *int32
+}
+
+// OverrideScore directly updates a match's scoring state, bypassing the
+// scoring engine. Intended for platform_admin corrections only. Records a
+// SCORE_OVERRIDE event capturing the before/after state and reason.
+func (s *MatchService) OverrideScore(
+	ctx context.Context,
+	matchID int64,
+	games []OverrideGameInput,
+	userID int64,
+	reason string,
+) (MatchResponse, error) {
+	if len(games) == 0 {
+		return MatchResponse{}, &ValidationError{Message: "at least one game is required"}
+	}
+	if len(reason) < 10 {
+		return MatchResponse{}, &ValidationError{Message: "reason must be at least 10 characters"}
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return MatchResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	match, err := qtx.GetMatchForUpdate(ctx, matchID)
+	if err != nil {
+		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+	}
+
+	// Capture previous state for the audit event.
+	prevSetScores := match.SetScores
+	if len(prevSetScores) == 0 {
+		prevSetScores = []byte("[]")
+	}
+
+	// Split incoming games into completed (winner != nil) and the live game (winner == nil).
+	var completed []engine.GameResult
+	var liveGame *OverrideGameInput
+	for i, g := range games {
+		if g.Winner != nil {
+			completed = append(completed, engine.GameResult{
+				GameNum:      g.GameNumber,
+				TeamOneScore: g.Team1Score,
+				TeamTwoScore: g.Team2Score,
+				Winner:       *g.Winner,
+			})
+		} else {
+			if liveGame != nil {
+				return MatchResponse{}, &ValidationError{
+					Message: "only one game may have a null winner (the live game)",
+				}
+			}
+			liveGame = &games[i]
+		}
+	}
+
+	// Determine new live-game score and game number.
+	var newTeam1Score, newTeam2Score, newCurrentGame int32
+	if liveGame != nil {
+		newTeam1Score = liveGame.Team1Score
+		newTeam2Score = liveGame.Team2Score
+		newCurrentGame = liveGame.GameNumber
+	} else {
+		// All games are completed: zero the live score, set current_game past the
+		// highest completed game number.
+		newTeam1Score = 0
+		newTeam2Score = 0
+		var maxGame int32
+		for _, g := range completed {
+			if g.GameNum > maxGame {
+				maxGame = g.GameNum
+			}
+		}
+		newCurrentGame = maxGame
+	}
+
+	setScoresJSON := []byte("[]")
+	if len(completed) > 0 {
+		encoded, err := json.Marshal(completed)
+		if err != nil {
+			return MatchResponse{}, fmt.Errorf("failed to encode set_scores: %w", err)
+		}
+		setScoresJSON = encoded
+	}
+
+	updated, err := qtx.UpdateMatchScoring(ctx, generated.UpdateMatchScoringParams{
+		ID:           matchID,
+		Team1Score:   newTeam1Score,
+		Team2Score:   newTeam2Score,
+		CurrentSet:   match.CurrentSet,
+		CurrentGame:  newCurrentGame,
+		ServingTeam:  match.ServingTeam,
+		ServerNumber: match.ServerNumber,
+		SetScores:    setScoresJSON,
+	})
+	if err != nil {
+		return MatchResponse{}, fmt.Errorf("failed to update match scoring: %w", err)
+	}
+
+	// Build the audit payload.
+	gamesPayload := make([]map[string]interface{}, len(games))
+	for i, g := range games {
+		entry := map[string]interface{}{
+			"game_number":  g.GameNumber,
+			"team_1_score": g.Team1Score,
+			"team_2_score": g.Team2Score,
+		}
+		if g.Winner != nil {
+			entry["winner"] = *g.Winner
+		} else {
+			entry["winner"] = nil
+		}
+		gamesPayload[i] = entry
+	}
+
+	payload, err := json.Marshal(map[string]interface{}{
+		"reason":                reason,
+		"actor_user_id":         userID,
+		"previous_team_1_score": match.Team1Score,
+		"previous_team_2_score": match.Team2Score,
+		"previous_current_game": match.CurrentGame,
+		"previous_set_scores":   json.RawMessage(prevSetScores),
+		"new_team_1_score":      newTeam1Score,
+		"new_team_2_score":      newTeam2Score,
+		"new_current_game":      newCurrentGame,
+		"new_set_scores":        json.RawMessage(setScoresJSON),
+		"games":                 gamesPayload,
+	})
+	if err != nil {
+		return MatchResponse{}, fmt.Errorf("failed to encode override payload: %w", err)
+	}
+
+	nextSeq, err := qtx.GetNextSequenceID(ctx, matchID)
+	if err != nil {
+		return MatchResponse{}, fmt.Errorf("failed to get next sequence: %w", err)
+	}
+
+	_, err = qtx.CreateMatchEvent(ctx, generated.CreateMatchEventParams{
+		MatchID:         matchID,
+		SequenceID:      nextSeq,
+		EventType:       "SCORE_OVERRIDE",
+		Team1Score:      newTeam1Score,
+		Team2Score:      newTeam2Score,
+		CurrentSet:      match.CurrentSet,
+		CurrentGame:     newCurrentGame,
+		ServingTeam:     match.ServingTeam,
+		ServerNumber:    match.ServerNumber,
+		SetScores:       setScoresJSON,
+		Payload:         payload,
+		CreatedByUserID: pgtype.Int8{Int64: userID, Valid: true},
+	})
+	if err != nil {
+		return MatchResponse{}, fmt.Errorf("failed to record override event: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return MatchResponse{}, fmt.Errorf("failed to commit override: %w", err)
+	}
+
+	s.broadcastMatchUpdate(ctx, updated)
+	return toMatchResponse(updated), nil
+}

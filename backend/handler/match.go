@@ -56,6 +56,12 @@ func (h *MatchHandler) Routes() chi.Router {
 	r.Post("/public/{publicID}/resume", h.HandleResumeMatch)
 	r.Post("/public/{publicID}/forfeit", h.HandleDeclareForfeit)
 
+	// PublicID-based read/control routes (sibling of the numeric routes above).
+	r.Post("/public/{publicID}/start", h.StartMatchByPublicID)
+	r.Post("/public/{publicID}/undo", h.UndoByPublicID)
+	r.Get("/public/{publicID}/events", h.GetMatchEventsByPublicID)
+	r.Post("/public/{publicID}/override", h.OverrideScore)
+
 	return r
 }
 
@@ -1089,4 +1095,151 @@ func (h *MatchHandler) HandleDeclareForfeit(w http.ResponseWriter, r *http.Reque
 	}
 
 	Success(w, result)
+}
+
+// ---------------------------------------------------------------------------
+// PublicID-based control handlers (delegate to numeric-ID logic).
+// ---------------------------------------------------------------------------
+
+// StartMatchByPublicID resolves the match by public ID and starts it.
+func (h *MatchHandler) StartMatchByPublicID(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	match, err := h.service.StartMatch(r.Context(), matchID, userID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, match)
+}
+
+// UndoByPublicID resolves the match by public ID and reverts the last event.
+func (h *MatchHandler) UndoByPublicID(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireSession(w, r)
+	if !ok {
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	match, err := h.service.Undo(r.Context(), matchID, userID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, match)
+}
+
+// GetMatchEventsByPublicID resolves the match by public ID and returns its events.
+func (h *MatchHandler) GetMatchEventsByPublicID(w http.ResponseWriter, r *http.Request) {
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	events, err := h.service.GetMatchEvents(r.Context(), matchID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, events)
+}
+
+// OverrideScore directly updates the match scores (admin-only audited action).
+//
+// Accepts a multi-game payload mirroring the ScoreOverrideModal in the frontend:
+//
+//	{
+//	  "games": [
+//	    {"game_number": 1, "team_1_score": 11, "team_2_score": 7,  "winner": 1},
+//	    {"game_number": 2, "team_1_score":  9, "team_2_score": 11, "winner": 2}
+//	  ],
+//	  "reason": "scorekeeper miscount in G2"
+//	}
+//
+// Games with a non-null winner are stored as completed games; the entry whose
+// winner is null (if any) becomes the live current-game score.
+func (h *MatchHandler) OverrideScore(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	if sess.Role != "platform_admin" {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Only platform admins can override scores")
+		return
+	}
+
+	matchID, ok := h.resolveMatchByPublicID(w, r)
+	if !ok {
+		return
+	}
+
+	var body struct {
+		Games []struct {
+			GameNumber int32  `json:"game_number"`
+			Team1Score int32  `json:"team_1_score"`
+			Team2Score int32  `json:"team_2_score"`
+			Winner     *int32 `json:"winner"`
+		} `json:"games"`
+		Reason string `json:"reason"`
+	}
+	if errMsg := DecodeJSON(r, &body); errMsg != "" {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", errMsg)
+		return
+	}
+
+	if len(body.Games) == 0 {
+		WriteError(w, http.StatusBadRequest, "MISSING_FIELDS", "at least one game is required")
+		return
+	}
+	if len(body.Reason) < 10 {
+		WriteError(w, http.StatusBadRequest, "INVALID_REASON", "reason must be at least 10 characters")
+		return
+	}
+
+	games := make([]service.OverrideGameInput, len(body.Games))
+	for i, g := range body.Games {
+		if g.GameNumber < 1 {
+			WriteError(w, http.StatusBadRequest, "INVALID_GAME", "game_number must be >= 1")
+			return
+		}
+		if g.Team1Score < 0 || g.Team2Score < 0 {
+			WriteError(w, http.StatusBadRequest, "INVALID_SCORE", "scores must be non-negative")
+			return
+		}
+		if g.Winner != nil && *g.Winner != 1 && *g.Winner != 2 {
+			WriteError(w, http.StatusBadRequest, "INVALID_WINNER", "winner must be 1, 2, or null")
+			return
+		}
+		games[i] = service.OverrideGameInput{
+			GameNumber: g.GameNumber,
+			Team1Score: g.Team1Score,
+			Team2Score: g.Team2Score,
+			Winner:     g.Winner,
+		}
+	}
+
+	match, err := h.service.OverrideScore(r.Context(), matchID, games, sess.UserID, body.Reason)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, match)
 }
