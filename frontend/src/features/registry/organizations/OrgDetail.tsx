@@ -4,7 +4,7 @@ import { InfoRow } from '../../../components/InfoRow'
 import { Skeleton } from '../../../components/Skeleton'
 import { EmptyState } from '../../../components/EmptyState'
 import { Button } from '../../../components/Button'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { formatDate } from '../../../lib/formatters'
 import { AdSlot } from '../../../components/AdSlot'
@@ -53,6 +53,12 @@ export function OrgDetail({ orgId }: OrgDetailProps) {
           <h1 className="text-2xl font-bold text-(--color-text-primary)">{org.name}</h1>
           <p className="text-sm text-(--color-text-secondary)">{org.slug}</p>
         </div>
+        <Link to="/organizations/$orgId/edit" params={{ orgId: String(org.id) }}>
+          <Button variant="secondary" size="sm">
+            <Pencil className="h-4 w-4 mr-1" />
+            Edit
+          </Button>
+        </Link>
       </div>
 
       <div className="space-y-6">

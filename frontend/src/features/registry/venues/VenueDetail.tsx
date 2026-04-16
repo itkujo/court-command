@@ -5,7 +5,7 @@ import { InfoRow } from '../../../components/InfoRow'
 import { Skeleton } from '../../../components/Skeleton'
 import { EmptyState } from '../../../components/EmptyState'
 import { Button } from '../../../components/Button'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { formatDate } from '../../../lib/formatters'
 import { AdSlot } from '../../../components/AdSlot'
@@ -65,9 +65,17 @@ export function VenueDetail({ venueId }: VenueDetailProps) {
           <h1 className="text-2xl font-bold text-(--color-text-primary)">{venue.name}</h1>
           <p className="text-sm text-(--color-text-secondary)">{venue.slug}</p>
         </div>
-        <Badge variant={STATUS_VARIANT[venue.status] ?? 'default'}>
-          {venue.status.replace(/_/g, ' ')}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Link to="/venues/$venueId/edit" params={{ venueId: String(venue.id) }}>
+            <Button variant="secondary" size="sm">
+              <Pencil className="h-4 w-4 mr-1" />
+              Edit
+            </Button>
+          </Link>
+          <Badge variant={STATUS_VARIANT[venue.status] ?? 'default'}>
+            {venue.status.replace(/_/g, ' ')}
+          </Badge>
+        </div>
       </div>
 
       <div className="space-y-6">

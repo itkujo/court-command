@@ -5,7 +5,7 @@ import { InfoRow } from '../../../components/InfoRow'
 import { Skeleton } from '../../../components/Skeleton'
 import { EmptyState } from '../../../components/EmptyState'
 import { Button } from '../../../components/Button'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { formatDate } from '../../../lib/formatters'
 import { AdSlot } from '../../../components/AdSlot'
@@ -64,9 +64,15 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
             </p>
           </div>
         </div>
-        <Link to="/teams/$teamId" params={{ teamId: String(team.id) }}>
+        <div className="flex items-center gap-2">
+          <Link to="/teams/$teamId/edit" params={{ teamId: String(team.id) }}>
+            <Button variant="secondary" size="sm">
+              <Pencil className="h-4 w-4 mr-1" />
+              Edit
+            </Button>
+          </Link>
           <Badge variant="info">{team.short_name}</Badge>
-        </Link>
+        </div>
       </div>
 
       <div className="space-y-6">
