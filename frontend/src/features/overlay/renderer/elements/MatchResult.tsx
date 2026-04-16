@@ -13,9 +13,12 @@
 // defense-in-depth).
 
 import { useEffect, useState } from 'react'
-import type { MatchResultConfig, OverlayData, OverlayTrigger } from '../../types'
+import type { ElementPosition, MatchResultConfig, OverlayData, OverlayTrigger } from '../../types'
 import { MATCH_STATUS } from '../../contract'
 import { clampElementScale } from '../elementScale'
+import { originForPosition, positionClasses } from './scoreboard/transforms'
+
+const DEFAULT_POSITION: ElementPosition = 'middle-center'
 
 export interface MatchResultProps {
   data: OverlayData
@@ -80,27 +83,33 @@ export function MatchResult({ data, config, trigger }: MatchResultProps) {
   if (!winner) return null
 
   const visible = phase === 'shown'
+  const effectivePosition = config.position ?? DEFAULT_POSITION
+  const origin = originForPosition(effectivePosition)
+  const posClass = positionClasses(effectivePosition)
 
   return (
-    <div
-      className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none"
-      aria-live="polite"
-    >
-      {/* Backdrop glow */}
+    <>
+      {/* Full-viewport backdrop glow + confetti: always center, not affected by position */}
       <div
-        className="absolute inset-0"
-        style={{
-          background: `radial-gradient(ellipse at center, ${winner.color || 'var(--overlay-accent)'}22 0%, transparent 60%)`,
-          opacity: visible ? 1 : 0,
-          transition: 'opacity 600ms ease',
-        }}
+        className="absolute inset-0 z-40 pointer-events-none"
         aria-hidden="true"
-      />
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(ellipse at center, ${winner.color || 'var(--overlay-accent)'}22 0%, transparent 60%)`,
+            opacity: visible ? 1 : 0,
+            transition: 'opacity 600ms ease',
+          }}
+        />
+        {visible && <ConfettiField color={winner.color || 'var(--overlay-accent)'} />}
+      </div>
 
-      {/* Confetti dots — pure CSS, no external lib */}
-      {visible && <ConfettiField color={winner.color || 'var(--overlay-accent)'} />}
-
-      {/* Winner card */}
+      {/* Winner card — positioned via config */}
+      <div
+        className={`${posClass} z-40 pointer-events-none`}
+        aria-live="polite"
+      >
       <div
         className="relative px-12 py-10 shadow-2xl backdrop-blur-md text-center max-w-xl"
         style={{
@@ -110,7 +119,7 @@ export function MatchResult({ data, config, trigger }: MatchResultProps) {
           fontFamily: 'var(--overlay-font-family)',
           borderTop: `6px solid ${winner.color || 'var(--overlay-accent)'}`,
           transform: `scale(${(visible ? 1 : 0.92) * clampElementScale(config.element_scale)})`,
-          transformOrigin: 'center',
+          transformOrigin: origin,
           opacity: visible ? 1 : 0,
           transition:
             'transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 300ms ease',
@@ -135,7 +144,8 @@ export function MatchResult({ data, config, trigger }: MatchResultProps) {
           {team2Wins}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 

@@ -7,8 +7,11 @@
 // and OBS scene graph can treat it as present.
 
 import { useEffect, useState } from 'react'
-import type { OverlayData, PoolStandingsConfig } from '../../types'
+import type { ElementPosition, OverlayData, PoolStandingsConfig } from '../../types'
 import { clampElementScale } from '../elementScale'
+import { originForPosition, positionClasses } from './scoreboard/transforms'
+
+const DEFAULT_POSITION: ElementPosition = 'middle-center'
 
 export interface PoolStandingsProps {
   data: OverlayData
@@ -29,9 +32,13 @@ export function PoolStandings({ data, config }: PoolStandingsProps) {
 
   if (!config.visible) return null
 
+  const effectivePosition = config.position ?? DEFAULT_POSITION
+  const origin = originForPosition(effectivePosition)
+  const posClass = positionClasses(effectivePosition)
+
   return (
     <div
-      className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+      className={`${posClass} z-30 pointer-events-none`}
       aria-live="polite"
     >
       <div
@@ -43,7 +50,7 @@ export function PoolStandings({ data, config }: PoolStandingsProps) {
           fontFamily: 'var(--overlay-font-family)',
           opacity: shown ? 1 : 0,
           transform: `translateY(${shown ? 0 : 10}px) scale(${clampElementScale(config.element_scale)})`,
-          transformOrigin: 'center',
+          transformOrigin: origin,
           transition: 'opacity 400ms ease, transform 400ms ease',
         }}
       >

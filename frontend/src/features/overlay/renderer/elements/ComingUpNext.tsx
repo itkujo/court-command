@@ -5,8 +5,11 @@
 // Hidden automatically when data.next_match is null (no queue).
 
 import { useEffect, useState } from 'react'
-import type { ComingUpNextConfig, OverlayData } from '../../types'
+import type { ComingUpNextConfig, ElementPosition, OverlayData } from '../../types'
 import { clampElementScale } from '../elementScale'
+import { originForPosition, positionClasses } from './scoreboard/transforms'
+
+const DEFAULT_POSITION: ElementPosition = 'top-center'
 
 export interface ComingUpNextProps {
   data: OverlayData
@@ -31,22 +34,31 @@ export function ComingUpNext({ data, config }: ComingUpNextProps) {
   const next = data.next_match
   const subtitle = [next.division_name, next.round_label].filter(Boolean).join(' · ')
 
+  const effectivePosition = config.position ?? DEFAULT_POSITION
+  const origin = originForPosition(effectivePosition)
+  const posClass = positionClasses(effectivePosition)
+  // Slide direction depends on anchor row — top anchors slide from top,
+  // bottom anchors slide from bottom, middle fades in place.
+  const offscreen = effectivePosition.startsWith('bottom')
+    ? 'translateY(110%)'
+    : effectivePosition.startsWith('middle')
+      ? 'translateY(0)'
+      : 'translateY(-110%)'
+
   return (
     <div
-      className="absolute top-0 left-1/2 -translate-x-1/2 z-20 pointer-events-none"
+      className={`${posClass} z-20 pointer-events-none`}
       aria-live="polite"
     >
       <div
-        className="mt-6 px-6 py-3 shadow-2xl backdrop-blur-md text-center min-w-[360px]"
+        className="px-6 py-3 shadow-2xl backdrop-blur-md text-center min-w-[360px]"
         style={{
           background: 'var(--overlay-primary)',
           color: 'var(--overlay-text)',
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
-          // Chain entry-slide with user scale knob. translateY first so
-          // scale doesn't amplify the off-screen offset.
-          transform: `${shown ? 'translateY(0)' : 'translateY(-110%)'} scale(${clampElementScale(config.element_scale)})`,
-          transformOrigin: 'top center',
+          transform: `${shown ? 'translateY(0)' : offscreen} scale(${clampElementScale(config.element_scale)})`,
+          transformOrigin: origin,
           opacity: shown ? 1 : 0,
           transition:
             'transform 450ms cubic-bezier(0.16, 1, 0.3, 1), opacity 250ms ease',

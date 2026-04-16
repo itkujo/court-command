@@ -32,26 +32,16 @@
 //     cleaned up on unmount (browser caches + next court may need them).
 
 import { useEffect, useRef, useState } from 'react'
-import type { OverlayData, ScoreboardPosition } from '../../../types'
+import type { ElementPosition, OverlayData } from '../../../types'
 import { MATCH_STATUS } from '../../../contract'
 import type { ScoreboardLayoutProps } from './types'
 import {
   clampOffset,
   clampScale,
+  originForPosition,
   positionClasses,
 } from './transforms'
 import { elementScaleStyle } from '../../elementScale'
-
-/** Map a scoreboard anchor to the most natural transform-origin. */
-function originForPosition(position: ScoreboardPosition): string {
-  switch (position) {
-    case 'top-left': return 'top left'
-    case 'top-right': return 'top right'
-    case 'bottom-left': return 'bottom left'
-    case 'bottom-right': return 'bottom right'
-    case 'bottom-center': return 'bottom center'
-  }
-}
 
 const FONT_LINK_ID = 'cc-banner-scoreboard-fonts'
 const FONT_HREF =
@@ -62,7 +52,7 @@ const BANNER_FONT_FAMILY =
 const BODY_FONT_FAMILY =
   '"DM Sans", "Barlow Condensed", system-ui, sans-serif'
 
-const BANNER_DEFAULT_POSITION: ScoreboardPosition = 'bottom-center'
+const BANNER_DEFAULT_POSITION: ElementPosition = 'bottom-center'
 
 interface LogoTransform {
   scale: number

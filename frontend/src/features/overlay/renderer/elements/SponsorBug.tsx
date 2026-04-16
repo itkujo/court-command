@@ -9,8 +9,14 @@
 // Each rotation fills the chip so the logo reads at distance.
 
 import { useEffect, useRef, useState } from 'react'
-import type { OverlayData, SponsorBugConfig, SponsorLogo } from '../../types'
+import type { ElementPosition, OverlayData, SponsorBugConfig, SponsorLogo } from '../../types'
 import { elementScaleStyle } from '../elementScale'
+import {
+  originForPosition,
+  positionClasses,
+} from './scoreboard/transforms'
+
+const DEFAULT_POSITION: ElementPosition = 'top-right'
 
 export interface SponsorBugProps {
   data: OverlayData
@@ -67,18 +73,21 @@ export function SponsorBug({ data, config }: SponsorBugProps) {
   if (!active) return null
 
   const transparent = config.transparent_background ?? false
+  const effectivePosition = config.position ?? DEFAULT_POSITION
+  const origin = originForPosition(effectivePosition)
+  const posClass = positionClasses(effectivePosition)
   // When transparent: drop the chip surface entirely so transparent PNG
   // source art composites directly onto the broadcast background. Padding
   // and shadow come off so the logo reads exactly as authored.
   const chipClasses = transparent
-    ? 'absolute top-6 right-6 z-20 flex items-center justify-center'
-    : 'absolute top-6 right-6 z-20 flex items-center justify-center px-3 py-2 shadow-xl backdrop-blur-md'
+    ? `${posClass} z-20 flex items-center justify-center`
+    : `${posClass} z-20 flex items-center justify-center px-3 py-2 shadow-xl backdrop-blur-md`
   const chipStyle: React.CSSProperties = transparent
-    ? { ...elementScaleStyle(config, 'top right') }
+    ? { ...elementScaleStyle(config, origin) }
     : {
         background: 'var(--overlay-primary)',
         borderRadius: 'var(--overlay-radius)',
-        ...elementScaleStyle(config, 'top right'),
+        ...elementScaleStyle(config, origin),
       }
 
   return (
@@ -150,11 +159,14 @@ function SponsorBugPlaceholder({ config }: { config: SponsorBugConfig }) {
     setVisible(!!el.closest('[data-overlay-preview="true"]'))
   }, [])
 
+  const effectivePosition = config.position ?? DEFAULT_POSITION
+  const origin = originForPosition(effectivePosition)
+
   return (
     <div
       ref={ref}
       aria-hidden="true"
-      className="absolute top-6 right-6 z-20 flex items-center gap-3 px-4 py-2.5 border-2 border-dashed text-xs uppercase tracking-widest font-bold"
+      className={`${positionClasses(effectivePosition)} z-20 flex items-center gap-3 px-4 py-2.5 border-2 border-dashed text-xs uppercase tracking-widest font-bold`}
       style={{
         borderColor: 'var(--overlay-accent)',
         color: 'var(--overlay-text)',
@@ -162,7 +174,7 @@ function SponsorBugPlaceholder({ config }: { config: SponsorBugConfig }) {
         fontFamily: 'var(--overlay-font-family)',
         opacity: visible ? 0.6 : 0,
         pointerEvents: 'none',
-        ...elementScaleStyle(config, 'top right'),
+        ...elementScaleStyle(config, origin),
       }}
     >
       <span style={{ color: 'var(--overlay-accent)' }}>Sponsor</span>

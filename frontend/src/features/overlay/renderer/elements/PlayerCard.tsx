@@ -13,8 +13,11 @@
 // trigger-driven payload selection.
 
 import { useEffect, useState } from 'react'
-import type { OverlayData, OverlayTrigger, PlayerCardConfig } from '../../types'
+import type { ElementPosition, OverlayData, OverlayTrigger, PlayerCardConfig } from '../../types'
 import { clampElementScale } from '../elementScale'
+import { originForPosition, positionClasses } from './scoreboard/transforms'
+
+const DEFAULT_POSITION: ElementPosition = 'bottom-center'
 
 export interface PlayerCardProps {
   data: OverlayData
@@ -47,9 +50,13 @@ export function PlayerCard({ data, config, trigger }: PlayerCardProps) {
   const { player, team } = resolvePlayer(data, playerId, config.selected_player ?? null)
   if (!player) return null
 
+  const effectivePosition = config.position ?? DEFAULT_POSITION
+  const origin = originForPosition(effectivePosition)
+  const posClass = positionClasses(effectivePosition)
+
   return (
     <div
-      className="absolute inset-0 flex items-end justify-center pb-32 z-30 pointer-events-none"
+      className={`${posClass} z-30 pointer-events-none`}
       aria-live="polite"
     >
       <div
@@ -60,7 +67,7 @@ export function PlayerCard({ data, config, trigger }: PlayerCardProps) {
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
           transform: `scale(${(shown ? 1 : 0.9) * clampElementScale(config.element_scale)})`,
-          transformOrigin: 'center',
+          transformOrigin: origin,
           opacity: shown ? 1 : 0,
           transition:
             'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 250ms ease',

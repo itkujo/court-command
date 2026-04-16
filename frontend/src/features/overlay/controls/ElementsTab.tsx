@@ -22,6 +22,7 @@ import { cn } from '../../../lib/cn'
 import type {
   CourtOverlayConfig,
   CustomTextConfig,
+  CustomTextFont,
   ElementsConfig,
   MatchResultConfig,
   PlayerCardConfig,
@@ -44,7 +45,7 @@ import {
   SCALE_MIN,
   SCALE_STEP,
 } from '../renderer/elements/scoreboard/transforms'
-import type { ElementConfigBase, ScoreboardPosition } from '../types'
+import type { ElementConfigBase, ElementPosition } from '../types'
 import {
   ELEMENT_SCALE_MAX,
   ELEMENT_SCALE_MIN,
@@ -131,12 +132,6 @@ const ELEMENT_DESCRIPTIONS: Record<ElementKey, string> = {
     'Full-center pool standings table (between-match narrative).',
   series_score: 'Top-right dot grid showing BO3/BO5/BO7 series progress.',
 }
-
-const CUSTOM_TEXT_ZONES = [
-  { value: 'top', label: 'Top' },
-  { value: 'center', label: 'Center' },
-  { value: 'bottom', label: 'Bottom' },
-]
 
 const DISMISS_OPTIONS = [
   { value: '0', label: 'Manual (stay until dismissed)' },
@@ -502,7 +497,7 @@ function settingsHint(key: ElementKey): string {
     case ELEMENT_KEY.MATCH_RESULT:
       return 'Show delay · dismiss timer'
     case ELEMENT_KEY.CUSTOM_TEXT:
-      return 'Default text · placement zone · auto-dismiss'
+      return 'Text · font · colors · position · dismiss'
     default:
       // Elements without bespoke knobs still expose the universal size slider.
       return 'Size'
@@ -529,10 +524,23 @@ interface KnobsProps<K extends ElementKey> {
 function ElementKnobs<K extends ElementKey>({ elementKey, config, onPatch, courtID }: KnobsProps<K>) {
   // Universal Size slider wired into every element. Specific knobs (when any)
   // render above it. Elements without bespoke knobs get just the Size slider.
+  // Position knob rendered here for every element EXCEPT:
+  //  - lower_third: full-width banner, position is fixed by design
+  //  - scoreboard: has its own inline Position field next to Layout in ScoreboardKnobs
   const specific = renderSpecificKnobs(elementKey, config, onPatch, courtID)
+  const showPosition =
+    elementKey !== ELEMENT_KEY.LOWER_THIRD &&
+    elementKey !== ELEMENT_KEY.SCOREBOARD
   return (
     <div className="space-y-5">
       {specific}
+      {showPosition && (
+        <ElementPositionField
+          elementKey={elementKey}
+          config={config as ElementConfigBase}
+          onPatch={onPatch as (p: Partial<ElementConfigBase>) => void}
+        />
+      )}
       <ElementSizeSlider
         elementKey={elementKey}
         config={config as ElementConfigBase}
@@ -541,6 +549,83 @@ function ElementKnobs<K extends ElementKey>({ elementKey, config, onPatch, court
     </div>
   )
 }
+
+/**
+ * Shared 9-anchor position dropdown used by every element except the
+ * Scoreboard (which renders its own Position inline with Layout) and the
+ * Lower Third (which is a full-width banner by design). Empty value
+ * clears the config.position field so the element falls back to its
+ * renderer-side default anchor.
+ */
+function ElementPositionField({
+  elementKey,
+  config,
+  onPatch,
+}: {
+  elementKey: ElementKey
+  config: ElementConfigBase
+  onPatch: (p: Partial<ElementConfigBase>) => void
+}) {
+  const id = `pos-${elementKey}`
+  const value = config.position ?? ''
+  return (
+    <FormField label="Position" htmlFor={id}>
+      <Select
+        id={id}
+        value={value}
+        onChange={(e) => {
+          const v = e.target.value
+          if (v === '') {
+            onPatch({ position: undefined })
+          } else {
+            onPatch({ position: v as ElementPosition })
+          }
+        }}
+      >
+        <option value="">Default placement</option>
+        {POSITION_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </Select>
+      <p className="text-xs text-(--color-text-secondary) mt-1">
+        Anchor on the 1920×1080 canvas. Leave at default to use this
+        element's conventional placement.
+      </p>
+    </FormField>
+  )
+}
+
+/**
+ * Web-safe font stack list for the Custom Text element. Every entry is a
+ * full CSS font-family string so the renderer can assign it verbatim
+ * without rebuilding the fallback chain. The 'system' sentinel maps to
+ * the current theme's `--overlay-font-family` inside the renderer.
+ */
+const CUSTOM_TEXT_FONT_OPTIONS: Array<{
+  value: CustomTextFont
+  label: string
+  group: string
+}> = [
+  { value: 'system', label: 'Theme default', group: 'Default' },
+  { value: 'system-ui', label: 'System UI (native)', group: 'System' },
+  { value: 'Arial, sans-serif', label: 'Arial', group: 'Sans-serif' },
+  { value: 'Helvetica, Arial, sans-serif', label: 'Helvetica', group: 'Sans-serif' },
+  { value: '"Arial Black", Gadget, sans-serif', label: 'Arial Black', group: 'Sans-serif' },
+  { value: 'Verdana, Geneva, sans-serif', label: 'Verdana', group: 'Sans-serif' },
+  { value: 'Tahoma, Geneva, sans-serif', label: 'Tahoma', group: 'Sans-serif' },
+  { value: '"Trebuchet MS", "Lucida Grande", sans-serif', label: 'Trebuchet MS', group: 'Sans-serif' },
+  { value: 'Impact, Charcoal, sans-serif', label: 'Impact', group: 'Display' },
+  { value: '"Times New Roman", Times, serif', label: 'Times New Roman', group: 'Serif' },
+  { value: 'Georgia, serif', label: 'Georgia', group: 'Serif' },
+  { value: 'Garamond, "Apple Garamond", serif', label: 'Garamond', group: 'Serif' },
+  { value: '"Palatino Linotype", "Book Antiqua", Palatino, serif', label: 'Palatino', group: 'Serif' },
+  { value: '"Courier New", Courier, monospace', label: 'Courier New', group: 'Monospace' },
+  { value: '"Lucida Console", Monaco, monospace', label: 'Lucida Console', group: 'Monospace' },
+  { value: '"Comic Sans MS", "Chalkboard SE", cursive', label: 'Comic Sans', group: 'Display' },
+  { value: '"Brush Script MT", "Brush Script Std", cursive', label: 'Brush Script', group: 'Display' },
+]
 
 function renderSpecificKnobs<K extends ElementKey>(
   elementKey: K,
@@ -672,9 +757,9 @@ function ScoreboardKnobs({
   const activeOption =
     SCOREBOARD_LAYOUT_OPTIONS.find((o) => o.value === current) ??
     SCOREBOARD_LAYOUT_OPTIONS[0]
-  const defaultPosition: ScoreboardPosition =
+  const defaultPosition: ElementPosition =
     current === 'banner' ? 'bottom-center' : 'bottom-left'
-  const currentPosition: ScoreboardPosition = config.position ?? defaultPosition
+  const currentPosition: ElementPosition = config.position ?? defaultPosition
 
   return (
     <div className="space-y-5">
@@ -702,7 +787,7 @@ function ScoreboardKnobs({
             id="scoreboard-position"
             value={currentPosition}
             onChange={(e) =>
-              onPatch({ position: e.target.value as ScoreboardPosition })
+              onPatch({ position: e.target.value as ElementPosition })
             }
           >
             {POSITION_OPTIONS.map((opt) => (
@@ -1228,9 +1313,14 @@ function CustomTextKnobs({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.text])
 
+  const transparent = config.transparent_background ?? false
+  const fontColor = config.font_color ?? ''
+  const bgColor = config.background_color ?? ''
+  const currentFont = config.font_family ?? 'system'
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <FormField label="Text" htmlFor="ct-text" className="md:col-span-2">
+    <div className="space-y-4">
+      <FormField label="Text" htmlFor="ct-text">
         <Input
           id="ct-text"
           placeholder="e.g. Championship Final — Court A"
@@ -1241,34 +1331,152 @@ function CustomTextKnobs({
           }}
         />
       </FormField>
-      <FormField label="Placement zone" htmlFor="ct-zone">
-        <Select
-          id="ct-zone"
-          value={config.zone ?? 'bottom'}
-          onChange={(e) => onPatch({ zone: e.target.value })}
-        >
-          {CUSTOM_TEXT_ZONES.map((z) => (
-            <option key={z.value} value={z.value}>
-              {z.label}
-            </option>
-          ))}
-        </Select>
-      </FormField>
-      <FormField label="Auto-dismiss" htmlFor="ct-dismiss">
-        <Select
-          id="ct-dismiss"
-          value={String(config.auto_dismiss_seconds ?? 0)}
-          onChange={(e) =>
-            onPatch({ auto_dismiss_seconds: parseInt(e.target.value, 10) || 0 })
-          }
-        >
-          {DISMISS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </Select>
-      </FormField>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField label="Font" htmlFor="ct-font">
+          <Select
+            id="ct-font"
+            value={currentFont}
+            onChange={(e) => {
+              const v = e.target.value
+              onPatch({
+                font_family: v === 'system' ? 'system' : (v as CustomTextFont),
+              })
+            }}
+          >
+            {CUSTOM_TEXT_FONT_OPTIONS.map((opt) => (
+              <option
+                key={opt.value}
+                value={opt.value}
+                style={{
+                  fontFamily:
+                    opt.value === 'system'
+                      ? 'var(--overlay-font-family)'
+                      : opt.value,
+                }}
+              >
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+          <p className="text-xs text-(--color-text-secondary) mt-1">
+            Web-safe stacks — every browser on every OS renders them
+            natively.
+          </p>
+        </FormField>
+
+        <FormField label="Auto-dismiss" htmlFor="ct-dismiss">
+          <Select
+            id="ct-dismiss"
+            value={String(config.auto_dismiss_seconds ?? 0)}
+            onChange={(e) =>
+              onPatch({ auto_dismiss_seconds: parseInt(e.target.value, 10) || 0 })
+            }
+          >
+            {DISMISS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField label="Font color" htmlFor="ct-font-color">
+          <ColorPickerField
+            id="ct-font-color"
+            value={fontColor}
+            placeholder="Theme default"
+            onChange={(v) => onPatch({ font_color: v || undefined })}
+          />
+        </FormField>
+
+        <FormField label="Background color" htmlFor="ct-bg-color">
+          <ColorPickerField
+            id="ct-bg-color"
+            value={bgColor}
+            placeholder="Theme default"
+            disabled={transparent}
+            onChange={(v) => onPatch({ background_color: v || undefined })}
+          />
+          {transparent && (
+            <p className="text-xs text-(--color-text-secondary) mt-1">
+              Background color ignored while transparent.
+            </p>
+          )}
+        </FormField>
+      </div>
+
+      <div className="flex items-start justify-between gap-4 rounded-md border border-(--color-border) bg-(--color-bg-secondary) p-3">
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-(--color-text-primary)">
+            Transparent background
+          </div>
+          <p className="text-xs text-(--color-text-secondary) mt-0.5">
+            Drop the chip surface so the text composites directly onto the
+            broadcast. Pair with a font color that has enough contrast
+            against whatever's behind the overlay.
+          </p>
+        </div>
+        <Toggle
+          id="ct-transparent-bg"
+          checked={transparent}
+          onChange={(checked) => onPatch({ transparent_background: checked })}
+          label="Transparent custom text background"
+        />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Native color picker + hex text input pair. Empty string = clear (fall
+ * back to theme default). Handles #rrggbb only — the native color input
+ * emits long-form hex so we accept that format and leave validation to
+ * the browser.
+ */
+function ColorPickerField({
+  id,
+  value,
+  placeholder,
+  disabled,
+  onChange,
+}: {
+  id: string
+  value: string
+  placeholder?: string
+  disabled?: boolean
+  onChange: (next: string) => void
+}) {
+  // The <input type="color"> element can't hold an empty value, so we
+  // keep the picker mirrored to the text value when it looks like a hex
+  // string and fall back to black otherwise. The paired text input is
+  // the source of truth for "unset".
+  const looksHex = /^#[0-9a-fA-F]{6}$/.test(value)
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        id={`${id}-picker`}
+        type="color"
+        aria-label="Color swatch"
+        disabled={disabled}
+        value={looksHex ? value : '#000000'}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          'h-9 w-12 shrink-0 rounded-md border border-(--color-border) bg-(--color-bg-input) p-1 cursor-pointer',
+          disabled && 'opacity-50 cursor-not-allowed',
+        )}
+      />
+      <Input
+        id={id}
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value.trim())}
+        className="flex-1"
+      />
     </div>
   )
 }

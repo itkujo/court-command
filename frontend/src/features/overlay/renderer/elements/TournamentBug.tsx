@@ -4,8 +4,14 @@
 // Prefers tournament_logo_url; falls back to league_logo_url.
 // If neither logo is available but names are, shows text-only badge.
 
-import type { OverlayData, TournamentBugConfig } from '../../types'
+import type { ElementPosition, OverlayData, TournamentBugConfig } from '../../types'
 import { elementScaleStyle } from '../elementScale'
+import {
+  originForPosition,
+  positionClasses,
+} from './scoreboard/transforms'
+
+const DEFAULT_POSITION: ElementPosition = 'top-left'
 
 export interface TournamentBugProps {
   data: OverlayData
@@ -20,15 +26,18 @@ export function TournamentBug({ data, config }: TournamentBugProps) {
 
   if (!logo && !name) return null
 
+  const effectivePosition = config.position ?? DEFAULT_POSITION
+  const origin = originForPosition(effectivePosition)
+
   return (
     <div
-      className="absolute top-6 left-6 z-20 flex items-center gap-3 px-4 py-2.5 shadow-xl backdrop-blur-md"
+      className={`${positionClasses(effectivePosition)} z-20 flex items-center gap-3 px-4 py-2.5 shadow-xl backdrop-blur-md`}
       style={{
         background: 'var(--overlay-primary)',
         color: 'var(--overlay-text)',
         borderRadius: 'var(--overlay-radius)',
         fontFamily: 'var(--overlay-font-family)',
-        ...elementScaleStyle(config, 'top left'),
+        ...elementScaleStyle(config, origin),
       }}
       aria-label={name || 'Tournament'}
     >

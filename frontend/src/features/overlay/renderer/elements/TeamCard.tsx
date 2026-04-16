@@ -8,12 +8,16 @@
 
 import { useEffect, useState } from 'react'
 import type {
+  ElementPosition,
   OverlayData,
   OverlayTeamData,
   OverlayTrigger,
   TeamCardConfig,
 } from '../../types'
 import { clampElementScale } from '../elementScale'
+import { originForPosition, positionClasses } from './scoreboard/transforms'
+
+const DEFAULT_POSITION: ElementPosition = 'bottom-center'
 
 export interface TeamCardProps {
   data: OverlayData
@@ -56,9 +60,13 @@ export function TeamCard({ data, config, trigger }: TeamCardProps) {
         : null
   const onlyTeam = triggerOnlyTeam ?? configOnlyTeam
 
+  const effectivePosition = config.position ?? DEFAULT_POSITION
+  const origin = originForPosition(effectivePosition)
+  const posClass = positionClasses(effectivePosition)
+
   return (
     <div
-      className="absolute inset-0 flex items-end justify-center pb-32 z-30 pointer-events-none"
+      className={`${posClass} z-30 pointer-events-none`}
       aria-live="polite"
     >
       <div
@@ -69,7 +77,7 @@ export function TeamCard({ data, config, trigger }: TeamCardProps) {
           borderRadius: 'var(--overlay-radius)',
           fontFamily: 'var(--overlay-font-family)',
           transform: `scale(${(shown ? 1 : 0.9) * clampElementScale(config.element_scale)})`,
-          transformOrigin: 'center',
+          transformOrigin: origin,
           opacity: shown ? 1 : 0,
           transition:
             'transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 250ms ease',

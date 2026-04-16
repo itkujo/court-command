@@ -105,6 +105,26 @@ export interface OverlayData {
 // element-specific knobs are optional.
 // ---------------------------------------------------------------------------
 
+/**
+ * Screen-relative anchor for a positioned element on the 1920×1080 canvas.
+ * Full 3×3 grid so operators can pin anywhere. Each element has its own
+ * sensible default (scoreboard bottom-left, tournament bug top-left,
+ * sponsor bug top-right, etc.) and falls back to that default when
+ * `position` is unset.
+ *
+ * LowerThird is a full-width banner by design and ignores this field.
+ */
+export type ElementPosition =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'middle-left'
+  | 'middle-center'
+  | 'middle-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right'
+
 export interface ElementConfigBase {
   visible: boolean
   auto_animate?: boolean
@@ -115,6 +135,12 @@ export interface ElementConfigBase {
    * bleed outside, which is the intended broadcast-producer behavior.
    */
   element_scale?: number
+  /**
+   * Universal position knob. Shared across every positioned element
+   * (all except LowerThird). When unset, each element's renderer picks
+   * a sensible default anchor.
+   */
+  position?: ElementPosition
 }
 
 /**
@@ -132,23 +158,13 @@ export interface ElementConfigBase {
 export type ScoreboardLayout = 'classic' | 'banner'
 
 /**
- * Screen-relative anchor for the scoreboard card/banner. Each layout
- * picks its own default (Classic → bottom-left, Banner → bottom-center).
+ * @deprecated Use `ElementPosition` instead. Kept as an alias so any
+ * existing call sites continue to compile while we migrate naming.
  */
-export type ScoreboardPosition =
-  | 'top-left'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-right'
-  | 'bottom-center'
+export type ScoreboardPosition = ElementPosition
 
 export interface ScoreboardConfig extends ElementConfigBase {
   layout?: ScoreboardLayout
-  /**
-   * Anchor for where the scoreboard is pinned on the 1920×1080 canvas.
-   * Omitted → each layout applies its default.
-   */
-  position?: ScoreboardPosition
   /**
    * Logo scale knobs (0.5..5.0, default 1.0). Each is applied independently
    * so operators can tune tournament branding vs. team identity without
@@ -226,11 +242,55 @@ export interface MatchResultConfig extends ElementConfigBase {
   auto_dismiss_seconds?: number
 }
 
+/**
+ * Curated web-safe font stack. Every entry below ships natively on major
+ * desktop + mobile OS families, so we can render these without loading
+ * any remote fonts. Values are the `font-family` fallback stack strings
+ * that actually get applied in CSS. `system` inherits the theme font.
+ */
+export type CustomTextFont =
+  | 'system'
+  | 'system-ui'
+  | 'Arial, sans-serif'
+  | 'Helvetica, Arial, sans-serif'
+  | '"Arial Black", Gadget, sans-serif'
+  | 'Verdana, Geneva, sans-serif'
+  | 'Tahoma, Geneva, sans-serif'
+  | '"Trebuchet MS", "Lucida Grande", sans-serif'
+  | '"Times New Roman", Times, serif'
+  | 'Georgia, serif'
+  | 'Garamond, "Apple Garamond", serif'
+  | '"Palatino Linotype", "Book Antiqua", Palatino, serif'
+  | '"Courier New", Courier, monospace'
+  | '"Lucida Console", Monaco, monospace'
+  | 'Impact, Charcoal, sans-serif'
+  | '"Comic Sans MS", "Chalkboard SE", cursive'
+  | '"Brush Script MT", "Brush Script Std", cursive'
+
 export interface CustomTextConfig extends ElementConfigBase {
   text?: string
   auto_dismiss_seconds?: number
-  /** UI-only placement hint; server does not validate. */
+  /**
+   * @deprecated Legacy zone field — replaced by `position` on
+   * `ElementConfigBase`. Still read at runtime if `position` is unset so
+   * stored configs from earlier builds don't reset to the default anchor.
+   */
   zone?: string
+  /** Font-family stack. Defaults to theme when omitted or `'system'`. */
+  font_family?: CustomTextFont | string
+  /** CSS color for the text glyphs. Defaults to `var(--overlay-text)`. */
+  font_color?: string
+  /**
+   * CSS color for the chip background panel. Defaults to
+   * `var(--overlay-primary)` when omitted. Ignored when
+   * `transparent_background === true`.
+   */
+  background_color?: string
+  /**
+   * When true the chip panel is dropped entirely — text composites
+   * directly onto the broadcast surface. Same pattern as SponsorBug.
+   */
+  transparent_background?: boolean
 }
 
 export interface BracketSnapshotConfig extends ElementConfigBase {}

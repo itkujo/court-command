@@ -11,8 +11,11 @@
 // fade-in) so the Control Panel can enable/disable it without error.
 
 import { useEffect, useState } from 'react'
-import type { BracketSnapshotConfig, OverlayData } from '../../types'
+import type { BracketSnapshotConfig, ElementPosition, OverlayData } from '../../types'
 import { clampElementScale } from '../elementScale'
+import { originForPosition, positionClasses } from './scoreboard/transforms'
+
+const DEFAULT_POSITION: ElementPosition = 'middle-center'
 
 export interface BracketSnapshotProps {
   data: OverlayData
@@ -33,9 +36,13 @@ export function BracketSnapshot({ data, config }: BracketSnapshotProps) {
 
   if (!config.visible) return null
 
+  const effectivePosition = config.position ?? DEFAULT_POSITION
+  const origin = originForPosition(effectivePosition)
+  const posClass = positionClasses(effectivePosition)
+
   return (
     <div
-      className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+      className={`${posClass} z-30 pointer-events-none`}
       aria-live="polite"
     >
       <div
@@ -47,7 +54,7 @@ export function BracketSnapshot({ data, config }: BracketSnapshotProps) {
           fontFamily: 'var(--overlay-font-family)',
           opacity: shown ? 1 : 0,
           transform: `translateY(${shown ? 0 : 10}px) scale(${clampElementScale(config.element_scale)})`,
-          transformOrigin: 'center',
+          transformOrigin: origin,
           transition: 'opacity 400ms ease, transform 400ms ease',
         }}
       >

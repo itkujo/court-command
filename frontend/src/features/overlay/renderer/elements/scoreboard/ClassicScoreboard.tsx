@@ -20,24 +20,13 @@
 //   - Match-over glow when match_status === 'completed'
 
 import { useEffect, useRef, useState } from 'react'
-import type { OverlayData, ScoreboardPosition } from '../../../types'
+import type { ElementPosition, OverlayData } from '../../../types'
 import { MATCH_STATUS } from '../../../contract'
 import type { ScoreboardLayoutProps } from './types'
-import { positionClasses } from './transforms'
+import { originForPosition, positionClasses } from './transforms'
 import { elementScaleStyle } from '../../elementScale'
 
-/** Map a scoreboard anchor to the most natural transform-origin. */
-function originForPosition(position: ScoreboardPosition): string {
-  switch (position) {
-    case 'top-left': return 'top left'
-    case 'top-right': return 'top right'
-    case 'bottom-left': return 'bottom left'
-    case 'bottom-right': return 'bottom right'
-    case 'bottom-center': return 'bottom center'
-  }
-}
-
-const CLASSIC_DEFAULT_POSITION: ScoreboardPosition = 'bottom-left'
+const CLASSIC_DEFAULT_POSITION: ElementPosition = 'bottom-left'
 
 export function ClassicScoreboard({ data, config }: ScoreboardLayoutProps) {
   if (!config.visible) return null

@@ -2,10 +2,11 @@
 //
 // Shared scoreboard transform helpers. Scale, offset, and position clamps
 // live here so ClassicScoreboard + BannerScoreboard + ElementsTab knobs all
-// agree on the same ranges. Keeping the ranges in one place also means the
-// UI sliders and the renderer never drift apart.
+// agree on the same ranges. Position helpers are also used by every other
+// positioned element (SponsorBug, TournamentBug, PlayerCard, etc.) so the
+// 9-anchor grid vocabulary stays consistent across the whole renderer.
 
-import type { ScoreboardPosition } from '../../../types'
+import type { ElementPosition, ScoreboardPosition } from '../../../types'
 
 /** Scale slider hard clamp. */
 export const SCALE_MIN = 0.5
@@ -34,14 +35,24 @@ export function clampOffset(value: number | undefined): number {
 /**
  * Absolute-position classes for each anchor. The 1920×1080 canvas is
  * relative-positioned, so these render exactly where you'd expect.
- * Bottom-center keeps the historic banner placement.
+ * Middle-row anchors use `top-1/2 -translate-y-1/2` to pin to the
+ * vertical center; the horizontal translate is composed into the same
+ * transform so both axes play nicely with the `-translate-x-1/2` center.
  */
-export function positionClasses(position: ScoreboardPosition): string {
+export function positionClasses(position: ElementPosition): string {
   switch (position) {
     case 'top-left':
       return 'absolute top-8 left-8'
+    case 'top-center':
+      return 'absolute top-8 left-1/2 -translate-x-1/2'
     case 'top-right':
       return 'absolute top-8 right-8'
+    case 'middle-left':
+      return 'absolute top-1/2 left-8 -translate-y-1/2'
+    case 'middle-center':
+      return 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
+    case 'middle-right':
+      return 'absolute top-1/2 right-8 -translate-y-1/2'
     case 'bottom-left':
       return 'absolute bottom-8 left-8'
     case 'bottom-right':
@@ -52,10 +63,50 @@ export function positionClasses(position: ScoreboardPosition): string {
   }
 }
 
-export const POSITION_OPTIONS: { value: ScoreboardPosition; label: string }[] = [
+/**
+ * Pick a sensible CSS `transform-origin` for a given anchor so user-applied
+ * scale/offset transforms don't push the element away from its anchor edge.
+ */
+export function originForPosition(position: ElementPosition): string {
+  switch (position) {
+    case 'top-left':
+      return 'top left'
+    case 'top-center':
+      return 'top center'
+    case 'top-right':
+      return 'top right'
+    case 'middle-left':
+      return 'center left'
+    case 'middle-right':
+      return 'center right'
+    case 'bottom-left':
+      return 'bottom left'
+    case 'bottom-right':
+      return 'bottom right'
+    case 'bottom-center':
+      return 'bottom center'
+    case 'middle-center':
+    default:
+      return 'center center'
+  }
+}
+
+/**
+ * Full 3×3 grid. UI renders this as a compact 3×3 of pill buttons or a
+ * single Select depending on the consumer. The scoreboard-specific knob
+ * reuses this list via re-export below so the picker stays in sync.
+ */
+export const POSITION_OPTIONS: { value: ElementPosition; label: string }[] = [
   { value: 'top-left', label: 'Top left' },
+  { value: 'top-center', label: 'Top center' },
   { value: 'top-right', label: 'Top right' },
+  { value: 'middle-left', label: 'Middle left' },
+  { value: 'middle-center', label: 'Middle center' },
+  { value: 'middle-right', label: 'Middle right' },
   { value: 'bottom-left', label: 'Bottom left' },
   { value: 'bottom-center', label: 'Bottom center' },
   { value: 'bottom-right', label: 'Bottom right' },
 ]
+
+/** Back-compat alias so existing scoreboard imports keep working. */
+export type { ScoreboardPosition }

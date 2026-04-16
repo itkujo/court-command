@@ -8,8 +8,14 @@
 // Pulse animation fires briefly whenever a team's win count ticks up.
 
 import { useEffect, useRef, useState } from 'react'
-import type { OverlayData, SeriesScoreConfig } from '../../types'
+import type { ElementPosition, OverlayData, SeriesScoreConfig } from '../../types'
 import { elementScaleStyle } from '../elementScale'
+import {
+  originForPosition,
+  positionClasses,
+} from './scoreboard/transforms'
+
+const DEFAULT_POSITION: ElementPosition = 'top-right'
 
 export interface SeriesScoreProps {
   data: OverlayData
@@ -52,15 +58,18 @@ export function SeriesScore({ data, config }: SeriesScoreProps) {
   const needed = Math.ceil(series.best_of / 2)
   const rowCells = Math.max(needed, 1)
 
+  const effectivePosition = config.position ?? DEFAULT_POSITION
+  const origin = originForPosition(effectivePosition)
+
   return (
     <div
-      className="absolute top-[88px] right-6 z-20 px-4 py-2.5 shadow-xl backdrop-blur-md"
+      className={`${positionClasses(effectivePosition)} z-20 px-4 py-2.5 shadow-xl backdrop-blur-md`}
       style={{
         background: 'var(--overlay-primary)',
         color: 'var(--overlay-text)',
         borderRadius: 'var(--overlay-radius)',
         fontFamily: 'var(--overlay-font-family)',
-        ...elementScaleStyle(config, 'top right'),
+        ...elementScaleStyle(config, origin),
       }}
       aria-label={`Series score ${series.team_1_wins} to ${series.team_2_wins}, best of ${series.best_of}`}
     >
