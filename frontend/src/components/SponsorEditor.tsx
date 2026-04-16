@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button } from './Button'
+import { ImageUpload } from './ImageUpload'
 import { Input } from './Input'
 import { Select } from './Select'
 import { Plus, Trash2 } from 'lucide-react'
@@ -66,6 +67,13 @@ export function SponsorEditor({ value, onChange }: SponsorEditorProps) {
               key={i}
               className="flex items-start gap-3 rounded-lg border border-(--color-border) bg-(--color-bg-secondary) p-3"
             >
+              <div className="shrink-0">
+                <ImageUpload
+                  label=""
+                  value={s.logo_url || null}
+                  onChange={(url) => updateSponsor(i, 'logo_url', url ?? '')}
+                />
+              </div>
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
                 <Input
                   value={s.name}
@@ -110,37 +118,48 @@ export function SponsorEditor({ value, onChange }: SponsorEditorProps) {
         </div>
       )}
       {adding ? (
-        <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) p-3 space-y-2">
-          <Input
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            placeholder="Sponsor name"
-          />
-          <Input
-            value={draft.link_url}
-            onChange={(e) => setDraft({ ...draft, link_url: e.target.value })}
-            placeholder="Website URL"
-          />
-          <Select
-            value={draft.tier}
-            onChange={(e) => setDraft({ ...draft, tier: e.target.value })}
-          >
-            {TIER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </Select>
-          <label className="flex items-center gap-2 text-sm text-(--color-text-secondary)">
-            <input
-              type="checkbox"
-              checked={draft.is_header_sponsor}
-              onChange={(e) => setDraft({ ...draft, is_header_sponsor: e.target.checked })}
-              className="rounded"
-            />
-            Header sponsor
-          </label>
-          <div className="flex gap-2">
+        <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) p-3">
+          <div className="flex items-start gap-3">
+            <div className="shrink-0">
+              <ImageUpload
+                label="Logo"
+                value={draft.logo_url || null}
+                onChange={(url) => setDraft({ ...draft, logo_url: url ?? '' })}
+              />
+            </div>
+            <div className="flex-1 space-y-2">
+              <Input
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                placeholder="Sponsor name"
+              />
+              <Input
+                value={draft.link_url}
+                onChange={(e) => setDraft({ ...draft, link_url: e.target.value })}
+                placeholder="Website URL"
+              />
+              <Select
+                value={draft.tier}
+                onChange={(e) => setDraft({ ...draft, tier: e.target.value })}
+              >
+                {TIER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+              <label className="flex items-center gap-2 text-sm text-(--color-text-secondary)">
+                <input
+                  type="checkbox"
+                  checked={draft.is_header_sponsor}
+                  onChange={(e) => setDraft({ ...draft, is_header_sponsor: e.target.checked })}
+                  className="rounded"
+                />
+                Header sponsor
+              </label>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
             <Button size="sm" onClick={addSponsor}>
               Add
             </Button>
