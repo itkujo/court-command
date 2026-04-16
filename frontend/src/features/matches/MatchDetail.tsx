@@ -1,13 +1,23 @@
 // frontend/src/features/matches/MatchDetail.tsx
 import { useState } from 'react'
+import { AdSlot } from '../../components/AdSlot'
+import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Skeleton } from '../../components/Skeleton'
-import { AdSlot } from '../../components/AdSlot'
+import { useAuth } from '../auth/hooks'
+import { EventsTimeline } from '../scoring/EventsTimeline'
+import { ScoreOverrideModal } from '../scoring/ScoreOverrideModal'
 import { useMatch, useMatchEvents } from '../scoring/hooks'
 import { useMatchWebSocket } from '../scoring/useMatchWebSocket'
-import { EventsTimeline } from '../scoring/EventsTimeline'
 import { MatchDetailHero } from './MatchDetailHero'
 import { MatchInfoPanel } from './MatchInfoPanel'
+
+// Roles that can perform score overrides (see RefMatchConsole for rationale).
+const PRIVILEGED_ROLES = new Set([
+  'platform_admin',
+  'tournament_director',
+  'head_referee',
+])
 
 export interface MatchDetailProps {
   publicId: string
@@ -19,7 +29,10 @@ export function MatchDetail({ publicId }: MatchDetailProps) {
   useMatchWebSocket(publicId)
   const matchQuery = useMatch(publicId)
   const eventsQuery = useMatchEvents(publicId)
+  const auth = useAuth()
   const [showEvents, setShowEvents] = useState(false)
+  const [overrideOpen, setOverrideOpen] = useState(false)
+  const canOverride = !!auth.user && PRIVILEGED_ROLES.has(auth.user.role)
 
   if (matchQuery.isLoading) {
     return (
@@ -116,6 +129,26 @@ export function MatchDetail({ publicId }: MatchDetailProps) {
 
       <AdSlot size="medium-rectangle" />
 
+      {canOverride && (
+        <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) p-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wide">
+              Admin actions
+            </h2>
+            <p className="text-xs text-(--color-text-muted) mt-1">
+              Adjust the recorded score with an audit-logged override.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => setOverrideOpen(true)}
+            className="shrink-0"
+          >
+            Override Score
+          </Button>
+        </div>
+      )}
+
       <details
         open={showEvents}
         onToggle={(e) =>
@@ -133,11 +166,19 @@ export function MatchDetail({ publicId }: MatchDetailProps) {
             <Skeleton className="h-4" />
           </div>
         ) : eventsQuery.isError ? (
-          <div className="p-4 text-(--color-error)">Failed to load events.</div>
+          <div className="p-4 text-red-500">Failed to load events.</div>
         ) : (
           <EventsTimeline events={eventsQuery.data ?? []} />
         )}
       </details>
+
+      {canOverride && (
+        <ScoreOverrideModal
+          open={overrideOpen}
+          onClose={() => setOverrideOpen(false)}
+          match={match}
+        />
+      )}
     </div>
   )
 }

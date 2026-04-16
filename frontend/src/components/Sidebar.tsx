@@ -6,7 +6,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { Avatar } from './Avatar'
 import {
   LayoutDashboard, Trophy, Medal, MapPin, Users, UsersRound, Building2, Tv, Menu, ChevronLeft, LogOut,
-  Gavel, ClipboardList,
+  Gavel, ClipboardList, Zap,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -34,6 +34,7 @@ const navGroups: NavGroup[] = [
   { label: 'Scoring', items: [
     { label: 'Ref Console', icon: Gavel, path: '/ref' },
     { label: 'Scorekeeper', icon: ClipboardList, path: '/scorekeeper' },
+    { label: 'Quick Match', icon: Zap, path: '/quick-match' },
   ]},
   { label: 'Broadcast', items: [{ label: 'Overlay', icon: Tv, path: '/overlay' }] },
 ]
