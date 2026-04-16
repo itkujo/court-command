@@ -15,12 +15,20 @@ import (
 
 // VenueService handles venue and court business logic.
 type VenueService struct {
-	queries *generated.Queries
+	queries      *generated.Queries
+	matchService *MatchService // optional; enables enriched court→match nesting
 }
 
 // NewVenueService creates a new VenueService.
 func NewVenueService(queries *generated.Queries) *VenueService {
 	return &VenueService{queries: queries}
+}
+
+// SetMatchService wires a MatchService so that list methods that embed
+// match summaries (ListCourtsByTournament) can return the fully-enriched
+// MatchResponse shape. Callers that don't wire this get the flat shape.
+func (s *VenueService) SetMatchService(m *MatchService) {
+	s.matchService = m
 }
 
 // VenueResponse is the public representation of a venue.
@@ -58,24 +66,28 @@ type VenueResponse struct {
 }
 
 // CourtResponse is the public representation of a court.
+// ActiveMatch and OnDeckMatch are best-effort enrichments populated by
+// ListCourtsByTournament; they stay nil for callers that don't enrich.
 type CourtResponse struct {
-	ID              int64   `json:"id"`
-	Name            string  `json:"name"`
-	Slug            string  `json:"slug"`
-	VenueID         *int64  `json:"venue_id,omitempty"`
-	SurfaceType     *string `json:"surface_type,omitempty"`
-	IsShowCourt     bool    `json:"is_show_court"`
-	IsActive        bool    `json:"is_active"`
-	IsTemporary     bool    `json:"is_temporary"`
-	SortOrder       int32   `json:"sort_order"`
-	Notes           *string `json:"notes,omitempty"`
-	StreamURL       *string `json:"stream_url,omitempty"`
-	StreamType      *string `json:"stream_type,omitempty"`
-	StreamIsLive    bool    `json:"stream_is_live"`
-	StreamTitle     *string `json:"stream_title,omitempty"`
-	CreatedByUserID *int64  `json:"created_by_user_id,omitempty"`
-	CreatedAt       string  `json:"created_at"`
-	UpdatedAt       string  `json:"updated_at"`
+	ID              int64          `json:"id"`
+	Name            string         `json:"name"`
+	Slug            string         `json:"slug"`
+	VenueID         *int64         `json:"venue_id,omitempty"`
+	SurfaceType     *string        `json:"surface_type,omitempty"`
+	IsShowCourt     bool           `json:"is_show_court"`
+	IsActive        bool           `json:"is_active"`
+	IsTemporary     bool           `json:"is_temporary"`
+	SortOrder       int32          `json:"sort_order"`
+	Notes           *string        `json:"notes,omitempty"`
+	StreamURL       *string        `json:"stream_url,omitempty"`
+	StreamType      *string        `json:"stream_type,omitempty"`
+	StreamIsLive    bool           `json:"stream_is_live"`
+	StreamTitle     *string        `json:"stream_title,omitempty"`
+	CreatedByUserID *int64         `json:"created_by_user_id,omitempty"`
+	ActiveMatch     *MatchResponse `json:"active_match,omitempty"`
+	OnDeckMatch     *MatchResponse `json:"on_deck_match,omitempty"`
+	CreatedAt       string         `json:"created_at"`
+	UpdatedAt       string         `json:"updated_at"`
 }
 
 func toVenueResponse(v generated.Venue, courtCount int64) VenueResponse {
@@ -516,4 +528,75 @@ func (s *VenueService) UpdateCourt(ctx context.Context, courtID int64, params ge
 // DeleteCourt soft-deletes a court.
 func (s *VenueService) DeleteCourt(ctx context.Context, courtID int64) error {
 	return s.queries.SoftDeleteCourt(ctx, courtID)
+}
+
+// ListCourtsByTournament returns every court that has at least one match
+// scheduled in the given tournament, each enriched with its currently-
+// active match (warmup, in_progress, or paused) and its next on-deck
+// match (first queued non-active, non-terminal match on that court).
+//
+// If the service has no MatchService wired, matches come back in the flat
+// toMatchResponse shape (nested team summaries and timeouts counts are
+// omitted). Both active_match and on_deck_match may be nil.
+func (s *VenueService) ListCourtsByTournament(ctx context.Context, tournamentID int64) ([]CourtResponse, error) {
+	courts, err := s.queries.ListCourtsByTournament(ctx, pgtype.Int8{Int64: tournamentID, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("listing courts by tournament: %w", err)
+	}
+
+	result := make([]CourtResponse, len(courts))
+	for i, c := range courts {
+		resp := toCourtResponse(c)
+		resp.ActiveMatch = s.activeMatchForCourt(ctx, c.ID)
+		resp.OnDeckMatch = s.onDeckMatchForCourt(ctx, c.ID)
+		result[i] = resp
+	}
+	return result, nil
+}
+
+// activeMatchForCourt fetches the current active match on a court (warmup,
+// in_progress, or paused) and returns it as an enriched MatchResponse when
+// a MatchService is wired, otherwise as the flat shape. Returns nil if no
+// active match exists or on any lookup error.
+func (s *VenueService) activeMatchForCourt(ctx context.Context, courtID int64) *MatchResponse {
+	m, err := s.queries.GetActiveMatchOnCourt(ctx, pgtype.Int8{Int64: courtID, Valid: true})
+	if err != nil {
+		return nil
+	}
+	resp := s.matchToResponse(ctx, m)
+	return &resp
+}
+
+// onDeckMatchForCourt returns the next match queued on the court that is
+// neither active nor in a terminal state. Matches are drawn from
+// ListMatchesByCourt, which orders by scheduled_at NULLS LAST, created_at.
+func (s *VenueService) onDeckMatchForCourt(ctx context.Context, courtID int64) *MatchResponse {
+	matches, err := s.queries.ListMatchesByCourt(ctx, generated.ListMatchesByCourtParams{
+		CourtID: pgtype.Int8{Int64: courtID, Valid: true},
+		Limit:   20,
+		Offset:  0,
+	})
+	if err != nil {
+		return nil
+	}
+	for _, m := range matches {
+		switch m.Status {
+		case "warmup", "in_progress", "paused":
+			continue // already represented as active_match
+		case "completed", "cancelled", "forfeited":
+			continue // terminal
+		}
+		resp := s.matchToResponse(ctx, m)
+		return &resp
+	}
+	return nil
+}
+
+// matchToResponse picks the enriched shape when a MatchService is wired,
+// otherwise falls back to the flat toMatchResponse.
+func (s *VenueService) matchToResponse(ctx context.Context, m generated.Match) MatchResponse {
+	if s.matchService != nil {
+		return s.matchService.enrichedMatchResponse(ctx, m)
+	}
+	return toMatchResponse(m)
 }

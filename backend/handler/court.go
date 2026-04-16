@@ -143,6 +143,26 @@ func (h *CourtHandler) CreateFloatingCourt(w http.ResponseWriter, r *http.Reques
 	Created(w, court)
 }
 
+// ListCourtsByTournament returns every court that has matches in the
+// given tournament, each enriched with its active_match and on_deck_match.
+// This endpoint is public (no auth) — it powers the ref/scorekeeper court
+// grids. It reads the tournament ID from the "tournamentID" URL param.
+func (h *CourtHandler) ListCourtsByTournament(w http.ResponseWriter, r *http.Request) {
+	tournamentID, err := strconv.ParseInt(chi.URLParam(r, "tournamentID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid tournament ID")
+		return
+	}
+
+	courts, err := h.venueService.ListCourtsByTournament(r.Context(), tournamentID)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	Success(w, courts)
+}
+
 // GetCourt retrieves a court by ID.
 func (h *CourtHandler) GetCourt(w http.ResponseWriter, r *http.Request) {
 	courtID, err := strconv.ParseInt(chi.URLParam(r, "courtID"), 10, 64)

@@ -324,6 +324,54 @@ func (q *Queries) ListCourts(ctx context.Context, arg ListCourtsParams) ([]Court
 	return items, nil
 }
 
+const listCourtsByTournament = `-- name: ListCourtsByTournament :many
+SELECT DISTINCT c.id, c.name, c.slug, c.venue_id, c.surface_type, c.is_show_court, c.is_active, c.is_temporary, c.sort_order, c.notes, c.stream_url, c.stream_type, c.stream_is_live, c.stream_title, c.created_by_user_id, c.created_at, c.updated_at, c.deleted_at FROM courts c
+INNER JOIN matches m ON m.court_id = c.id
+WHERE m.tournament_id = $1 AND c.deleted_at IS NULL
+ORDER BY c.sort_order, c.name
+`
+
+// Returns every court referenced by a match in the given tournament,
+// ordered by sort_order then name. Soft-deleted courts are excluded.
+func (q *Queries) ListCourtsByTournament(ctx context.Context, tournamentID pgtype.Int8) ([]Court, error) {
+	rows, err := q.db.Query(ctx, listCourtsByTournament, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Court{}
+	for rows.Next() {
+		var i Court
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.VenueID,
+			&i.SurfaceType,
+			&i.IsShowCourt,
+			&i.IsActive,
+			&i.IsTemporary,
+			&i.SortOrder,
+			&i.Notes,
+			&i.StreamUrl,
+			&i.StreamType,
+			&i.StreamIsLive,
+			&i.StreamTitle,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCourtsByVenue = `-- name: ListCourtsByVenue :many
 SELECT id, name, slug, venue_id, surface_type, is_show_court, is_active, is_temporary, sort_order, notes, stream_url, stream_type, stream_is_live, stream_title, created_by_user_id, created_at, updated_at, deleted_at FROM courts
 WHERE venue_id = $1 AND deleted_at IS NULL

@@ -175,6 +175,9 @@ func New(cfg *Config) chi.Router {
 			r.Route("/{tournamentID}/announcements", func(r chi.Router) {
 				r.Mount("/", cfg.AnnouncementHandler.TournamentAnnouncementRoutes())
 			})
+			// Public read: courts in this tournament, enriched with
+			// active_match/on_deck_match. Used by ref/scorekeeper grids.
+			r.Get("/{tournamentID}/courts", cfg.CourtHandler.ListCourtsByTournament)
 		})
 
 		// Division sub-resources (registrations and pods — auth checked by handlers)
