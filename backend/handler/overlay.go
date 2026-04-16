@@ -85,7 +85,7 @@ func (h *OverlayHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Success(w, config)
+	Success(w, service.ToOverlayConfigResponse(config))
 }
 
 // UpdateTheme handles PUT /api/v1/overlay/court/{courtID}/config/theme
@@ -120,7 +120,7 @@ func (h *OverlayHandler) UpdateTheme(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Success(w, config)
+	Success(w, service.ToOverlayConfigResponse(config))
 }
 
 // UpdateElements handles PUT /api/v1/overlay/court/{courtID}/config/elements
@@ -149,7 +149,7 @@ func (h *OverlayHandler) UpdateElements(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	Success(w, config)
+	Success(w, service.ToOverlayConfigResponse(config))
 }
 
 // GenerateToken handles POST /api/v1/overlay/court/{courtID}/config/token/generate
@@ -170,7 +170,7 @@ func (h *OverlayHandler) GenerateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Success(w, config)
+	Success(w, service.ToOverlayConfigResponse(config))
 }
 
 // RevokeToken handles DELETE /api/v1/overlay/court/{courtID}/config/token
@@ -191,7 +191,7 @@ func (h *OverlayHandler) RevokeToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Success(w, config)
+	Success(w, service.ToOverlayConfigResponse(config))
 }
 
 // SetSourceProfile handles PUT /api/v1/overlay/court/{courtID}/config/source-profile
@@ -220,7 +220,7 @@ func (h *OverlayHandler) SetSourceProfile(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	Success(w, config)
+	Success(w, service.ToOverlayConfigResponse(config))
 }
 
 // UpdateDataOverrides handles PUT /api/v1/overlay/court/{courtID}/config/data-overrides
@@ -247,7 +247,7 @@ func (h *OverlayHandler) UpdateDataOverrides(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	Success(w, config)
+	Success(w, service.ToOverlayConfigResponse(config))
 }
 
 // ClearDataOverrides handles DELETE /api/v1/overlay/court/{courtID}/config/data-overrides
@@ -265,7 +265,7 @@ func (h *OverlayHandler) ClearDataOverrides(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	Success(w, config)
+	Success(w, service.ToOverlayConfigResponse(config))
 }
 
 // ListThemes handles GET /api/v1/overlay/themes

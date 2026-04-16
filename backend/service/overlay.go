@@ -262,7 +262,7 @@ func (s *OverlayService) broadcastConfigChange(ctx context.Context, courtID int6
 		return
 	}
 	channel := pubsub.OverlayChannel(courtID)
-	_ = s.ps.Publish(ctx, channel, "config_update", config)
+	_ = s.ps.Publish(ctx, channel, "config_update", ToOverlayConfigResponse(config))
 }
 
 func generateSecureToken() (string, error) {

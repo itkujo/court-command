@@ -336,6 +336,22 @@ Final Phase 4 pass: wires the operator trigger queue into the renderer, ships a 
 
 Commits: `c9a7e25` (trigger wiring), `8fc3fa5` (demo route), `1b4aa39` (ErrorBoundary wraps + first-run banner), plus the docs commit that closes 4E. Main bundle 282.05 kB / 86.98 kB gzip (+0.5 kB from 4D). `OverlayRenderer` chunk 27.89 kB / 6.91 kB gzip (+2.6 kB — trigger prop plumbing).
 
+### Phase 4 CR-9: JSON byte-column contract remediation
+
+Discovered during the end-to-end API smoke test against a live backend: three `[]byte` fields on `generated.CourtOverlayConfig` (`color_overrides`, `elements`, `data_overrides`) and two on `generated.SourceProfile` (`auth_config`, `field_mapping`) were serialised by Go's default `encoding/json` as **base64 strings** instead of structured JSON objects. The frontend declared these as parsed objects (`ColorOverrides`, `ElementsConfig`, `DataOverrides`, `Record<string, unknown>`, `Record<string, string>`) and accessed them directly, so the entire Phase 4 control panel + renderer would have been broken end-to-end against a real backend.
+
+Root cause: the AST-based contract tests added in Phase 4A Task 1 validated struct shape + field names but never performed a real HTTP round-trip — precisely the Phase 3 **RC2** lesson repeating.
+
+Fix (`backend/service/overlay_response.go` new, `backend/handler/overlay.go` + `backend/handler/source_profile.go` + `backend/service/overlay.go` modified):
+
+- New `service.CourtOverlayConfigResponse` + `service.SourceProfileResponse` wrappers with the byte-column fields retyped as `json.RawMessage` (which has passthrough `MarshalJSON` — same storage, canonical JSON output).
+- `service.ToOverlayConfigResponse` / `ToSourceProfileResponse` / `ToSourceProfileResponses` helpers; empty bytes normalise to `{}` so clients never see `null` for a persisted empty object.
+- All 8 overlay config handlers (`GetConfig`, `UpdateTheme`, `UpdateElements`, `GenerateToken`, `RevokeToken`, `SetSourceProfile`, `UpdateDataOverrides`, `ClearDataOverrides`) wrap responses through `ToOverlayConfigResponse`.
+- All 5 source-profile handlers that return a profile (`ListMine`, `Create`, `GetByID`, `Update`, `Deactivate`) wrap through `ToSourceProfileResponse(s)`.
+- `OverlayService.broadcastConfigChange` now publishes the response shape on WebSocket `config_update` events so live frontends receive clean JSON matching the REST shape.
+
+Verification: `go build && go vet && go test ./...` clean. End-to-end smoke test (16 steps) now fully green — `color_overrides`, `elements`, `data_overrides` render as JSON objects on GET /config; `field_mapping` renders as a dict on source profile responses; triggers, overrides, token generation/revocation, and `POST /source-profiles/test` (HTTP 200, 4 discovered paths, sample payload) all functional.
+
 ### Known Deferred Defects (Phase 3)
 
 Resolved in Phase 4A Task 1 remediation batch (commit `6848d23`). Items that remain deferred to later phases:

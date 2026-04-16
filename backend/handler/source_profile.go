@@ -90,7 +90,7 @@ func (h *SourceProfileHandler) ListMine(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	Success(w, profiles)
+	Success(w, service.ToSourceProfileResponses(profiles))
 }
 
 // Create handles POST /api/v1/source-profiles
@@ -169,7 +169,7 @@ func (h *SourceProfileHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Created(w, profile)
+	Created(w, service.ToSourceProfileResponse(profile))
 }
 
 // GetByID handles GET /api/v1/source-profiles/{profileID}
@@ -198,7 +198,7 @@ func (h *SourceProfileHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Success(w, profile)
+	Success(w, service.ToSourceProfileResponse(profile))
 }
 
 // Update handles PUT /api/v1/source-profiles/{profileID}
@@ -272,7 +272,7 @@ func (h *SourceProfileHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Success(w, profile)
+	Success(w, service.ToSourceProfileResponse(profile))
 }
 
 // Delete handles DELETE /api/v1/source-profiles/{profileID}
@@ -339,5 +339,5 @@ func (h *SourceProfileHandler) Deactivate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	Success(w, profile)
+	Success(w, service.ToSourceProfileResponse(profile))
 }
