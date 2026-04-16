@@ -6,6 +6,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { Avatar } from './Avatar'
 import {
   LayoutDashboard, Trophy, Medal, MapPin, Users, UsersRound, Building2, Tv, Menu, ChevronLeft, LogOut,
+  Gavel, ClipboardList,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -30,6 +31,10 @@ const navGroups: NavGroup[] = [
     { label: 'Teams', icon: UsersRound, path: '/teams' },
     { label: 'Organizations', icon: Building2, path: '/organizations' },
   ]},
+  { label: 'Scoring', items: [
+    { label: 'Ref Console', icon: Gavel, path: '/ref' },
+    { label: 'Scorekeeper', icon: ClipboardList, path: '/scorekeeper' },
+  ]},
   { label: 'Broadcast', items: [{ label: 'Overlay', icon: Tv, path: '/overlay' }] },
 ]
 
@@ -48,6 +53,15 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
   }, [expanded, isMobile])
 
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
+
+  // Per spec 3.2: while scoring is active on mobile, the sidebar drawer
+  // collapses fully so the scoring UI owns the viewport.
+  const isScoringActive = /^\/(ref|scorekeeper)\/matches\/[^/]+/.test(
+    location.pathname,
+  )
+  useEffect(() => {
+    if (isScoringActive && isMobile) setMobileOpen(false)
+  }, [isScoringActive, isMobile])
 
   const isActive = (path: string) => {
     if (path === '/') return matchRoute({ to: '/', fuzzy: false })
