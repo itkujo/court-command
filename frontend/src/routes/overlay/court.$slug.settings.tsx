@@ -26,6 +26,7 @@ import { Button } from '../../components/Button'
 import { TabLayout } from '../../components/TabLayout'
 import { useAuth } from '../../features/auth/hooks'
 import { ElementsTab } from '../../features/overlay/controls/ElementsTab'
+import { ThemeTab } from '../../features/overlay/controls/ThemeTab'
 import { PreviewPane } from '../../features/overlay/PreviewPane'
 import {
   useOverlayConfig,
@@ -217,15 +218,6 @@ function TabStub({ title, description }: { title: string; description: string })
         Coming next in Phase 4C
       </p>
     </div>
-  )
-}
-
-function ThemeTab(_: TabStubProps) {
-  return (
-    <TabStub
-      title="Theme"
-      description="Pick a base theme, then fine-tune the primary/secondary/accent colors to match your brand."
-    />
   )
 }
 
