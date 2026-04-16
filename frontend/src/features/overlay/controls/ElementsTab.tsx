@@ -33,6 +33,16 @@ import type {
 import { ELEMENT_KEY, type ElementKey } from '../contract'
 import { useUpdateElements } from '../hooks'
 import { SCOREBOARD_LAYOUT_OPTIONS } from '../renderer/elements/scoreboard'
+import {
+  OFFSET_MAX,
+  OFFSET_MIN,
+  OFFSET_STEP,
+  POSITION_OPTIONS,
+  SCALE_MAX,
+  SCALE_MIN,
+  SCALE_STEP,
+} from '../renderer/elements/scoreboard/transforms'
+import type { ScoreboardPosition } from '../types'
 
 // Debounce interval for text / number inputs before firing the PUT.
 const COMMIT_DEBOUNCE_MS = 400
@@ -491,8 +501,12 @@ function ScoreboardKnobs({
   const activeOption =
     SCOREBOARD_LAYOUT_OPTIONS.find((o) => o.value === current) ??
     SCOREBOARD_LAYOUT_OPTIONS[0]
+  const defaultPosition: ScoreboardPosition =
+    current === 'banner' ? 'bottom-center' : 'bottom-left'
+  const currentPosition: ScoreboardPosition = config.position ?? defaultPosition
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2">
         <FormField label="Layout" htmlFor="scoreboard-layout">
           <Select
@@ -512,45 +526,142 @@ function ScoreboardKnobs({
             {activeOption.description}
           </p>
         </FormField>
+        <FormField label="Position" htmlFor="scoreboard-position">
+          <Select
+            id="scoreboard-position"
+            value={currentPosition}
+            onChange={(e) =>
+              onPatch({ position: e.target.value as ScoreboardPosition })
+            }
+          >
+            {POSITION_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+          <p className="text-xs text-(--color-text-secondary) mt-1">
+            Anchor on the 1920×1080 canvas. Classic defaults to bottom-left,
+            Banner defaults to bottom-center.
+          </p>
+        </FormField>
       </div>
 
-      {/* Logo size sliders. Banner layout renders tournament + team logos;
+      {/* Per-logo controls. Banner layout renders tournament + team logos;
           Classic renders none, so these knobs are effectively no-ops there.
-          We show them regardless so the UI stays consistent across layouts. */}
-      <div className="space-y-3">
-        <div className="text-xs uppercase tracking-widest font-semibold text-(--color-text-secondary)">
-          Logo size
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          <LogoScaleSlider
-            id="scoreboard-tournament-logo-scale"
-            label="Tournament"
-            value={config.tournament_logo_scale ?? 1}
-            onChange={(v) => onPatch({ tournament_logo_scale: v })}
-          />
-          <LogoScaleSlider
-            id="scoreboard-team-1-logo-scale"
-            label="Team 1"
-            value={config.team_1_logo_scale ?? 1}
-            onChange={(v) => onPatch({ team_1_logo_scale: v })}
-          />
-          <LogoScaleSlider
-            id="scoreboard-team-2-logo-scale"
-            label="Team 2"
-            value={config.team_2_logo_scale ?? 1}
-            onChange={(v) => onPatch({ team_2_logo_scale: v })}
-          />
-        </div>
-        <p className="text-xs text-(--color-text-secondary)">
-          Scales each logo 50% – 150%. Applied to the Banner layout only.
-        </p>
+          Each group has size + X + Y for fine-tuning awkward source logos. */}
+      <LogoKnobGroup
+        idPrefix="scoreboard-tournament-logo"
+        label="Tournament logo"
+        scale={config.tournament_logo_scale}
+        offsetX={config.tournament_logo_offset_x}
+        offsetY={config.tournament_logo_offset_y}
+        onChange={(patch) => onPatch(patch)}
+        scaleKey="tournament_logo_scale"
+        offsetXKey="tournament_logo_offset_x"
+        offsetYKey="tournament_logo_offset_y"
+      />
+      <LogoKnobGroup
+        idPrefix="scoreboard-team-1-logo"
+        label="Team 1 logo"
+        scale={config.team_1_logo_scale}
+        offsetX={config.team_1_logo_offset_x}
+        offsetY={config.team_1_logo_offset_y}
+        onChange={(patch) => onPatch(patch)}
+        scaleKey="team_1_logo_scale"
+        offsetXKey="team_1_logo_offset_x"
+        offsetYKey="team_1_logo_offset_y"
+      />
+      <LogoKnobGroup
+        idPrefix="scoreboard-team-2-logo"
+        label="Team 2 logo"
+        scale={config.team_2_logo_scale}
+        offsetX={config.team_2_logo_offset_x}
+        offsetY={config.team_2_logo_offset_y}
+        onChange={(patch) => onPatch(patch)}
+        scaleKey="team_2_logo_scale"
+        offsetXKey="team_2_logo_offset_x"
+        offsetYKey="team_2_logo_offset_y"
+      />
+      <p className="text-xs text-(--color-text-secondary)">
+        Scale ranges {Math.round(SCALE_MIN * 100)}% – {Math.round(SCALE_MAX * 100)}%.
+        Offset range ±{OFFSET_MAX}px. Logos are allowed to bleed outside their
+        slot so awkward source art can still look clean.
+      </p>
+    </div>
+  )
+}
+
+type LogoScaleField =
+  | 'tournament_logo_scale'
+  | 'team_1_logo_scale'
+  | 'team_2_logo_scale'
+type LogoOffsetField =
+  | 'tournament_logo_offset_x'
+  | 'tournament_logo_offset_y'
+  | 'team_1_logo_offset_x'
+  | 'team_1_logo_offset_y'
+  | 'team_2_logo_offset_x'
+  | 'team_2_logo_offset_y'
+
+function LogoKnobGroup({
+  idPrefix,
+  label,
+  scale,
+  offsetX,
+  offsetY,
+  onChange,
+  scaleKey,
+  offsetXKey,
+  offsetYKey,
+}: {
+  idPrefix: string
+  label: string
+  scale: number | undefined
+  offsetX: number | undefined
+  offsetY: number | undefined
+  onChange: (patch: Partial<ScoreboardConfig>) => void
+  scaleKey: LogoScaleField
+  offsetXKey: LogoOffsetField
+  offsetYKey: LogoOffsetField
+}) {
+  return (
+    <div className="rounded-md border border-(--color-border) bg-(--color-bg-secondary) p-3 space-y-3">
+      <div className="text-xs uppercase tracking-widest font-semibold text-(--color-text-secondary)">
+        {label}
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        <LogoScaleSlider
+          id={`${idPrefix}-scale`}
+          label="Size"
+          value={scale ?? 1}
+          onChange={(v) =>
+            onChange({ [scaleKey]: v } as Partial<ScoreboardConfig>)
+          }
+        />
+        <LogoOffsetSlider
+          id={`${idPrefix}-offset-x`}
+          label="Offset X"
+          value={offsetX ?? 0}
+          onChange={(v) =>
+            onChange({ [offsetXKey]: v } as Partial<ScoreboardConfig>)
+          }
+        />
+        <LogoOffsetSlider
+          id={`${idPrefix}-offset-y`}
+          label="Offset Y"
+          value={offsetY ?? 0}
+          onChange={(v) =>
+            onChange({ [offsetYKey]: v } as Partial<ScoreboardConfig>)
+          }
+        />
       </div>
     </div>
   )
 }
 
 /**
- * Range slider for a 0.5..1.5 logo scale value, stepped in 10% increments.
+ * Range slider for the logo scale value, stepped in SCALE_STEP increments.
  * Clamps + rounds incoming values so the UI and wire contract stay coherent
  * even if a stale override drifts outside the range.
  */
@@ -565,8 +676,14 @@ function LogoScaleSlider({
   value: number
   onChange: (v: number) => void
 }) {
-  const clamped = Math.max(0.5, Math.min(1.5, Number.isFinite(value) ? value : 1))
+  const clamped = Math.max(
+    SCALE_MIN,
+    Math.min(SCALE_MAX, Number.isFinite(value) ? value : 1),
+  )
   const pct = Math.round(clamped * 100)
+  const minPct = Math.round(SCALE_MIN * 100)
+  const maxPct = Math.round(SCALE_MAX * 100)
+  const stepPct = Math.round(SCALE_STEP * 100)
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
@@ -583,16 +700,66 @@ function LogoScaleSlider({
       <input
         id={id}
         type="range"
-        min={50}
-        max={150}
-        step={10}
+        min={minPct}
+        max={maxPct}
+        step={stepPct}
         value={pct}
         onChange={(e) => {
           const next = Number(e.target.value) / 100
           if (Number.isFinite(next)) onChange(next)
         }}
         className="w-full accent-(--color-accent)"
-        aria-label={`${label} logo scale`}
+        aria-label={`${label} scale`}
+      />
+    </div>
+  )
+}
+
+/**
+ * Range slider for a logo translate offset in CSS pixels.
+ * Clamps incoming values to [OFFSET_MIN, OFFSET_MAX].
+ */
+function LogoOffsetSlider({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string
+  label: string
+  value: number
+  onChange: (v: number) => void
+}) {
+  const clamped = Math.max(
+    OFFSET_MIN,
+    Math.min(OFFSET_MAX, Number.isFinite(value) ? value : 0),
+  )
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <label
+          htmlFor={id}
+          className="text-sm font-medium text-(--color-text-primary)"
+        >
+          {label}
+        </label>
+        <span className="text-xs tabular-nums text-(--color-text-secondary)">
+          {clamped > 0 ? `+${clamped}` : clamped}px
+        </span>
+      </div>
+      <input
+        id={id}
+        type="range"
+        min={OFFSET_MIN}
+        max={OFFSET_MAX}
+        step={OFFSET_STEP}
+        value={clamped}
+        onChange={(e) => {
+          const next = Number(e.target.value)
+          if (Number.isFinite(next)) onChange(next)
+        }}
+        className="w-full accent-(--color-accent)"
+        aria-label={`${label} offset`}
       />
     </div>
   )

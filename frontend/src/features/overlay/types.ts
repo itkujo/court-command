@@ -124,17 +124,45 @@ export interface ElementConfigBase {
  */
 export type ScoreboardLayout = 'classic' | 'banner'
 
+/**
+ * Screen-relative anchor for the scoreboard card/banner. Each layout
+ * picks its own default (Classic → bottom-left, Banner → bottom-center).
+ */
+export type ScoreboardPosition =
+  | 'top-left'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-right'
+  | 'bottom-center'
+
 export interface ScoreboardConfig extends ElementConfigBase {
   layout?: ScoreboardLayout
   /**
-   * Logo scale knobs (0.5..1.5, default 1.0). Each is applied independently so
-   * operators can tune tournament branding vs. team identity without affecting
-   * the others. Applied as a CSS transform inside the slot — the slot box
-   * stays fixed so surrounding layout doesn't shift.
+   * Anchor for where the scoreboard is pinned on the 1920×1080 canvas.
+   * Omitted → each layout applies its default.
+   */
+  position?: ScoreboardPosition
+  /**
+   * Logo scale knobs (0.5..5.0, default 1.0). Each is applied independently
+   * so operators can tune tournament branding vs. team identity without
+   * affecting the others. Applied as a CSS transform inside the slot — the
+   * slot box stays fixed so surrounding layout doesn't shift, but the logo
+   * itself is allowed to escape the slot rectangle (no clipping).
    */
   tournament_logo_scale?: number
   team_1_logo_scale?: number
   team_2_logo_scale?: number
+  /**
+   * Per-logo translate offsets in CSS pixels relative to the logo's natural
+   * slot position. Range ±120 by default in the control panel. Combined with
+   * the scale as `transform: translate(x, y) scale(s)`.
+   */
+  tournament_logo_offset_x?: number
+  tournament_logo_offset_y?: number
+  team_1_logo_offset_x?: number
+  team_1_logo_offset_y?: number
+  team_2_logo_offset_x?: number
+  team_2_logo_offset_y?: number
 }
 
 export interface LowerThirdConfig extends ElementConfigBase {}

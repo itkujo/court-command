@@ -20,9 +20,12 @@
 //   - Match-over glow when match_status === 'completed'
 
 import { useEffect, useRef, useState } from 'react'
-import type { OverlayData } from '../../../types'
+import type { OverlayData, ScoreboardPosition } from '../../../types'
 import { MATCH_STATUS } from '../../../contract'
 import type { ScoreboardLayoutProps } from './types'
+import { positionClasses } from './transforms'
+
+const CLASSIC_DEFAULT_POSITION: ScoreboardPosition = 'bottom-left'
 
 export function ClassicScoreboard({ data, config }: ScoreboardLayoutProps) {
   if (!config.visible) return null
@@ -32,9 +35,13 @@ export function ClassicScoreboard({ data, config }: ScoreboardLayoutProps) {
   const isCompleted = data.match_status === MATCH_STATUS.COMPLETED
   const isPaused = data.is_paused
 
+  const positionClassName = positionClasses(
+    config.position ?? CLASSIC_DEFAULT_POSITION,
+  )
+
   return (
     <div
-      className="absolute bottom-6 left-6 z-20 min-w-[320px] overflow-hidden shadow-2xl backdrop-blur-md"
+      className={`${positionClassName} z-20 min-w-[320px] overflow-hidden shadow-2xl backdrop-blur-md`}
       style={{
         background: 'var(--overlay-primary)',
         color: 'var(--overlay-text)',

@@ -32,9 +32,14 @@
 //     cleaned up on unmount (browser caches + next court may need them).
 
 import { useEffect, useRef, useState } from 'react'
-import type { OverlayData } from '../../../types'
+import type { OverlayData, ScoreboardPosition } from '../../../types'
 import { MATCH_STATUS } from '../../../contract'
 import type { ScoreboardLayoutProps } from './types'
+import {
+  clampOffset,
+  clampScale,
+  positionClasses,
+} from './transforms'
 
 const FONT_LINK_ID = 'cc-banner-scoreboard-fonts'
 const FONT_HREF =
@@ -45,14 +50,33 @@ const BANNER_FONT_FAMILY =
 const BODY_FONT_FAMILY =
   '"DM Sans", "Barlow Condensed", system-ui, sans-serif'
 
-/**
- * Clamp a raw scale value into the allowed slider range [0.5, 1.5] with a
- * 1.0 default. Applied via a CSS transform on the logo element only — the
- * enclosing slot keeps its fixed dimensions so surrounding layout is stable.
- */
-function clampScale(value: number | undefined): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 1
-  return Math.max(0.5, Math.min(1.5, value))
+const BANNER_DEFAULT_POSITION: ScoreboardPosition = 'bottom-center'
+
+interface LogoTransform {
+  scale: number
+  offsetX: number
+  offsetY: number
+}
+
+function toLogoTransform(
+  scale: number | undefined,
+  offsetX: number | undefined,
+  offsetY: number | undefined,
+): LogoTransform {
+  return {
+    scale: clampScale(scale),
+    offsetX: clampOffset(offsetX),
+    offsetY: clampOffset(offsetY),
+  }
+}
+
+function logoTransformStyle({ scale, offsetX, offsetY }: LogoTransform) {
+  const identity = scale === 1 && offsetX === 0 && offsetY === 0
+  if (identity) return undefined
+  return {
+    transform: `translate(${offsetX}px, ${offsetY}px) scale(${scale})`,
+    transformOrigin: 'center',
+  } as const
 }
 
 export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
@@ -93,9 +117,29 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
   const badgeLogo = data.tournament_logo_url || data.league_logo_url || ''
   const badgeLabel = data.tournament_name || data.league_name || 'Live'
 
+  const tournamentTransform = toLogoTransform(
+    config.tournament_logo_scale,
+    config.tournament_logo_offset_x,
+    config.tournament_logo_offset_y,
+  )
+  const team1Transform = toLogoTransform(
+    config.team_1_logo_scale,
+    config.team_1_logo_offset_x,
+    config.team_1_logo_offset_y,
+  )
+  const team2Transform = toLogoTransform(
+    config.team_2_logo_scale,
+    config.team_2_logo_offset_x,
+    config.team_2_logo_offset_y,
+  )
+
+  const positionClassName = positionClasses(
+    config.position ?? BANNER_DEFAULT_POSITION,
+  )
+
   return (
     <div
-      className="absolute bottom-8 left-1/2 z-20 -translate-x-1/2 overflow-hidden shadow-2xl"
+      className={`${positionClassName} z-20 shadow-2xl`}
       style={{
         background: 'var(--overlay-primary)',
         color: 'var(--overlay-text)',
@@ -106,6 +150,8 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
           ? '0 0 50px var(--overlay-accent), 0 12px 40px rgba(0,0,0,0.55)'
           : '0 12px 40px rgba(0,0,0,0.55)',
         transition: 'box-shadow 600ms ease',
+        // NOTE: intentionally no overflow clip — oversized logos should be
+        // allowed to bleed outside the banner rectangle (matches NCPA).
       }}
       data-match-status={data.match_status}
       data-scoreboard-layout="banner"
@@ -121,7 +167,7 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
         <TournamentBadge
           logoUrl={badgeLogo}
           label={badgeLabel}
-          scale={clampScale(config.tournament_logo_scale)}
+          transform={tournamentTransform}
         />
 
         {/* Column 2 — two team rows stacked with a hairline between. */}
@@ -134,7 +180,7 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
             players={data.team_1.players}
             serving={servingTeam === 1}
             winner={team1Winner}
-            logoScale={clampScale(config.team_1_logo_scale)}
+            logoTransform={team1Transform}
           />
           <div
             className="h-px mx-4"
@@ -149,7 +195,7 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
             players={data.team_2.players}
             serving={servingTeam === 2}
             winner={team2Winner}
-            logoScale={clampScale(config.team_2_logo_scale)}
+            logoTransform={team2Transform}
           />
         </div>
 
@@ -196,23 +242,23 @@ export function BannerScoreboard({ data, config }: ScoreboardLayoutProps) {
 function TournamentBadge({
   logoUrl,
   label,
-  scale,
+  transform,
 }: {
   logoUrl: string
   label: string
-  scale: number
+  transform: LogoTransform
 }) {
   const [imgBroken, setImgBroken] = useState(false)
   const showImg = logoUrl && !imgBroken
 
-  // Scale is applied as a CSS transform so the slot footprint is unchanged
-  // (banner width + badge column stay stable as the logo grows/shrinks).
-  const transformStyle =
-    scale === 1 ? undefined : { transform: `scale(${scale})`, transformOrigin: 'center' }
+  // Scale + offset are applied as a CSS transform so the slot footprint is
+  // unchanged (banner width + badge column stay stable as the logo grows,
+  // shrinks, or drifts outside the rectangle).
+  const transformStyle = logoTransformStyle(transform)
 
   return (
     <div
-      className="flex items-center justify-center shrink-0 overflow-hidden"
+      className="relative flex items-center justify-center shrink-0"
       style={{
         width: '140px',
         minHeight: '112px',
@@ -292,7 +338,7 @@ interface TeamRowProps {
   players: { name: string }[]
   serving: boolean
   winner: boolean
-  logoScale: number
+  logoTransform: LogoTransform
 }
 
 function TeamRow({
@@ -303,7 +349,7 @@ function TeamRow({
   players,
   serving,
   winner,
-  logoScale,
+  logoTransform,
 }: TeamRowProps) {
   // Join all roster names with " & " (doubles-friendly). NCPA reference uses
   // the same convention. Filter empties so a missing entry doesn't leave a
@@ -323,13 +369,15 @@ function TeamRow({
         aria-hidden="true"
       />
       {/* Logo slot (or abbreviation chip fallback). Fixed width keeps column
-          alignment identical whether the image loads, breaks, or is absent. */}
-      <div className="shrink-0 flex items-center justify-center px-3 py-3 overflow-hidden">
+          alignment identical whether the image loads, breaks, or is absent.
+          overflow is intentionally *not* hidden — operators can scale the
+          logo past the slot and have it bleed visibly. */}
+      <div className="relative shrink-0 flex items-center justify-center px-3 py-3">
         <TeamLogoOrChip
           logoUrl={logoUrl}
           shortName={shortName}
           name={name}
-          scale={logoScale}
+          transform={logoTransform}
         />
       </div>
       <div className="flex-1 min-w-0 flex items-center gap-3 py-3 pr-4">
@@ -378,17 +426,16 @@ function TeamLogoOrChip({
   logoUrl,
   shortName,
   name,
-  scale,
+  transform,
 }: {
   logoUrl: string
   shortName: string
   name: string
-  scale: number
+  transform: LogoTransform
 }) {
   const [imgBroken, setImgBroken] = useState(false)
   const showImg = logoUrl && !imgBroken
-  const transformStyle =
-    scale === 1 ? undefined : { transform: `scale(${scale})`, transformOrigin: 'center' }
+  const transformStyle = logoTransformStyle(transform)
 
   if (showImg) {
     return (
@@ -408,22 +455,23 @@ function TeamLogoOrChip({
     )
   }
 
-  return <AbbreviationChip shortName={shortName} name={name} scale={scale} />
+  return (
+    <AbbreviationChip shortName={shortName} name={name} transform={transform} />
+  )
 }
 
 /** Fixed-size chip showing the short_name or computed initials. */
 function AbbreviationChip({
   shortName,
   name,
-  scale,
+  transform,
 }: {
   shortName: string
   name: string
-  scale: number
+  transform: LogoTransform
 }) {
   const label = shortName?.trim() || initialsFromName(name)
-  const transformStyle =
-    scale === 1 ? undefined : { transform: `scale(${scale})`, transformOrigin: 'center' }
+  const transformStyle = logoTransformStyle(transform)
   return (
     <span
       className="flex items-center justify-center text-xs font-bold tracking-wider uppercase transition-transform duration-200"
