@@ -29,22 +29,27 @@ func NewMatchService(queries *generated.Queries, pool *pgxpool.Pool, ps *pubsub.
 // broadcastMatchUpdate publishes a match update to all relevant channels.
 // Handles pgtype.Int8 → *int64 conversion for courtID and divisionID.
 // Silently skips if pub/sub is not configured (ps == nil).
-func (s *MatchService) broadcastMatchUpdate(ctx context.Context, match generated.Match) {
+//
+// Callers MUST pass an already-enriched MatchResponse. This avoids a second
+// round of enrichment (~10 DB round-trips per scoring point) inside the
+// scoring hot path. See Phase 3 review defect CR-4.
+func (s *MatchService) broadcastMatchUpdate(ctx context.Context, match generated.Match, resp MatchResponse) {
 	if s.ps == nil {
 		return
 	}
-	resp := s.enrichedMatchResponse(ctx, match)
 	s.ps.PublishMatchUpdate(ctx, match.PublicID, optInt8(match.CourtID), optInt8(match.DivisionID), resp)
 }
 
-// ScoreSnapshot holds the denormalized score state for a match.
+// ScoreSnapshot holds the denormalized score state captured with each
+// match event. Frontend reads this as `event.score_snapshot` — see CR-2 in
+// docs/superpowers/lessons/2026-04-16-phase-3-review-defects.md.
 type ScoreSnapshot struct {
 	Team1Score   int32           `json:"team_1_score"`
 	Team2Score   int32           `json:"team_2_score"`
 	CurrentSet   int32           `json:"current_set"`
 	CurrentGame  int32           `json:"current_game"`
-	ServingTeam  pgtype.Int4     `json:"serving_team"`
-	ServerNumber pgtype.Int4     `json:"server_number"`
+	ServingTeam  *int32          `json:"serving_team"`
+	ServerNumber *int32          `json:"server_number"`
 	SetScores    json.RawMessage `json:"set_scores"`
 }
 
@@ -127,7 +132,6 @@ type MatchResponse struct {
 	LoserNextMatchID   *int64          `json:"loser_next_match_id,omitempty"`
 	LoserNextMatchSlot *int32          `json:"loser_next_match_slot,omitempty"`
 	RefereeUserID      *int64          `json:"referee_user_id,omitempty"`
-	ScoredByName       *string         `json:"scored_by_name,omitempty"`
 	Notes              *string         `json:"notes,omitempty"`
 	ExpiresAt          *string         `json:"expires_at,omitempty"`
 	ScheduledAt        *string         `json:"scheduled_at,omitempty"`
@@ -136,21 +140,21 @@ type MatchResponse struct {
 }
 
 // MatchEventResponse is the public representation of a match event.
+// Shape is stable; frontend reads `timestamp` (alias for created_at) and
+// `score_snapshot` (nested group). See CR-2 in
+// docs/superpowers/lessons/2026-04-16-phase-3-review-defects.md.
 type MatchEventResponse struct {
 	ID              int64           `json:"id"`
 	MatchID         int64           `json:"match_id"`
 	SequenceID      int32           `json:"sequence_id"`
 	EventType       string          `json:"event_type"`
-	Team1Score      int32           `json:"team_1_score"`
-	Team2Score      int32           `json:"team_2_score"`
-	CurrentSet      int32           `json:"current_set"`
-	CurrentGame     int32           `json:"current_game"`
-	ServingTeam     *int32          `json:"serving_team,omitempty"`
-	ServerNumber    *int32          `json:"server_number,omitempty"`
-	SetScores       json.RawMessage `json:"set_scores"`
+	ScoreSnapshot   ScoreSnapshot   `json:"score_snapshot"`
 	Payload         json.RawMessage `json:"payload"`
 	CreatedByUserID *int64          `json:"created_by_user_id,omitempty"`
-	CreatedAt       string          `json:"created_at"`
+	// Timestamp is the canonical event time the frontend reads.
+	// CreatedAt is retained as an alias for legacy consumers.
+	Timestamp string `json:"timestamp"`
+	CreatedAt string `json:"created_at"`
 }
 
 func optInt8(v pgtype.Int8) *int64 {
@@ -307,10 +311,10 @@ func (s *MatchService) enrichedMatchResponse(ctx context.Context, m generated.Ma
 		}
 	}
 
-	// Timeouts used per team (count TIMEOUT_CALLED events grouped by team payload).
+	// Timeouts used per team (count timeout events grouped by team payload).
 	events, err := s.queries.ListMatchEventsByType(ctx, generated.ListMatchEventsByTypeParams{
 		MatchID:   m.ID,
-		EventType: "TIMEOUT_CALLED",
+		EventType: EventTypeTimeout,
 	})
 	if err == nil {
 		for _, ev := range events {
@@ -371,26 +375,33 @@ func (s *MatchService) loadTeamSummary(ctx context.Context, teamID int64) *TeamS
 }
 
 func toMatchEventResponse(e generated.MatchEvent) MatchEventResponse {
+	ts := e.CreatedAt.Format(time.RFC3339)
+
+	snap := ScoreSnapshot{
+		Team1Score:   e.Team1Score,
+		Team2Score:   e.Team2Score,
+		CurrentSet:   e.CurrentSet,
+		CurrentGame:  e.CurrentGame,
+		ServingTeam:  optInt4(e.ServingTeam),
+		ServerNumber: optInt4(e.ServerNumber),
+	}
+	if len(e.SetScores) > 0 {
+		snap.SetScores = json.RawMessage(e.SetScores)
+	} else {
+		snap.SetScores = json.RawMessage("[]")
+	}
+
 	resp := MatchEventResponse{
 		ID:              e.ID,
 		MatchID:         e.MatchID,
 		SequenceID:      e.SequenceID,
 		EventType:       e.EventType,
-		Team1Score:      e.Team1Score,
-		Team2Score:      e.Team2Score,
-		CurrentSet:      e.CurrentSet,
-		CurrentGame:     e.CurrentGame,
-		ServingTeam:     optInt4(e.ServingTeam),
-		ServerNumber:    optInt4(e.ServerNumber),
+		ScoreSnapshot:   snap,
 		CreatedByUserID: optInt8(e.CreatedByUserID),
-		CreatedAt:       e.CreatedAt.Format(time.RFC3339),
+		Timestamp:       ts,
+		CreatedAt:       ts,
 	}
 
-	if len(e.SetScores) > 0 {
-		resp.SetScores = json.RawMessage(e.SetScores)
-	} else {
-		resp.SetScores = json.RawMessage("[]")
-	}
 	if len(e.Payload) > 0 {
 		resp.Payload = json.RawMessage(e.Payload)
 	} else {
@@ -606,8 +617,9 @@ func (s *MatchService) UpdateStatus(ctx context.Context, id int64, newStatus str
 		return MatchResponse{}, fmt.Errorf("failed to update match status: %w", err)
 	}
 
-	s.broadcastMatchUpdate(ctx, updated)
-	return s.enrichedMatchResponse(ctx, updated), nil
+	resp := s.enrichedMatchResponse(ctx, updated)
+	s.broadcastMatchUpdate(ctx, updated, resp)
+	return resp, nil
 }
 
 // StartMatchInput carries optional body fields accepted by StartMatch.
@@ -688,7 +700,7 @@ func (s *MatchService) StartMatch(ctx context.Context, matchID int64, userID int
 	event, err := qtx.CreateMatchEvent(ctx, generated.CreateMatchEventParams{
 		MatchID:         matchID,
 		SequenceID:      nextSeq,
-		EventType:       "start_game",
+		EventType:       EventTypeMatchStarted,
 		Team1Score:      updated.Team1Score,
 		Team2Score:      updated.Team2Score,
 		CurrentSet:      updated.CurrentSet,
@@ -707,9 +719,10 @@ func (s *MatchService) StartMatch(ctx context.Context, matchID int64, userID int
 		return ScoringActionResult{}, fmt.Errorf("failed to commit start match: %w", err)
 	}
 
-	s.broadcastMatchUpdate(ctx, updated)
+	resp := s.enrichedMatchResponse(ctx, updated)
+	s.broadcastMatchUpdate(ctx, updated, resp)
 	return ScoringActionResult{
-		Match: s.enrichedMatchResponse(ctx, updated),
+		Match: resp,
 		Event: toMatchEventResponse(event),
 	}, nil
 }
@@ -858,7 +871,7 @@ func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (S
 	undoEvent, err := qtx.CreateMatchEvent(ctx, generated.CreateMatchEventParams{
 		MatchID:         matchID,
 		SequenceID:      nextSeq,
-		EventType:       "undo",
+		EventType:       EventTypeUndo,
 		Team1Score:      match.Team1Score,
 		Team2Score:      match.Team2Score,
 		CurrentSet:      match.CurrentSet,
@@ -892,9 +905,10 @@ func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (S
 		return ScoringActionResult{}, fmt.Errorf("failed to commit undo: %w", err)
 	}
 
-	s.broadcastMatchUpdate(ctx, updated)
+	resp := s.enrichedMatchResponse(ctx, updated)
+	s.broadcastMatchUpdate(ctx, updated, resp)
 	return ScoringActionResult{
-		Match: s.enrichedMatchResponse(ctx, updated),
+		Match: resp,
 		Event: toMatchEventResponse(undoEvent),
 	}, nil
 }
@@ -1131,6 +1145,10 @@ func matchToScoringConfig(m generated.Match) engine.ScoringConfig {
 
 // applyEngineResult writes the engine result back to the database in a transaction.
 // It updates the match scoring state and records an event with the current snapshot.
+//
+// Returns the raw generated.Match, the MatchEvent, and the enriched
+// MatchResponse. Enrichment runs exactly once (per CR-4). Callers MUST use
+// the returned MatchResponse instead of calling enrichedMatchResponse again.
 func (s *MatchService) applyEngineResult(
 	ctx context.Context,
 	matchID int64,
@@ -1138,10 +1156,10 @@ func (s *MatchService) applyEngineResult(
 	eventType string,
 	payload json.RawMessage,
 	userID int64,
-) (generated.Match, generated.MatchEvent, error) {
+) (generated.Match, generated.MatchEvent, MatchResponse, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to begin transaction: %w", err)
+		return generated.Match{}, generated.MatchEvent{}, MatchResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
@@ -1149,7 +1167,7 @@ func (s *MatchService) applyEngineResult(
 
 	match, err := qtx.GetMatchForUpdate(ctx, matchID)
 	if err != nil {
-		return generated.Match{}, generated.MatchEvent{}, &NotFoundError{Message: "match not found"}
+		return generated.Match{}, generated.MatchEvent{}, MatchResponse{}, &NotFoundError{Message: "match not found"}
 	}
 
 	// Encode completed games as set_scores JSON.
@@ -1185,7 +1203,7 @@ func (s *MatchService) applyEngineResult(
 		SetScores:    setScores,
 	})
 	if err != nil {
-		return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to update match scoring: %w", err)
+		return generated.Match{}, generated.MatchEvent{}, MatchResponse{}, fmt.Errorf("failed to update match scoring: %w", err)
 	}
 
 	// If status changed, update it.
@@ -1195,14 +1213,14 @@ func (s *MatchService) applyEngineResult(
 			Status: newStatus,
 		})
 		if err != nil {
-			return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to update match status: %w", err)
+			return generated.Match{}, generated.MatchEvent{}, MatchResponse{}, fmt.Errorf("failed to update match status: %w", err)
 		}
 	}
 
 	// Record event.
 	nextSeq, err := qtx.GetNextSequenceID(ctx, matchID)
 	if err != nil {
-		return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to get next sequence: %w", err)
+		return generated.Match{}, generated.MatchEvent{}, MatchResponse{}, fmt.Errorf("failed to get next sequence: %w", err)
 	}
 
 	if payload == nil {
@@ -1224,15 +1242,17 @@ func (s *MatchService) applyEngineResult(
 		CreatedByUserID: pgtype.Int8{Int64: userID, Valid: true},
 	})
 	if err != nil {
-		return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to create event: %w", err)
+		return generated.Match{}, generated.MatchEvent{}, MatchResponse{}, fmt.Errorf("failed to create event: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return generated.Match{}, generated.MatchEvent{}, fmt.Errorf("failed to commit: %w", err)
+		return generated.Match{}, generated.MatchEvent{}, MatchResponse{}, fmt.Errorf("failed to commit: %w", err)
 	}
 
-	s.broadcastMatchUpdate(ctx, updated)
-	return updated, event, nil
+	// Enrich ONCE (CR-4). broadcast + HTTP response share this value.
+	resp := s.enrichedMatchResponse(ctx, updated)
+	s.broadcastMatchUpdate(ctx, updated, resp)
+	return updated, event, resp, nil
 }
 
 // ScorePoint awards a point to the given team via the scoring engine.
@@ -1254,13 +1274,13 @@ func (s *MatchService) ScorePoint(ctx context.Context, matchID int64, team int32
 	payload, _ := json.Marshal(map[string]interface{}{"team": team})
 	eventType := fmt.Sprintf("point_team%d", team)
 
-	updated, event, err := s.applyEngineResult(ctx, matchID, result, eventType, payload, userID)
+	_, event, resp, err := s.applyEngineResult(ctx, matchID, result, eventType, payload, userID)
 	if err != nil {
 		return ScoringActionResult{}, err
 	}
 
 	return ScoringActionResult{
-		Match:             s.enrichedMatchResponse(ctx, updated),
+		Match:             resp,
 		Event:             toMatchEventResponse(event),
 		GameOverDetected:  result.GameOverDetected,
 		MatchOverDetected: result.MatchOverDetected,
@@ -1285,13 +1305,13 @@ func (s *MatchService) SideOut(ctx context.Context, matchID int64, userID int64)
 		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
 	}
 
-	updated, event, err := s.applyEngineResult(ctx, matchID, result, "side_out", nil, userID)
+	_, event, resp, err := s.applyEngineResult(ctx, matchID, result, EventTypeSideOut, nil, userID)
 	if err != nil {
 		return ScoringActionResult{}, err
 	}
 
 	return ScoringActionResult{
-		Match:     s.enrichedMatchResponse(ctx, updated),
+		Match:     resp,
 		Event:     toMatchEventResponse(event),
 		ScoreCall: eng.ScoreCall(result.State),
 	}, nil
@@ -1315,13 +1335,13 @@ func (s *MatchService) RemovePoint(ctx context.Context, matchID int64, team int3
 	}
 
 	payload, _ := json.Marshal(map[string]interface{}{"team": team})
-	updated, event, err := s.applyEngineResult(ctx, matchID, result, "remove_point", payload, userID)
+	_, event, resp, err := s.applyEngineResult(ctx, matchID, result, EventTypePointRemoved, payload, userID)
 	if err != nil {
 		return ScoringActionResult{}, err
 	}
 
 	return ScoringActionResult{
-		Match:     s.enrichedMatchResponse(ctx, updated),
+		Match:     resp,
 		Event:     toMatchEventResponse(event),
 		ScoreCall: eng.ScoreCall(result.State),
 	}, nil
@@ -1343,13 +1363,13 @@ func (s *MatchService) ConfirmGameOver(ctx context.Context, matchID int64, userI
 		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
 	}
 
-	updated, event, err := s.applyEngineResult(ctx, matchID, result, "confirm_game_over", nil, userID)
+	_, event, resp, err := s.applyEngineResult(ctx, matchID, result, EventTypeConfirmGameOver, nil, userID)
 	if err != nil {
 		return ScoringActionResult{}, err
 	}
 
 	return ScoringActionResult{
-		Match:     s.enrichedMatchResponse(ctx, updated),
+		Match:     resp,
 		Event:     toMatchEventResponse(event),
 		ScoreCall: eng.ScoreCall(result.State),
 	}, nil
@@ -1371,7 +1391,7 @@ func (s *MatchService) ConfirmMatchOver(ctx context.Context, matchID int64, winn
 		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
 	}
 
-	updated, event, err := s.applyEngineResult(ctx, matchID, result, "confirm_match_over", nil, userID)
+	updated, event, resp, err := s.applyEngineResult(ctx, matchID, result, EventTypeConfirmMatchOver, nil, userID)
 	if err != nil {
 		return ScoringActionResult{}, err
 	}
@@ -1381,8 +1401,8 @@ func (s *MatchService) ConfirmMatchOver(ctx context.Context, matchID int64, winn
 	// work out who won by counting game victories. Without this, the final
 	// match row never records winner_team_id, standings never update, and
 	// bracket progression breaks silently.
+	team1Wins, team2Wins := 0, 0
 	if winnerTeamID == 0 && loserTeamID == 0 {
-		team1Wins, team2Wins := 0, 0
 		if len(updated.SetScores) > 0 {
 			var games []engine.GameResult
 			if err := json.Unmarshal(updated.SetScores, &games); err == nil {
@@ -1405,7 +1425,16 @@ func (s *MatchService) ConfirmMatchOver(ctx context.Context, matchID int64, winn
 		}
 	}
 
-	// Also set winner/loser via the existing CompleteMatch logic.
+	// CR-8: when inference couldn't pick a winner (tied games) AND caller
+	// didn't supply explicit winner, reject instead of silently committing
+	// a completed row with NULL winner_team_id.
+	if winnerTeamID == 0 && loserTeamID == 0 && team1Wins == team2Wins {
+		return ScoringActionResult{}, &ValidationError{
+			Message: "cannot confirm match with tied games; provide explicit winner_team_id",
+		}
+	}
+
+	// Set winner/loser via the existing CompleteMatch logic.
 	if winnerTeamID > 0 && loserTeamID > 0 {
 		final, err := s.queries.UpdateMatchResult(ctx, generated.UpdateMatchResultParams{
 			ID:           matchID,
@@ -1416,14 +1445,16 @@ func (s *MatchService) ConfirmMatchOver(ctx context.Context, matchID int64, winn
 		if err != nil {
 			return ScoringActionResult{}, fmt.Errorf("setting match result: %w", err)
 		}
+		// Re-enrich with the final winner/loser baked in.
+		finalResp := s.enrichedMatchResponse(ctx, final)
 		return ScoringActionResult{
-			Match: s.enrichedMatchResponse(ctx, final),
+			Match: finalResp,
 			Event: toMatchEventResponse(event),
 		}, nil
 	}
 
 	return ScoringActionResult{
-		Match: s.enrichedMatchResponse(ctx, updated),
+		Match: resp,
 		Event: toMatchEventResponse(event),
 	}, nil
 }
@@ -1445,13 +1476,13 @@ func (s *MatchService) CallTimeout(ctx context.Context, matchID int64, team int3
 	}
 
 	payload, _ := json.Marshal(map[string]interface{}{"team": team})
-	updated, event, err := s.applyEngineResult(ctx, matchID, result, "timeout", payload, userID)
+	_, event, resp, err := s.applyEngineResult(ctx, matchID, result, EventTypeTimeout, payload, userID)
 	if err != nil {
 		return ScoringActionResult{}, err
 	}
 
 	return ScoringActionResult{
-		Match:     s.enrichedMatchResponse(ctx, updated),
+		Match:     resp,
 		Event:     toMatchEventResponse(event),
 		ScoreCall: eng.ScoreCall(result.State),
 	}, nil
@@ -1473,13 +1504,13 @@ func (s *MatchService) PauseMatch(ctx context.Context, matchID int64, userID int
 		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
 	}
 
-	updated, event, err := s.applyEngineResult(ctx, matchID, result, "pause", nil, userID)
+	_, event, resp, err := s.applyEngineResult(ctx, matchID, result, EventTypeMatchPaused, nil, userID)
 	if err != nil {
 		return ScoringActionResult{}, err
 	}
 
 	return ScoringActionResult{
-		Match: s.enrichedMatchResponse(ctx, updated),
+		Match: resp,
 		Event: toMatchEventResponse(event),
 	}, nil
 }
@@ -1500,13 +1531,13 @@ func (s *MatchService) ResumeMatch(ctx context.Context, matchID int64, userID in
 		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
 	}
 
-	updated, event, err := s.applyEngineResult(ctx, matchID, result, "resume", nil, userID)
+	_, event, resp, err := s.applyEngineResult(ctx, matchID, result, EventTypeMatchResumed, nil, userID)
 	if err != nil {
 		return ScoringActionResult{}, err
 	}
 
 	return ScoringActionResult{
-		Match: s.enrichedMatchResponse(ctx, updated),
+		Match: resp,
 		Event: toMatchEventResponse(event),
 	}, nil
 }
@@ -1528,7 +1559,7 @@ func (s *MatchService) DeclareForfeit(ctx context.Context, matchID int64, forfei
 	}
 
 	payload, _ := json.Marshal(map[string]interface{}{"forfeiting_team": forfeitingTeam})
-	updated, event, err := s.applyEngineResult(ctx, matchID, result, "forfeit", payload, userID)
+	_, event, resp, err := s.applyEngineResult(ctx, matchID, result, EventTypeForfeitDeclared, payload, userID)
 	if err != nil {
 		return ScoringActionResult{}, err
 	}
@@ -1551,7 +1582,7 @@ func (s *MatchService) DeclareForfeit(ctx context.Context, matchID int64, forfei
 	}
 
 	return ScoringActionResult{
-		Match: s.enrichedMatchResponse(ctx, updated),
+		Match: resp,
 		Event: toMatchEventResponse(event),
 	}, nil
 }
@@ -1715,7 +1746,7 @@ func (s *MatchService) OverrideScore(
 	overrideEvent, err := qtx.CreateMatchEvent(ctx, generated.CreateMatchEventParams{
 		MatchID:         matchID,
 		SequenceID:      nextSeq,
-		EventType:       "SCORE_OVERRIDE",
+		EventType:       EventTypeScoreOverride,
 		Team1Score:      newTeam1Score,
 		Team2Score:      newTeam2Score,
 		CurrentSet:      match.CurrentSet,
@@ -1734,9 +1765,10 @@ func (s *MatchService) OverrideScore(
 		return ScoringActionResult{}, fmt.Errorf("failed to commit override: %w", err)
 	}
 
-	s.broadcastMatchUpdate(ctx, updated)
+	resp := s.enrichedMatchResponse(ctx, updated)
+	s.broadcastMatchUpdate(ctx, updated, resp)
 	return ScoringActionResult{
-		Match: s.enrichedMatchResponse(ctx, updated),
+		Match: resp,
 		Event: toMatchEventResponse(overrideEvent),
 	}, nil
 }

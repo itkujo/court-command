@@ -502,7 +502,10 @@ func (s *VenueService) ListCourts(
 
 	result := make([]CourtResponse, len(courts))
 	for i, c := range courts {
-		result[i] = toCourtResponse(c)
+		resp := toCourtResponse(c)
+		resp.ActiveMatch = s.activeMatchForCourt(ctx, c.ID)
+		resp.OnDeckMatch = s.onDeckMatchForCourt(ctx, c.ID)
+		result[i] = resp
 	}
 
 	return result, total, nil

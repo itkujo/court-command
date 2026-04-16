@@ -2,31 +2,42 @@
 
 export type MatchStatus =
   | 'scheduled'
+  | 'warmup'
   | 'in_progress'
+  | 'paused'
   | 'completed'
-  | 'bye'
-  | 'forfeit'
   | 'cancelled'
+  | 'forfeited'
+  | 'bye'
 
 export type ScoringType = 'side_out' | 'rally'
 
+/**
+ * EventType — canonical lowercase snake_case matching backend
+ * service/events.go EventType* constants. Any change here MUST be
+ * mirrored in the backend constant set, and vice versa.
+ */
 export type EventType =
-  | 'MATCH_STARTED'
-  | 'POINT_SCORED'
-  | 'POINT_REMOVED'
-  | 'SIDE_OUT'
-  | 'GAME_COMPLETE'
-  | 'MATCH_COMPLETE'
-  | 'TIMEOUT_CALLED'
-  | 'TIMEOUT_ENDED'
-  | 'END_CHANGE'
-  | 'SUBSTITUTION'
-  | 'MATCH_RESET'
-  | 'MATCH_CONFIGURED'
-  | 'SCORE_OVERRIDE'
-  | 'FORFEIT_DECLARED'
-  | 'MATCH_PAUSED'
-  | 'MATCH_RESUMED'
+  | 'match_started'
+  | 'match_paused'
+  | 'match_resumed'
+  | 'match_complete'
+  | 'match_reset'
+  | 'match_configured'
+  | 'point_team1'
+  | 'point_team2'
+  | 'point_removed'
+  | 'side_out'
+  | 'undo'
+  | 'game_complete'
+  | 'confirm_game_over'
+  | 'confirm_match_over'
+  | 'timeout'
+  | 'timeout_ended'
+  | 'end_change'
+  | 'substitution'
+  | 'score_override'
+  | 'forfeit_declared'
 
 export interface MatchTeam {
   id: number
@@ -85,10 +96,20 @@ export interface Match {
   completed_at?: string | null
   winner_team_id?: number | null
   loser_team_id?: number | null
-  scored_by_name?: string | null
   expires_at?: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ScoreSnapshot {
+  team_1_score: number
+  team_2_score: number
+  team_1_games_won: number
+  team_2_games_won: number
+  current_game: number
+  serving_team: number | null
+  server_number: number | null
+  set_scores: CompletedGame[]
 }
 
 export interface MatchEvent {
@@ -97,10 +118,11 @@ export interface MatchEvent {
   sequence_id: number
   event_type: EventType
   timestamp: string
+  /** @deprecated use `timestamp`; retained as backend-compat alias. */
+  created_at?: string
   payload: Record<string, unknown>
-  score_snapshot: Record<string, unknown>
+  score_snapshot: ScoreSnapshot
   created_by_user_id?: number | null
-  scored_by_name?: string | null
 }
 
 export interface ScoringActionResult {

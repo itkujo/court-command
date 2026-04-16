@@ -40,69 +40,85 @@ const BORDER_FROM_COLOR: Record<string, string> = {
 }
 
 const EVENT_META: Record<EventType, { label: string; icon: IconSpec }> = {
-  MATCH_STARTED: {
+  match_started: {
     label: 'Match started',
     icon: { Icon: PlayCircle, color: 'text-(--color-accent)' },
   },
-  POINT_SCORED: {
-    label: 'Point scored',
-    icon: { Icon: Trophy, color: 'text-(--color-success)' },
-  },
-  POINT_REMOVED: {
-    label: 'Point removed',
-    icon: { Icon: ArrowDownLeft, color: 'text-(--color-warning)' },
-  },
-  SIDE_OUT: {
-    label: 'Side out',
-    icon: { Icon: Repeat, color: 'text-(--color-text-secondary)' },
-  },
-  GAME_COMPLETE: {
-    label: 'Game complete',
-    icon: { Icon: Award, color: 'text-(--color-accent)' },
-  },
-  MATCH_COMPLETE: {
-    label: 'Match complete',
-    icon: { Icon: Award, color: 'text-(--color-accent)' },
-  },
-  TIMEOUT_CALLED: {
-    label: 'Timeout called',
-    icon: { Icon: Pause, color: 'text-(--color-warning)' },
-  },
-  TIMEOUT_ENDED: {
-    label: 'Timeout ended',
-    icon: { Icon: Play, color: 'text-(--color-text-secondary)' },
-  },
-  END_CHANGE: {
-    label: 'End change',
-    icon: { Icon: Repeat, color: 'text-(--color-text-secondary)' },
-  },
-  SUBSTITUTION: {
-    label: 'Substitution',
-    icon: { Icon: Repeat, color: 'text-(--color-text-secondary)' },
-  },
-  MATCH_RESET: {
-    label: 'Match reset',
-    icon: { Icon: RotateCcw, color: 'text-(--color-warning)' },
-  },
-  MATCH_CONFIGURED: {
-    label: 'Match configured',
-    icon: { Icon: Settings, color: 'text-(--color-text-secondary)' },
-  },
-  SCORE_OVERRIDE: {
-    label: 'Score override',
-    icon: { Icon: Edit3, color: 'text-(--color-warning)' },
-  },
-  FORFEIT_DECLARED: {
-    label: 'Forfeit declared',
-    icon: { Icon: AlertOctagon, color: 'text-(--color-error)' },
-  },
-  MATCH_PAUSED: {
+  match_paused: {
     label: 'Match paused',
     icon: { Icon: Pause, color: 'text-(--color-warning)' },
   },
-  MATCH_RESUMED: {
+  match_resumed: {
     label: 'Match resumed',
     icon: { Icon: Play, color: 'text-(--color-text-secondary)' },
+  },
+  match_complete: {
+    label: 'Match complete',
+    icon: { Icon: Award, color: 'text-(--color-accent)' },
+  },
+  match_reset: {
+    label: 'Match reset',
+    icon: { Icon: RotateCcw, color: 'text-(--color-warning)' },
+  },
+  match_configured: {
+    label: 'Match configured',
+    icon: { Icon: Settings, color: 'text-(--color-text-secondary)' },
+  },
+  point_team1: {
+    label: 'Point — Team 1',
+    icon: { Icon: Trophy, color: 'text-(--color-success)' },
+  },
+  point_team2: {
+    label: 'Point — Team 2',
+    icon: { Icon: Trophy, color: 'text-(--color-success)' },
+  },
+  point_removed: {
+    label: 'Point removed',
+    icon: { Icon: ArrowDownLeft, color: 'text-(--color-warning)' },
+  },
+  side_out: {
+    label: 'Side out',
+    icon: { Icon: Repeat, color: 'text-(--color-text-secondary)' },
+  },
+  undo: {
+    label: 'Undo',
+    icon: { Icon: RotateCcw, color: 'text-(--color-warning)' },
+  },
+  game_complete: {
+    label: 'Game complete',
+    icon: { Icon: Award, color: 'text-(--color-accent)' },
+  },
+  confirm_game_over: {
+    label: 'Game confirmed',
+    icon: { Icon: Award, color: 'text-(--color-accent)' },
+  },
+  confirm_match_over: {
+    label: 'Match confirmed',
+    icon: { Icon: Award, color: 'text-(--color-accent)' },
+  },
+  timeout: {
+    label: 'Timeout called',
+    icon: { Icon: Pause, color: 'text-(--color-warning)' },
+  },
+  timeout_ended: {
+    label: 'Timeout ended',
+    icon: { Icon: Play, color: 'text-(--color-text-secondary)' },
+  },
+  end_change: {
+    label: 'End change',
+    icon: { Icon: Repeat, color: 'text-(--color-text-secondary)' },
+  },
+  substitution: {
+    label: 'Substitution',
+    icon: { Icon: Repeat, color: 'text-(--color-text-secondary)' },
+  },
+  score_override: {
+    label: 'Score override',
+    icon: { Icon: Edit3, color: 'text-(--color-warning)' },
+  },
+  forfeit_declared: {
+    label: 'Forfeit declared',
+    icon: { Icon: AlertOctagon, color: 'text-(--color-error)' },
   },
 }
 
@@ -122,19 +138,23 @@ function formatEventTime(ts: string): string {
 function summarizeEvent(e: MatchEvent): string {
   const p = e.payload
   switch (e.event_type) {
-    case 'POINT_SCORED': {
+    case 'point_team1':
+      return 'Point to team 1'
+    case 'point_team2':
+      return 'Point to team 2'
+    case 'point_removed': {
       const team = (p as { team?: number }).team
-      return team ? `Point to team ${team}` : 'Point scored'
+      return team ? `Point removed from team ${team}` : 'Point removed'
     }
-    case 'TIMEOUT_CALLED': {
+    case 'timeout': {
       const team = (p as { team?: number }).team
       return team ? `Team ${team} timeout` : 'Timeout'
     }
-    case 'SCORE_OVERRIDE': {
+    case 'score_override': {
       const reason = (p as { reason?: string }).reason
       return reason ? `Override: ${reason}` : 'Score override'
     }
-    case 'FORFEIT_DECLARED': {
+    case 'forfeit_declared': {
       const team = (p as { forfeiting_team?: number }).forfeiting_team
       return team ? `Team ${team} forfeit` : 'Forfeit'
     }

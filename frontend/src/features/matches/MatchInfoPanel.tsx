@@ -34,9 +34,6 @@ export function MatchInfoPanel({ match }: MatchInfoPanelProps) {
         {match.completed_at && (
           <InfoRow label="Completed" value={formatDateTime(match.completed_at)} />
         )}
-        {match.scored_by_name && (
-          <InfoRow label="Scored by" value={match.scored_by_name} />
-        )}
         <InfoRow label="Status" value={match.status} />
       </dl>
     </Card>
