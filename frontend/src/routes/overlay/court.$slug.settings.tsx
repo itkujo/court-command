@@ -237,12 +237,17 @@ function OverlaySettingsLayout({
         ? 'flex flex-col gap-6'
         : 'flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,40%)_minmax(0,1fr)] lg:items-start'
 
+  // Top mode: the preview is a sticky block above the tabs. In a
+  // normal document flow (not grid/flex), `position: sticky top-4`
+  // makes the element stick to the top of the viewport as the user
+  // scrolls, then releases when its parent scrolls past. We also
+  // bump z-index so the sticky preview stays above tab content.
   const previewColumnClass =
     layoutMode === 'side'
       ? 'sticky top-4 self-start'
-      : layoutMode === 'auto'
-        ? 'lg:sticky lg:top-4 lg:self-start'
-        : ''
+      : layoutMode === 'top'
+        ? 'sticky top-4 z-10 bg-(--color-bg-primary)'
+        : 'lg:sticky lg:top-4 lg:self-start'
 
   return (
     <div className="space-y-6">
