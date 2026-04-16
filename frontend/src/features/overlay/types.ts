@@ -185,6 +185,12 @@ export interface TeamCardConfig extends ElementConfigBase {
 export interface SponsorBugConfig extends ElementConfigBase {
   rotation_seconds?: number
   logos?: SponsorLogo[]
+  /**
+   * When true, the chip background is removed entirely — logos composite
+   * directly onto the broadcast surface. Intended for sponsors supplying
+   * transparent PNG/WEBP source art. Defaults to false (themed chip).
+   */
+  transparent_background?: boolean
 }
 
 export interface TournamentBugConfig extends ElementConfigBase {}

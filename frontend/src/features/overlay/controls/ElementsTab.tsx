@@ -938,34 +938,57 @@ function SponsorBugKnobs({
   // Use a local input value so the text cursor doesn't jump while
   // the user is typing. We forward the parsed number on change.
   const rotation = config.rotation_seconds ?? 8
+  const transparent = config.transparent_background ?? false
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <FormField label="Rotation cadence (seconds)" htmlFor="sponsor-rotation">
-        <Input
-          id="sponsor-rotation"
-          type="number"
-          min={2}
-          max={120}
-          step={1}
-          value={rotation}
-          onChange={(e) => {
-            const v = parseInt(e.target.value, 10)
-            if (!Number.isFinite(v) || v <= 0) return
-            onPatch({ rotation_seconds: v })
-          }}
-        />
-        <p className="text-xs text-(--color-text-secondary) mt-1">
-          How often logos cross-fade. Defaults to 8s if unset.
-        </p>
-      </FormField>
-      <FormField label="Auto-animate" htmlFor="sponsor-animate">
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField label="Rotation cadence (seconds)" htmlFor="sponsor-rotation">
+          <Input
+            id="sponsor-rotation"
+            type="number"
+            min={2}
+            max={120}
+            step={1}
+            value={rotation}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10)
+              if (!Number.isFinite(v) || v <= 0) return
+              onPatch({ rotation_seconds: v })
+            }}
+          />
+          <p className="text-xs text-(--color-text-secondary) mt-1">
+            How often logos cross-fade. Defaults to 8s if unset.
+          </p>
+        </FormField>
+        <FormField label="Auto-animate" htmlFor="sponsor-animate">
+          <Toggle
+            id="sponsor-animate"
+            checked={config.auto_animate ?? true}
+            onChange={(checked) => onPatch({ auto_animate: checked })}
+            label="Auto-animate sponsor rotation"
+          />
+        </FormField>
+      </div>
+
+      <div className="flex items-start justify-between gap-4 rounded-md border border-(--color-border) bg-(--color-bg-secondary) p-3">
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-(--color-text-primary)">
+            Transparent background
+          </div>
+          <p className="text-xs text-(--color-text-secondary) mt-0.5">
+            Drop the chip surface so transparent PNG / WEBP logos composite
+            directly onto the broadcast feed. Pair with logos that already
+            have appropriate contrast — the broadcast background will show
+            through whatever is behind.
+          </p>
+        </div>
         <Toggle
-          id="sponsor-animate"
-          checked={config.auto_animate ?? true}
-          onChange={(checked) => onPatch({ auto_animate: checked })}
-          label="Auto-animate sponsor rotation"
+          id="sponsor-transparent-bg"
+          checked={transparent}
+          onChange={(checked) => onPatch({ transparent_background: checked })}
+          label="Transparent sponsor background"
         />
-      </FormField>
+      </div>
     </div>
   )
 }

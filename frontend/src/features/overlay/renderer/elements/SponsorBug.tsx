@@ -66,15 +66,27 @@ export function SponsorBug({ data, config }: SponsorBugProps) {
   const active = logos[activeIndex]
   if (!active) return null
 
-  return (
-    <div
-      className="absolute top-6 right-6 z-20 flex items-center justify-center px-3 py-2 shadow-xl backdrop-blur-md"
-      style={{
+  const transparent = config.transparent_background ?? false
+  // When transparent: drop the chip surface entirely so transparent PNG
+  // source art composites directly onto the broadcast background. Padding
+  // and shadow come off so the logo reads exactly as authored.
+  const chipClasses = transparent
+    ? 'absolute top-6 right-6 z-20 flex items-center justify-center'
+    : 'absolute top-6 right-6 z-20 flex items-center justify-center px-3 py-2 shadow-xl backdrop-blur-md'
+  const chipStyle: React.CSSProperties = transparent
+    ? { ...elementScaleStyle(config, 'top right') }
+    : {
         background: 'var(--overlay-primary)',
         borderRadius: 'var(--overlay-radius)',
         ...elementScaleStyle(config, 'top right'),
-      }}
+      }
+
+  return (
+    <div
+      className={chipClasses}
+      style={chipStyle}
       aria-label={active.name || 'Sponsor'}
+      data-sponsor-transparent={transparent ? 'true' : undefined}
     >
       <SponsorLogoSlot logo={active} key={`${active.name}-${activeIndex}`} />
     </div>
