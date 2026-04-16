@@ -268,6 +268,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `OverlayWatermark` "Powered By Court Command" free-tier badge (conditionally gated on `isLicensed`; hardcoded false pending Phase 6 licensing)
 - Visual stub body renders slug + match status in resolved theme colors so operators can confirm theme switching end-to-end. Phase 4B replaces with the 12 element components.
 
+### Frontend Phase 4B: OBS Renderer — 12 Element Components
+
+All 12 canonical overlay element components live under `frontend/src/features/overlay/renderer/elements/` with a barrel index. Each component accepts `{ data, config }`, returns `null` when `config.visible===false`, and is purely presentational (no queries, no cross-component state). All animation + color styling is scoped to the `OverlayThemeProvider` via `--overlay-*` CSS custom properties so operators can re-theme without touching component code.
+
+- **`Scoreboard`** (bottom-left) — core broadcast element. TeamRow with color bar + short name + initials + AnimatedScore (300ms pulse on value change), ServeIndicator triangle, GameHistoryDots, TimeoutPips, MatchContextBar. Match-over glow via boxShadow transition when `match_status === 'completed'`. Paused badge in context strip when `is_paused`.
+- **`LowerThird`** (bottom banner) — slide-up-from-bottom (cubic-bezier spring) entry. Title + matchup + round context.
+- **`PlayerCard`** (center-bottom) — scale-in (back-out spring) + team-colored border + initials avatar. Manual-dismiss by default; Phase 4E wires trigger-driven player selection.
+- **`TeamCard`** (center-bottom) — dual-column side-by-side rosters. Same spring entry as PlayerCard.
+- **`SponsorBug`** (top-right) — cross-fade rotator on `rotation_seconds` cadence (default 8s, clamped min 1s). Prefers `config.logos`, falls back to `data.sponsor_logos`. Graceful image-error handling. Tier badge shown when present.
+- **`TournamentBug`** (top-left) — static badge. Prefers `tournament_logo_url` over `league_logo_url`; degrades to text-only.
+- **`ComingUpNext`** (top-center) — slide-down-from-top. Only visible when `data.next_match` is populated.
+- **`MatchResult`** (center-full) — auto_show_delay_seconds delay → scale-in spring + radial glow + CSS-only confetti field. Dismisses after `auto_dismiss_seconds` (default 30s matching backend). Winner picked via `game_wins` compare; silent no-op on ties (CR-8 tie-guard backstop).
+- **`CustomText`** (configurable zone) — strict zone allow-list: `'top'|'bottom'|'center'|'top-left'|'top-right'|'bottom-left'|'bottom-right'` (invalid input → `'bottom'` fallback). Fade-in.
+- **`BracketSnapshot`** (center-full) — framed placeholder in Phase 4B. Full bracket rendering ships when the backend adds a bracket payload to `OverlayData`.
+- **`PoolStandings`** (center-full) — same pattern: framed placeholder; live rows ship alongside tournament payload extension.
+- **`SeriesScore`** (top-right below sponsor) — dot-grid best-of indicator. Dot pulse animation (400ms spring) on team win-count increment. Hidden when `data.series_score` is null.
+
+**`OverlayRenderer`** now composes all 12 in deterministic render order (fixed-position corners → card overlays → full-center narrative → operator free-form → watermark). Guard added: returns `null` when `configQuery.data` is absent so no unconfigured flicker reaches air.
+
+Chunk size: `court._slug` grew from ~23 kB to 30.57 kB (gzip 7.95 kB). Main bundle unchanged at 279.71 kB / 86.21 kB gzip.
+
 ### Known Deferred Defects (Phase 3)
 
 Resolved in Phase 4A Task 1 remediation batch (commit `6848d23`). Items that remain deferred to later phases:
