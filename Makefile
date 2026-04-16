@@ -1,5 +1,5 @@
 # Makefile
-.PHONY: dev up down full full-down build migrate-up migrate-down migrate-create sqlc test
+.PHONY: dev dev-frontend dev-all up down full full-down build migrate-up migrate-down migrate-create sqlc test
 
 # Start Docker services (db + redis only)
 up:
@@ -12,6 +12,14 @@ down:
 # Run backend in development mode (db + redis in Docker, backend locally)
 dev: up
 	cd backend && go run main.go
+
+# Run frontend in development mode
+dev-frontend:
+	cd frontend && pnpm dev
+
+# Run backend + frontend in parallel (db + redis in Docker)
+dev-all: up
+	$(MAKE) dev & $(MAKE) dev-frontend
 
 # Start full stack in Docker (db + redis + backend)
 full:
