@@ -33,14 +33,14 @@ func (s *MatchService) broadcastMatchUpdate(ctx context.Context, match generated
 	if s.ps == nil {
 		return
 	}
-	resp := toMatchResponse(match)
+	resp := s.enrichedMatchResponse(ctx, match)
 	s.ps.PublishMatchUpdate(ctx, match.PublicID, optInt8(match.CourtID), optInt8(match.DivisionID), resp)
 }
 
 // ScoreSnapshot holds the denormalized score state for a match.
 type ScoreSnapshot struct {
-	Team1Score   int32           `json:"team1_score"`
-	Team2Score   int32           `json:"team2_score"`
+	Team1Score   int32           `json:"team_1_score"`
+	Team2Score   int32           `json:"team_2_score"`
 	CurrentSet   int32           `json:"current_set"`
 	CurrentGame  int32           `json:"current_game"`
 	ServingTeam  pgtype.Int4     `json:"serving_team"`
@@ -48,26 +48,55 @@ type ScoreSnapshot struct {
 	SetScores    json.RawMessage `json:"set_scores"`
 }
 
+// PlayerSummary is a lightweight roster entry embedded inside a MatchTeam.
+type PlayerSummary struct {
+	ID          int64   `json:"id"`
+	PublicID    string  `json:"public_id"`
+	DisplayName string  `json:"display_name"`
+	AvatarURL   *string `json:"avatar_url,omitempty"`
+}
+
+// TeamSummary is the nested team shape embedded in MatchResponse.
+// Matches the frontend MatchTeam interface (see frontend/src/features/scoring/types.ts).
+type TeamSummary struct {
+	ID           int64           `json:"id"`
+	Name         string          `json:"name"`
+	ShortName    string          `json:"short_name,omitempty"`
+	PrimaryColor *string         `json:"primary_color,omitempty"`
+	LogoURL      *string         `json:"logo_url,omitempty"`
+	Players      []PlayerSummary `json:"players,omitempty"`
+}
+
 // MatchResponse is the public representation of a match.
+// JSON field names mirror frontend/src/features/scoring/types.ts#Match.
 type MatchResponse struct {
 	ID                 int64           `json:"id"`
 	PublicID           string          `json:"public_id"`
 	TournamentID       *int64          `json:"tournament_id,omitempty"`
+	TournamentName     *string         `json:"tournament_name,omitempty"`
 	DivisionID         *int64          `json:"division_id,omitempty"`
+	DivisionName       *string         `json:"division_name,omitempty"`
 	PodID              *int64          `json:"pod_id,omitempty"`
 	CourtID            *int64          `json:"court_id,omitempty"`
+	CourtName          *string         `json:"court_name,omitempty"`
+	MatchSeriesID      *int64          `json:"match_series_id,omitempty"`
 	CreatedByUserID    int64           `json:"created_by_user_id"`
 	MatchType          string          `json:"match_type"`
+	IsQuickMatch       bool            `json:"is_quick_match"`
 	Round              *int32          `json:"round,omitempty"`
 	RoundName          *string         `json:"round_name,omitempty"`
 	MatchNumber        *int32          `json:"match_number,omitempty"`
-	Team1ID            *int64          `json:"team1_id,omitempty"`
-	Team2ID            *int64          `json:"team2_id,omitempty"`
-	Team1Seed          *int32          `json:"team1_seed,omitempty"`
-	Team2Seed          *int32          `json:"team2_seed,omitempty"`
+	Team1ID            *int64          `json:"team_1_id,omitempty"`
+	Team2ID            *int64          `json:"team_2_id,omitempty"`
+	Team1              *TeamSummary    `json:"team_1"`
+	Team2              *TeamSummary    `json:"team_2"`
+	Team1Seed          *int32          `json:"team_1_seed,omitempty"`
+	Team2Seed          *int32          `json:"team_2_seed,omitempty"`
 	ScoringPresetID    *int64          `json:"scoring_preset_id,omitempty"`
+	ScoringType        string          `json:"scoring_type"`
 	GamesPerSet        int32           `json:"games_per_set"`
 	SetsToWin          int32           `json:"sets_to_win"`
+	BestOf             int32           `json:"best_of"`
 	PointsToWin        int32           `json:"points_to_win"`
 	WinBy              int32           `json:"win_by"`
 	MaxPoints          *int32          `json:"max_points,omitempty"`
@@ -75,14 +104,19 @@ type MatchResponse struct {
 	TimeoutsPerGame    int32           `json:"timeouts_per_game"`
 	TimeoutDurationSec int32           `json:"timeout_duration_sec"`
 	FreezeAt           *int32          `json:"freeze_at,omitempty"`
-	Team1Score         int32           `json:"team1_score"`
-	Team2Score         int32           `json:"team2_score"`
+	Team1Score         int32           `json:"team_1_score"`
+	Team2Score         int32           `json:"team_2_score"`
+	Team1GamesWon      int32           `json:"team_1_games_won"`
+	Team2GamesWon      int32           `json:"team_2_games_won"`
+	Team1TimeoutsUsed  int32           `json:"team_1_timeouts_used"`
+	Team2TimeoutsUsed  int32           `json:"team_2_timeouts_used"`
 	CurrentSet         int32           `json:"current_set"`
 	CurrentGame        int32           `json:"current_game"`
-	ServingTeam        *int32          `json:"serving_team,omitempty"`
-	ServerNumber       *int32          `json:"server_number,omitempty"`
+	ServingTeam        *int32          `json:"serving_team"`
+	ServerNumber       *int32          `json:"server_number"`
 	SetScores          json.RawMessage `json:"set_scores"`
 	Status             string          `json:"status"`
+	IsPaused           bool            `json:"is_paused"`
 	StartedAt          *string         `json:"started_at,omitempty"`
 	CompletedAt        *string         `json:"completed_at,omitempty"`
 	WinnerTeamID       *int64          `json:"winner_team_id,omitempty"`
@@ -93,6 +127,7 @@ type MatchResponse struct {
 	LoserNextMatchID   *int64          `json:"loser_next_match_id,omitempty"`
 	LoserNextMatchSlot *int32          `json:"loser_next_match_slot,omitempty"`
 	RefereeUserID      *int64          `json:"referee_user_id,omitempty"`
+	ScoredByName       *string         `json:"scored_by_name,omitempty"`
 	Notes              *string         `json:"notes,omitempty"`
 	ExpiresAt          *string         `json:"expires_at,omitempty"`
 	ScheduledAt        *string         `json:"scheduled_at,omitempty"`
@@ -106,8 +141,8 @@ type MatchEventResponse struct {
 	MatchID         int64           `json:"match_id"`
 	SequenceID      int32           `json:"sequence_id"`
 	EventType       string          `json:"event_type"`
-	Team1Score      int32           `json:"team1_score"`
-	Team2Score      int32           `json:"team2_score"`
+	Team1Score      int32           `json:"team_1_score"`
+	Team2Score      int32           `json:"team_2_score"`
 	CurrentSet      int32           `json:"current_set"`
 	CurrentGame     int32           `json:"current_game"`
 	ServingTeam     *int32          `json:"serving_team,omitempty"`
@@ -141,6 +176,16 @@ func optTimestamptz(v pgtype.Timestamptz) *string {
 }
 
 func toMatchResponse(m generated.Match) MatchResponse {
+	scoringType := "side_out"
+	if m.RallyScoring {
+		scoringType = "rally"
+	}
+
+	bestOf := m.SetsToWin*2 - 1
+	if bestOf < 1 {
+		bestOf = 1
+	}
+
 	resp := MatchResponse{
 		ID:                 m.ID,
 		PublicID:           m.PublicID,
@@ -148,8 +193,10 @@ func toMatchResponse(m generated.Match) MatchResponse {
 		DivisionID:         optInt8(m.DivisionID),
 		PodID:              optInt8(m.PodID),
 		CourtID:            optInt8(m.CourtID),
+		MatchSeriesID:      optInt8(m.MatchSeriesID),
 		CreatedByUserID:    m.CreatedByUserID,
 		MatchType:          m.MatchType,
+		IsQuickMatch:       m.MatchType == "quick",
 		Round:              optInt4(m.Round),
 		RoundName:          m.RoundName,
 		MatchNumber:        optInt4(m.MatchNumber),
@@ -158,8 +205,10 @@ func toMatchResponse(m generated.Match) MatchResponse {
 		Team1Seed:          optInt4(m.Team1Seed),
 		Team2Seed:          optInt4(m.Team2Seed),
 		ScoringPresetID:    optInt8(m.ScoringPresetID),
+		ScoringType:        scoringType,
 		GamesPerSet:        m.GamesPerSet,
 		SetsToWin:          m.SetsToWin,
+		BestOf:             bestOf,
 		PointsToWin:        m.PointsToWin,
 		WinBy:              m.WinBy,
 		MaxPoints:          optInt4(m.MaxPoints),
@@ -174,6 +223,7 @@ func toMatchResponse(m generated.Match) MatchResponse {
 		ServingTeam:        optInt4(m.ServingTeam),
 		ServerNumber:       optInt4(m.ServerNumber),
 		Status:             m.Status,
+		IsPaused:           m.Status == "paused",
 		StartedAt:          optTimestamptz(m.StartedAt),
 		CompletedAt:        optTimestamptz(m.CompletedAt),
 		WinnerTeamID:       optInt8(m.WinnerTeamID),
@@ -193,11 +243,131 @@ func toMatchResponse(m generated.Match) MatchResponse {
 
 	if len(m.SetScores) > 0 {
 		resp.SetScores = json.RawMessage(m.SetScores)
+		// Derive games-won from completed sets.
+		var games []engine.GameResult
+		if err := json.Unmarshal(m.SetScores, &games); err == nil {
+			for _, g := range games {
+				switch g.Winner {
+				case 1:
+					resp.Team1GamesWon++
+				case 2:
+					resp.Team2GamesWon++
+				}
+			}
+		}
 	} else {
 		resp.SetScores = json.RawMessage("[]")
 	}
 
 	return resp
+}
+
+// enrichedMatchResponse builds a MatchResponse enriched with nested teams
+// (with roster), division/tournament/court names, and timeouts-used counts.
+//
+// Best-effort: any sub-fetch failure logs silently (via zero value) rather
+// than failing the whole response. Callers that need the flat shape only
+// should call toMatchResponse directly.
+func (s *MatchService) enrichedMatchResponse(ctx context.Context, m generated.Match) MatchResponse {
+	resp := toMatchResponse(m)
+
+	// Nested team summaries (name/colors/roster).
+	if m.Team1ID.Valid {
+		if t := s.loadTeamSummary(ctx, m.Team1ID.Int64); t != nil {
+			resp.Team1 = t
+		}
+	}
+	if m.Team2ID.Valid {
+		if t := s.loadTeamSummary(ctx, m.Team2ID.Int64); t != nil {
+			resp.Team2 = t
+		}
+	}
+
+	// Division name.
+	if m.DivisionID.Valid {
+		if d, err := s.queries.GetDivisionByID(ctx, m.DivisionID.Int64); err == nil {
+			name := d.Name
+			resp.DivisionName = &name
+		}
+	}
+
+	// Tournament name.
+	if m.TournamentID.Valid {
+		if t, err := s.queries.GetTournamentByID(ctx, m.TournamentID.Int64); err == nil {
+			name := t.Name
+			resp.TournamentName = &name
+		}
+	}
+
+	// Court name.
+	if m.CourtID.Valid {
+		if c, err := s.queries.GetCourtByID(ctx, m.CourtID.Int64); err == nil {
+			name := c.Name
+			resp.CourtName = &name
+		}
+	}
+
+	// Timeouts used per team (count TIMEOUT_CALLED events grouped by team payload).
+	events, err := s.queries.ListMatchEventsByType(ctx, generated.ListMatchEventsByTypeParams{
+		MatchID:   m.ID,
+		EventType: "TIMEOUT_CALLED",
+	})
+	if err == nil {
+		for _, ev := range events {
+			if len(ev.Payload) == 0 {
+				continue
+			}
+			var payload struct {
+				Team int32 `json:"team"`
+			}
+			if err := json.Unmarshal(ev.Payload, &payload); err != nil {
+				continue
+			}
+			switch payload.Team {
+			case 1:
+				resp.Team1TimeoutsUsed++
+			case 2:
+				resp.Team2TimeoutsUsed++
+			}
+		}
+	}
+
+	return resp
+}
+
+// loadTeamSummary fetches a team plus its active roster and shapes the
+// public summary. Returns nil on not-found or error.
+func (s *MatchService) loadTeamSummary(ctx context.Context, teamID int64) *TeamSummary {
+	team, err := s.queries.GetTeamByID(ctx, teamID)
+	if err != nil {
+		return nil
+	}
+	summary := &TeamSummary{
+		ID:           team.ID,
+		Name:         team.Name,
+		ShortName:    team.ShortName,
+		PrimaryColor: team.PrimaryColor,
+		LogoURL:      team.LogoUrl,
+	}
+	if roster, err := s.queries.GetActiveRoster(ctx, teamID); err == nil {
+		players := make([]PlayerSummary, 0, len(roster))
+		for _, r := range roster {
+			display := ""
+			if r.DisplayName != nil && *r.DisplayName != "" {
+				display = *r.DisplayName
+			} else {
+				display = fmt.Sprintf("%s %s", r.FirstName, r.LastName)
+			}
+			players = append(players, PlayerSummary{
+				ID:          r.PlayerID,
+				PublicID:    r.PublicID,
+				DisplayName: display,
+				AvatarURL:   r.AvatarUrl,
+			})
+		}
+		summary.Players = players
+	}
+	return summary
 }
 
 func toMatchEventResponse(e generated.MatchEvent) MatchEventResponse {
@@ -260,7 +430,7 @@ func (s *MatchService) Create(ctx context.Context, params generated.CreateMatchP
 		return MatchResponse{}, fmt.Errorf("failed to create match: %w", err)
 	}
 
-	return toMatchResponse(match), nil
+	return s.enrichedMatchResponse(ctx, match), nil
 }
 
 // GetByID retrieves a match by internal ID.
@@ -269,7 +439,7 @@ func (s *MatchService) GetByID(ctx context.Context, id int64) (MatchResponse, er
 	if err != nil {
 		return MatchResponse{}, &NotFoundError{Message: "match not found"}
 	}
-	return toMatchResponse(match), nil
+	return s.enrichedMatchResponse(ctx, match), nil
 }
 
 // GetByPublicID retrieves a match by public ID.
@@ -278,7 +448,7 @@ func (s *MatchService) GetByPublicID(ctx context.Context, publicID string) (Matc
 	if err != nil {
 		return MatchResponse{}, &NotFoundError{Message: "match not found"}
 	}
-	return toMatchResponse(match), nil
+	return s.enrichedMatchResponse(ctx, match), nil
 }
 
 // ListByDivision returns paginated matches for a division.
@@ -300,7 +470,7 @@ func (s *MatchService) ListByDivision(ctx context.Context, divisionID int64, lim
 
 	result := make([]MatchResponse, len(matches))
 	for i, m := range matches {
-		result[i] = toMatchResponse(m)
+		result[i] = s.enrichedMatchResponse(ctx, m)
 	}
 	return result, count, nil
 }
@@ -318,7 +488,7 @@ func (s *MatchService) ListByPod(ctx context.Context, podID int64, limit, offset
 
 	result := make([]MatchResponse, len(matches))
 	for i, m := range matches {
-		result[i] = toMatchResponse(m)
+		result[i] = s.enrichedMatchResponse(ctx, m)
 	}
 	return result, nil
 }
@@ -336,7 +506,7 @@ func (s *MatchService) ListByCourt(ctx context.Context, courtID int64, limit, of
 
 	result := make([]MatchResponse, len(matches))
 	for i, m := range matches {
-		result[i] = toMatchResponse(m)
+		result[i] = s.enrichedMatchResponse(ctx, m)
 	}
 	return result, nil
 }
@@ -360,7 +530,7 @@ func (s *MatchService) ListByTeam(ctx context.Context, teamID int64, limit, offs
 
 	result := make([]MatchResponse, len(matches))
 	for i, m := range matches {
-		result[i] = toMatchResponse(m)
+		result[i] = s.enrichedMatchResponse(ctx, m)
 	}
 	return result, count, nil
 }
@@ -378,7 +548,7 @@ func (s *MatchService) ListByTournament(ctx context.Context, tournamentID int64,
 
 	result := make([]MatchResponse, len(matches))
 	for i, m := range matches {
-		result[i] = toMatchResponse(m)
+		result[i] = s.enrichedMatchResponse(ctx, m)
 	}
 	return result, nil
 }
@@ -396,7 +566,7 @@ func (s *MatchService) ListQuickMatches(ctx context.Context, userID int64, limit
 
 	result := make([]MatchResponse, len(matches))
 	for i, m := range matches {
-		result[i] = toMatchResponse(m)
+		result[i] = s.enrichedMatchResponse(ctx, m)
 	}
 	return result, nil
 }
@@ -437,7 +607,7 @@ func (s *MatchService) UpdateStatus(ctx context.Context, id int64, newStatus str
 	}
 
 	s.broadcastMatchUpdate(ctx, updated)
-	return toMatchResponse(updated), nil
+	return s.enrichedMatchResponse(ctx, updated), nil
 }
 
 // StartMatchInput carries optional body fields accepted by StartMatch.
@@ -539,7 +709,7 @@ func (s *MatchService) StartMatch(ctx context.Context, matchID int64, userID int
 
 	s.broadcastMatchUpdate(ctx, updated)
 	return ScoringActionResult{
-		Match: toMatchResponse(updated),
+		Match: s.enrichedMatchResponse(ctx, updated),
 		Event: toMatchEventResponse(event),
 	}, nil
 }
@@ -724,7 +894,7 @@ func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (S
 
 	s.broadcastMatchUpdate(ctx, updated)
 	return ScoringActionResult{
-		Match: toMatchResponse(updated),
+		Match: s.enrichedMatchResponse(ctx, updated),
 		Event: toMatchEventResponse(undoEvent),
 	}, nil
 }
@@ -770,7 +940,7 @@ func (s *MatchService) AssignToCourt(ctx context.Context, matchID int64, courtID
 		return MatchResponse{}, fmt.Errorf("failed to assign court: %w", err)
 	}
 
-	return toMatchResponse(updated), nil
+	return s.enrichedMatchResponse(ctx, updated), nil
 }
 
 // UpdateScoringConfig updates the scoring configuration of a match.
@@ -792,7 +962,7 @@ func (s *MatchService) UpdateScoringConfig(ctx context.Context, matchID int64, p
 		return MatchResponse{}, fmt.Errorf("failed to update scoring config: %w", err)
 	}
 
-	return toMatchResponse(updated), nil
+	return s.enrichedMatchResponse(ctx, updated), nil
 }
 
 // UpdateNotes updates the notes of a match.
@@ -805,7 +975,7 @@ func (s *MatchService) UpdateNotes(ctx context.Context, matchID int64, notes *st
 		return MatchResponse{}, &NotFoundError{Message: "match not found"}
 	}
 
-	return toMatchResponse(updated), nil
+	return s.enrichedMatchResponse(ctx, updated), nil
 }
 
 // UpdateReferee assigns a referee to a match.
@@ -823,7 +993,7 @@ func (s *MatchService) UpdateReferee(ctx context.Context, matchID int64, referee
 		return MatchResponse{}, &NotFoundError{Message: "match not found"}
 	}
 
-	return toMatchResponse(updated), nil
+	return s.enrichedMatchResponse(ctx, updated), nil
 }
 
 // GetActiveMatchOnCourt returns the currently active match on a court, if any.
@@ -834,7 +1004,7 @@ func (s *MatchService) GetActiveMatchOnCourt(ctx context.Context, courtID int64)
 		return nil, nil
 	}
 
-	resp := toMatchResponse(match)
+	resp := s.enrichedMatchResponse(ctx, match)
 	return &resp, nil
 }
 
@@ -861,7 +1031,7 @@ func (s *MatchService) CompleteMatch(ctx context.Context, matchID int64, winnerT
 		return MatchResponse{}, fmt.Errorf("failed to complete match: %w", err)
 	}
 
-	return toMatchResponse(updated), nil
+	return s.enrichedMatchResponse(ctx, updated), nil
 }
 
 // CleanupExpiredQuickMatches removes expired quick matches.
@@ -878,7 +1048,7 @@ func (s *MatchService) UpdateTeams(ctx context.Context, matchID int64, params ge
 		return MatchResponse{}, &NotFoundError{Message: "match not found"}
 	}
 
-	return toMatchResponse(updated), nil
+	return s.enrichedMatchResponse(ctx, updated), nil
 }
 
 // UpdateBracketWiring updates the bracket wiring of a match.
@@ -890,7 +1060,7 @@ func (s *MatchService) UpdateBracketWiring(ctx context.Context, matchID int64, p
 		return MatchResponse{}, &NotFoundError{Message: "match not found"}
 	}
 
-	return toMatchResponse(updated), nil
+	return s.enrichedMatchResponse(ctx, updated), nil
 }
 
 // ---------------------------------------------------------------------------
@@ -1090,7 +1260,7 @@ func (s *MatchService) ScorePoint(ctx context.Context, matchID int64, team int32
 	}
 
 	return ScoringActionResult{
-		Match:             toMatchResponse(updated),
+		Match:             s.enrichedMatchResponse(ctx, updated),
 		Event:             toMatchEventResponse(event),
 		GameOverDetected:  result.GameOverDetected,
 		MatchOverDetected: result.MatchOverDetected,
@@ -1121,7 +1291,7 @@ func (s *MatchService) SideOut(ctx context.Context, matchID int64, userID int64)
 	}
 
 	return ScoringActionResult{
-		Match:     toMatchResponse(updated),
+		Match:     s.enrichedMatchResponse(ctx, updated),
 		Event:     toMatchEventResponse(event),
 		ScoreCall: eng.ScoreCall(result.State),
 	}, nil
@@ -1151,7 +1321,7 @@ func (s *MatchService) RemovePoint(ctx context.Context, matchID int64, team int3
 	}
 
 	return ScoringActionResult{
-		Match:     toMatchResponse(updated),
+		Match:     s.enrichedMatchResponse(ctx, updated),
 		Event:     toMatchEventResponse(event),
 		ScoreCall: eng.ScoreCall(result.State),
 	}, nil
@@ -1179,7 +1349,7 @@ func (s *MatchService) ConfirmGameOver(ctx context.Context, matchID int64, userI
 	}
 
 	return ScoringActionResult{
-		Match:     toMatchResponse(updated),
+		Match:     s.enrichedMatchResponse(ctx, updated),
 		Event:     toMatchEventResponse(event),
 		ScoreCall: eng.ScoreCall(result.State),
 	}, nil
@@ -1247,13 +1417,13 @@ func (s *MatchService) ConfirmMatchOver(ctx context.Context, matchID int64, winn
 			return ScoringActionResult{}, fmt.Errorf("setting match result: %w", err)
 		}
 		return ScoringActionResult{
-			Match: toMatchResponse(final),
+			Match: s.enrichedMatchResponse(ctx, final),
 			Event: toMatchEventResponse(event),
 		}, nil
 	}
 
 	return ScoringActionResult{
-		Match: toMatchResponse(updated),
+		Match: s.enrichedMatchResponse(ctx, updated),
 		Event: toMatchEventResponse(event),
 	}, nil
 }
@@ -1281,7 +1451,7 @@ func (s *MatchService) CallTimeout(ctx context.Context, matchID int64, team int3
 	}
 
 	return ScoringActionResult{
-		Match:     toMatchResponse(updated),
+		Match:     s.enrichedMatchResponse(ctx, updated),
 		Event:     toMatchEventResponse(event),
 		ScoreCall: eng.ScoreCall(result.State),
 	}, nil
@@ -1309,7 +1479,7 @@ func (s *MatchService) PauseMatch(ctx context.Context, matchID int64, userID int
 	}
 
 	return ScoringActionResult{
-		Match: toMatchResponse(updated),
+		Match: s.enrichedMatchResponse(ctx, updated),
 		Event: toMatchEventResponse(event),
 	}, nil
 }
@@ -1336,7 +1506,7 @@ func (s *MatchService) ResumeMatch(ctx context.Context, matchID int64, userID in
 	}
 
 	return ScoringActionResult{
-		Match: toMatchResponse(updated),
+		Match: s.enrichedMatchResponse(ctx, updated),
 		Event: toMatchEventResponse(event),
 	}, nil
 }
@@ -1375,13 +1545,13 @@ func (s *MatchService) DeclareForfeit(ctx context.Context, matchID int64, forfei
 			return ScoringActionResult{}, fmt.Errorf("setting forfeit result: %w", err)
 		}
 		return ScoringActionResult{
-			Match: toMatchResponse(final),
+			Match: s.enrichedMatchResponse(ctx, final),
 			Event: toMatchEventResponse(event),
 		}, nil
 	}
 
 	return ScoringActionResult{
-		Match: toMatchResponse(updated),
+		Match: s.enrichedMatchResponse(ctx, updated),
 		Event: toMatchEventResponse(event),
 	}, nil
 }
@@ -1566,7 +1736,7 @@ func (s *MatchService) OverrideScore(
 
 	s.broadcastMatchUpdate(ctx, updated)
 	return ScoringActionResult{
-		Match: toMatchResponse(updated),
+		Match: s.enrichedMatchResponse(ctx, updated),
 		Event: toMatchEventResponse(overrideEvent),
 	}, nil
 }
