@@ -26,6 +26,8 @@ import { Button } from '../../components/Button'
 import { TabLayout } from '../../components/TabLayout'
 import { useAuth } from '../../features/auth/hooks'
 import { ElementsTab } from '../../features/overlay/controls/ElementsTab'
+import { ObsUrlTab } from '../../features/overlay/controls/ObsUrlTab'
+import { SourceTab } from '../../features/overlay/controls/SourceTab'
 import { ThemeTab } from '../../features/overlay/controls/ThemeTab'
 import { PreviewPane } from '../../features/overlay/PreviewPane'
 import {
@@ -197,8 +199,8 @@ function Header({ slug, courtID }: { slug: string; courtID: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Stub tab panels — filled in across subsequent Phase 4C commits.
-// Each stub renders a clear placeholder so operators aren't confused.
+// Stub tab panels — the two remaining stubs (Triggers + Overrides) are
+// filled in across subsequent Phase 4C commits.
 // ---------------------------------------------------------------------------
 
 interface TabStubProps {
@@ -221,15 +223,6 @@ function TabStub({ title, description }: { title: string; description: string })
   )
 }
 
-function SourceTab(_: TabStubProps) {
-  return (
-    <TabStub
-      title="Source"
-      description="Choose whether overlay data comes from a live Court Command match or an external source profile."
-    />
-  )
-}
-
 function TriggersTab() {
   return (
     <TabStub
@@ -244,15 +237,6 @@ function OverridesTab(_: TabStubProps) {
     <TabStub
       title="Overrides"
       description="Manually override any OverlayData field — team names, scores, sponsor logos — for demo, media day, or troubleshooting."
-    />
-  )
-}
-
-function ObsUrlTab(_: { slug: string } & TabStubProps) {
-  return (
-    <TabStub
-      title="OBS URL"
-      description="Copy the browser-source URL into OBS, manage the access token, and review your overlay licensing status."
     />
   )
 }
