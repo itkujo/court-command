@@ -1,20 +1,37 @@
 // frontend/src/features/overlay/OverlayRenderer.tsx
 //
-// Root renderer for the broadcast overlay. In Phase 4A this is a visual
-// stub that proves:
-//   1. Route is reachable at /overlay/court/$slug
-//   2. OverlayThemeProvider resolves and applies CSS custom properties
-//   3. useOverlayDataBySlug resolves slug -> courtID -> OverlayData
-//   4. useOverlayWebSocket connects to overlay + court channels
-//   5. <body> is transparent so OBS can chroma-key / stack layers
+// Root renderer for the broadcast overlay. Composes the 12 canonical
+// element components inside an OverlayThemeProvider. Each element is
+// independently toggled via CourtOverlayConfig.elements[key].visible.
 //
-// Phase 4B replaces the stub body with the 12 element components.
+// Rendering contract:
+//   1. Route reachable at /overlay/court/$slug
+//   2. OverlayThemeProvider applies --overlay-* CSS custom properties
+//   3. useOverlayDataBySlug resolves slug -> courtID -> OverlayData
+//   4. useOverlayWebSocket multiplexes overlay + court + match channels
+//   5. <body> is transparent so OBS / TV backgrounds render below us
+//   6. All element components return null when config.visible===false
+//      so on-air state is silent-by-default.
 
 import { useEffect } from 'react'
 import { OverlayThemeProvider } from './ThemeProvider'
 import { OverlayWatermark } from './OverlayWatermark'
 import { useOverlayConfig, useOverlayDataBySlug } from './hooks'
 import { useOverlayWebSocket } from './useOverlayWebSocket'
+import {
+  BracketSnapshot,
+  ComingUpNext,
+  CustomText,
+  LowerThird,
+  MatchResult,
+  PlayerCard,
+  PoolStandings,
+  Scoreboard,
+  SeriesScore,
+  SponsorBug,
+  TeamCard,
+  TournamentBug,
+} from './renderer/elements'
 
 export interface OverlayRendererProps {
   /** Court slug from the URL (e.g. "center-court") */
@@ -79,54 +96,39 @@ export function OverlayRenderer({
     return null
   }
 
-  const config = configQuery.data ?? null
+  const config = configQuery.data
+  if (!config) return null
   const data = overlayQuery.data
+  const elements = config.elements
   const isLicensed = false // TODO Phase 6 — wire from config/tenant
 
   return (
     <OverlayThemeProvider
-      themeId={config?.theme_id ?? null}
-      overrides={config?.color_overrides ?? null}
+      themeId={config.theme_id ?? null}
+      overrides={config.color_overrides ?? null}
       fullscreen={fullscreen}
     >
-      <StubOverlayBody slug={slug} matchStatus={data.match_status} />
+      {/* Fixed positioning elements (corners + banners) */}
+      <Scoreboard data={data} config={elements.scoreboard} />
+      <LowerThird data={data} config={elements.lower_third} />
+      <SponsorBug data={data} config={elements.sponsor_bug} />
+      <TournamentBug data={data} config={elements.tournament_bug} />
+      <ComingUpNext data={data} config={elements.coming_up_next} />
+      <SeriesScore data={data} config={elements.series_score} />
+
+      {/* Card-family (center-bottom overlays) */}
+      <PlayerCard data={data} config={elements.player_card} />
+      <TeamCard data={data} config={elements.team_card} />
+
+      {/* Full-center narrative elements */}
+      <BracketSnapshot data={data} config={elements.bracket_snapshot} />
+      <PoolStandings data={data} config={elements.pool_standings} />
+      <MatchResult data={data} config={elements.match_result} />
+
+      {/* Operator free-form */}
+      <CustomText config={elements.custom_text} />
+
       {!isLicensed && <OverlayWatermark />}
     </OverlayThemeProvider>
-  )
-}
-
-/**
- * Phase 4A visual stub. Confirms theme application end-to-end and
- * gives operators a "connected" signal while 4B builds out real
- * elements. Replaced entirely in 4B.
- */
-function StubOverlayBody({
-  slug,
-  matchStatus,
-}: {
-  slug: string
-  matchStatus: string
-}) {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center p-8">
-      <div
-        className="rounded-2xl px-8 py-6 max-w-md text-center shadow-2xl backdrop-blur"
-        style={{
-          background: 'var(--overlay-primary)',
-          color: 'var(--overlay-text)',
-          borderRadius: 'var(--overlay-radius)',
-          fontFamily: 'var(--overlay-font-family)',
-        }}
-      >
-        <div
-          className="text-xs uppercase tracking-widest opacity-70 mb-1"
-          style={{ color: 'var(--overlay-accent)' }}
-        >
-          Overlay Renderer · Phase 4A Stub
-        </div>
-        <div className="text-2xl font-bold tabular-nums">{slug}</div>
-        <div className="mt-2 text-sm opacity-80">status: {matchStatus}</div>
-      </div>
-    </div>
   )
 }
