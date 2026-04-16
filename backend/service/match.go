@@ -440,12 +440,22 @@ func (s *MatchService) UpdateStatus(ctx context.Context, id int64, newStatus str
 	return toMatchResponse(updated), nil
 }
 
+// StartMatchInput carries optional body fields accepted by StartMatch.
+// All fields are optional; nil means "do not change".
+type StartMatchInput struct {
+	ScoredByName         *string
+	FirstServingTeam     *int32
+	FirstServingPlayerID *int64
+}
+
 // StartMatch transitions a match to in_progress with started_at set, and records a start event.
 // Uses a transaction to ensure atomicity.
-func (s *MatchService) StartMatch(ctx context.Context, matchID int64, userID int64) (MatchResponse, error) {
+// Returns a ScoringActionResult envelope matching other scoring mutations so
+// the frontend can treat all scoring-action responses uniformly.
+func (s *MatchService) StartMatch(ctx context.Context, matchID int64, userID int64, input StartMatchInput) (ScoringActionResult, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
@@ -453,50 +463,85 @@ func (s *MatchService) StartMatch(ctx context.Context, matchID int64, userID int
 
 	match, err := qtx.GetMatchForUpdate(ctx, matchID)
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
 	}
 
 	if match.Status != "scheduled" && match.Status != "warmup" {
-		return MatchResponse{}, &ValidationError{
+		return ScoringActionResult{}, &ValidationError{
 			Message: fmt.Sprintf("cannot start match in status %q", match.Status),
+		}
+	}
+
+	// Apply optional first-serving-team override before the status transition so
+	// the resulting row already reflects the intended serving team.
+	if input.FirstServingTeam != nil {
+		if *input.FirstServingTeam != 1 && *input.FirstServingTeam != 2 {
+			return ScoringActionResult{}, &ValidationError{Message: "first_serving_team must be 1 or 2"}
+		}
+		if _, err := qtx.UpdateMatchScoring(ctx, generated.UpdateMatchScoringParams{
+			ID:           matchID,
+			Team1Score:   match.Team1Score,
+			Team2Score:   match.Team2Score,
+			CurrentSet:   match.CurrentSet,
+			CurrentGame:  match.CurrentGame,
+			ServingTeam:  pgtype.Int4{Int32: *input.FirstServingTeam, Valid: true},
+			ServerNumber: match.ServerNumber,
+			SetScores:    match.SetScores,
+		}); err != nil {
+			return ScoringActionResult{}, fmt.Errorf("failed to set first serving team: %w", err)
 		}
 	}
 
 	updated, err := qtx.UpdateMatchStarted(ctx, matchID)
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to start match: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to start match: %w", err)
 	}
 
-	// Record start event
+	// Build the start event payload, including any optional metadata.
 	nextSeq, err := qtx.GetNextSequenceID(ctx, matchID)
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to get next sequence: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to get next sequence: %w", err)
 	}
 
-	_, err = qtx.CreateMatchEvent(ctx, generated.CreateMatchEventParams{
+	startPayload := map[string]interface{}{"action": "match_started"}
+	if input.ScoredByName != nil {
+		startPayload["scored_by_name"] = *input.ScoredByName
+	}
+	if input.FirstServingTeam != nil {
+		startPayload["first_serving_team"] = *input.FirstServingTeam
+	}
+	if input.FirstServingPlayerID != nil {
+		startPayload["first_serving_player_id"] = *input.FirstServingPlayerID
+	}
+	payloadBytes, _ := json.Marshal(startPayload)
+
+	event, err := qtx.CreateMatchEvent(ctx, generated.CreateMatchEventParams{
 		MatchID:         matchID,
 		SequenceID:      nextSeq,
 		EventType:       "start_game",
-		Team1Score:      match.Team1Score,
-		Team2Score:      match.Team2Score,
-		CurrentSet:      match.CurrentSet,
-		CurrentGame:     match.CurrentGame,
-		ServingTeam:     match.ServingTeam,
-		ServerNumber:    match.ServerNumber,
-		SetScores:       match.SetScores,
-		Payload:         []byte(`{"action":"match_started"}`),
+		Team1Score:      updated.Team1Score,
+		Team2Score:      updated.Team2Score,
+		CurrentSet:      updated.CurrentSet,
+		CurrentGame:     updated.CurrentGame,
+		ServingTeam:     updated.ServingTeam,
+		ServerNumber:    updated.ServerNumber,
+		SetScores:       updated.SetScores,
+		Payload:         payloadBytes,
 		CreatedByUserID: pgtype.Int8{Int64: userID, Valid: true},
 	})
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to record start event: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to record start event: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to commit start match: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to commit start match: %w", err)
 	}
 
 	s.broadcastMatchUpdate(ctx, updated)
-	return toMatchResponse(updated), nil
+	return ScoringActionResult{
+		Match: toMatchResponse(updated),
+		Event: toMatchEventResponse(event),
+	}, nil
 }
 
 // RecordEvent records a scoring event and updates the match score.
@@ -603,10 +648,10 @@ func (s *MatchService) RecordEvent(ctx context.Context, matchID int64, eventType
 
 // Undo reverts the last event by restoring the snapshot from the previous event.
 // Uses a transaction to ensure atomicity.
-func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (MatchResponse, error) {
+func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (ScoringActionResult, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
@@ -614,11 +659,11 @@ func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (M
 
 	match, err := qtx.GetMatchForUpdate(ctx, matchID)
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
 	}
 
 	if match.Status != "in_progress" {
-		return MatchResponse{}, &ValidationError{
+		return ScoringActionResult{}, &ValidationError{
 			Message: fmt.Sprintf("cannot undo events for match in status %q", match.Status),
 		}
 	}
@@ -626,13 +671,13 @@ func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (M
 	// Get the latest event
 	latestEvent, err := qtx.GetLatestMatchEvent(ctx, matchID)
 	if err != nil {
-		return MatchResponse{}, &ValidationError{Message: "no events to undo"}
+		return ScoringActionResult{}, &ValidationError{Message: "no events to undo"}
 	}
 
 	// Record undo event with the current state as snapshot
 	nextSeq, err := qtx.GetNextSequenceID(ctx, matchID)
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to get next sequence: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to get next sequence: %w", err)
 	}
 
 	undoPayload, _ := json.Marshal(map[string]interface{}{
@@ -640,7 +685,7 @@ func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (M
 		"undone_event_type":     latestEvent.EventType,
 	})
 
-	_, err = qtx.CreateMatchEvent(ctx, generated.CreateMatchEventParams{
+	undoEvent, err := qtx.CreateMatchEvent(ctx, generated.CreateMatchEventParams{
 		MatchID:         matchID,
 		SequenceID:      nextSeq,
 		EventType:       "undo",
@@ -655,7 +700,7 @@ func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (M
 		CreatedByUserID: pgtype.Int8{Int64: userID, Valid: true},
 	})
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to record undo event: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to record undo event: %w", err)
 	}
 
 	// Restore score from the snapshot stored in the latest event (which captured the state BEFORE that event)
@@ -670,15 +715,18 @@ func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (M
 		SetScores:    latestEvent.SetScores,
 	})
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to restore score: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to restore score: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to commit undo: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to commit undo: %w", err)
 	}
 
 	s.broadcastMatchUpdate(ctx, updated)
-	return toMatchResponse(updated), nil
+	return ScoringActionResult{
+		Match: toMatchResponse(updated),
+		Event: toMatchEventResponse(undoEvent),
+	}, nil
 }
 
 // GetMatchEvents returns all events for a match.
@@ -1336,17 +1384,17 @@ func (s *MatchService) OverrideScore(
 	games []OverrideGameInput,
 	userID int64,
 	reason string,
-) (MatchResponse, error) {
+) (ScoringActionResult, error) {
 	if len(games) == 0 {
-		return MatchResponse{}, &ValidationError{Message: "at least one game is required"}
+		return ScoringActionResult{}, &ValidationError{Message: "at least one game is required"}
 	}
 	if len(reason) < 10 {
-		return MatchResponse{}, &ValidationError{Message: "reason must be at least 10 characters"}
+		return ScoringActionResult{}, &ValidationError{Message: "reason must be at least 10 characters"}
 	}
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
@@ -1354,7 +1402,7 @@ func (s *MatchService) OverrideScore(
 
 	match, err := qtx.GetMatchForUpdate(ctx, matchID)
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
 	}
 
 	// Capture previous state for the audit event.
@@ -1376,7 +1424,7 @@ func (s *MatchService) OverrideScore(
 			})
 		} else {
 			if liveGame != nil {
-				return MatchResponse{}, &ValidationError{
+				return ScoringActionResult{}, &ValidationError{
 					Message: "only one game may have a null winner (the live game)",
 				}
 			}
@@ -1408,7 +1456,7 @@ func (s *MatchService) OverrideScore(
 	if len(completed) > 0 {
 		encoded, err := json.Marshal(completed)
 		if err != nil {
-			return MatchResponse{}, fmt.Errorf("failed to encode set_scores: %w", err)
+			return ScoringActionResult{}, fmt.Errorf("failed to encode set_scores: %w", err)
 		}
 		setScoresJSON = encoded
 	}
@@ -1424,7 +1472,7 @@ func (s *MatchService) OverrideScore(
 		SetScores:    setScoresJSON,
 	})
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to update match scoring: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to update match scoring: %w", err)
 	}
 
 	// Build the audit payload.
@@ -1457,15 +1505,15 @@ func (s *MatchService) OverrideScore(
 		"games":                 gamesPayload,
 	})
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to encode override payload: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to encode override payload: %w", err)
 	}
 
 	nextSeq, err := qtx.GetNextSequenceID(ctx, matchID)
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to get next sequence: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to get next sequence: %w", err)
 	}
 
-	_, err = qtx.CreateMatchEvent(ctx, generated.CreateMatchEventParams{
+	overrideEvent, err := qtx.CreateMatchEvent(ctx, generated.CreateMatchEventParams{
 		MatchID:         matchID,
 		SequenceID:      nextSeq,
 		EventType:       "SCORE_OVERRIDE",
@@ -1480,13 +1528,16 @@ func (s *MatchService) OverrideScore(
 		CreatedByUserID: pgtype.Int8{Int64: userID, Valid: true},
 	})
 	if err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to record override event: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to record override event: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return MatchResponse{}, fmt.Errorf("failed to commit override: %w", err)
+		return ScoringActionResult{}, fmt.Errorf("failed to commit override: %w", err)
 	}
 
 	s.broadcastMatchUpdate(ctx, updated)
-	return toMatchResponse(updated), nil
+	return ScoringActionResult{
+		Match: toMatchResponse(updated),
+		Event: toMatchEventResponse(overrideEvent),
+	}, nil
 }

@@ -324,6 +324,34 @@ func (h *MatchHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	Success(w, match)
 }
 
+// startMatchBody is the optional request body accepted by both StartMatch
+// handlers (numeric and public-ID). All fields are optional — an empty body
+// is treated as all-nil.
+type startMatchBody struct {
+	ScoredByName         *string `json:"scored_by_name"`
+	FirstServingTeam     *int32  `json:"first_serving_team"`
+	FirstServingPlayerID *int64  `json:"first_serving_player_id"`
+}
+
+// decodeStartMatchInput parses the optional body for a start-match call,
+// tolerating an entirely empty request body (returns zero-value input).
+func decodeStartMatchInput(r *http.Request) (service.StartMatchInput, string) {
+	var body startMatchBody
+	// Only attempt to decode when we actually have a JSON body; otherwise
+	// treat as "no overrides". DecodeJSON will return an error on missing body,
+	// so we branch on ContentLength.
+	if r.Body != nil && r.ContentLength != 0 {
+		if errMsg := DecodeJSON(r, &body); errMsg != "" {
+			return service.StartMatchInput{}, errMsg
+		}
+	}
+	return service.StartMatchInput{
+		ScoredByName:         body.ScoredByName,
+		FirstServingTeam:     body.FirstServingTeam,
+		FirstServingPlayerID: body.FirstServingPlayerID,
+	}, ""
+}
+
 // StartMatch starts a match (transitions to in_progress with started_at).
 func (h *MatchHandler) StartMatch(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
@@ -338,13 +366,19 @@ func (h *MatchHandler) StartMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, err := h.service.StartMatch(r.Context(), id, sess.UserID)
+	input, errMsg := decodeStartMatchInput(r)
+	if errMsg != "" {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", errMsg)
+		return
+	}
+
+	result, err := h.service.StartMatch(r.Context(), id, sess.UserID, input)
 	if err != nil {
 		HandleServiceError(w, err)
 		return
 	}
 
-	Success(w, match)
+	Success(w, result)
 }
 
 // CompleteMatch marks a match as completed with a result.
@@ -1102,6 +1136,7 @@ func (h *MatchHandler) HandleDeclareForfeit(w http.ResponseWriter, r *http.Reque
 // ---------------------------------------------------------------------------
 
 // StartMatchByPublicID resolves the match by public ID and starts it.
+// Accepts an optional body: {scored_by_name?, first_serving_team?, first_serving_player_id?}.
 func (h *MatchHandler) StartMatchByPublicID(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireSession(w, r)
 	if !ok {
@@ -1113,13 +1148,19 @@ func (h *MatchHandler) StartMatchByPublicID(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	match, err := h.service.StartMatch(r.Context(), matchID, userID)
+	input, errMsg := decodeStartMatchInput(r)
+	if errMsg != "" {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", errMsg)
+		return
+	}
+
+	result, err := h.service.StartMatch(r.Context(), matchID, userID, input)
 	if err != nil {
 		HandleServiceError(w, err)
 		return
 	}
 
-	Success(w, match)
+	Success(w, result)
 }
 
 // UndoByPublicID resolves the match by public ID and reverts the last event.
