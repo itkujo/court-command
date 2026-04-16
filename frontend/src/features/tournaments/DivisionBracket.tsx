@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import {
   useGenerateBracket,
   useListBracketMatches,
@@ -16,6 +17,7 @@ interface DivisionBracketProps {
 
 interface BracketMatch {
   id: number
+  public_id?: string
   round: number
   match_number: number
   team1_id: number | null
@@ -34,10 +36,26 @@ function formatBracket(value: string): string {
 
 function MatchCard({ match }: { match: BracketMatch }) {
   const winner = match.winner_team_id
+  const canScore =
+    !!match.public_id &&
+    (match.status === 'scheduled' || match.status === 'in_progress')
   return (
     <div className="rounded-lg border border-(--color-border) bg-(--color-bg-primary) p-2 min-w-[180px]">
-      <div className="text-xs text-(--color-text-secondary) mb-1">
-        R{match.round} · M{match.match_number}
+      <div className="flex items-center justify-between mb-1">
+        <div className="text-xs text-(--color-text-secondary)">
+          R{match.round} · M{match.match_number}
+        </div>
+        {canScore && match.public_id && (
+          <Link
+            to="/ref/matches/$publicId"
+            params={{ publicId: match.public_id }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button variant="primary" size="sm">
+              Score
+            </Button>
+          </Link>
+        )}
       </div>
       <div
         className={`flex items-center justify-between text-sm py-1 ${
