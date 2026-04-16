@@ -20,7 +20,7 @@ interface NavItem { label: string; icon: typeof LayoutDashboard; path: string }
 interface NavGroup { label?: string; items: NavItem[] }
 
 const navGroups: NavGroup[] = [
-  { items: [{ label: 'Dashboard', icon: LayoutDashboard, path: '/' }] },
+  { items: [{ label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' }] },
   { label: 'Events', items: [
     { label: 'Tournaments', icon: Trophy, path: '/tournaments' },
     { label: 'Leagues', icon: Medal, path: '/leagues' },
