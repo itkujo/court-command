@@ -1206,6 +1206,35 @@ func (s *MatchService) ConfirmMatchOver(ctx context.Context, matchID int64, winn
 		return ScoringActionResult{}, err
 	}
 
+	// Derive winner/loser from the set_scores snapshot if the caller did not
+	// supply them. The frontend sends an empty body and expects the backend to
+	// work out who won by counting game victories. Without this, the final
+	// match row never records winner_team_id, standings never update, and
+	// bracket progression breaks silently.
+	if winnerTeamID == 0 && loserTeamID == 0 {
+		team1Wins, team2Wins := 0, 0
+		if len(updated.SetScores) > 0 {
+			var games []engine.GameResult
+			if err := json.Unmarshal(updated.SetScores, &games); err == nil {
+				for _, g := range games {
+					switch g.Winner {
+					case 1:
+						team1Wins++
+					case 2:
+						team2Wins++
+					}
+				}
+			}
+		}
+		if team1Wins > team2Wins && updated.Team1ID.Valid && updated.Team2ID.Valid {
+			winnerTeamID = updated.Team1ID.Int64
+			loserTeamID = updated.Team2ID.Int64
+		} else if team2Wins > team1Wins && updated.Team1ID.Valid && updated.Team2ID.Valid {
+			winnerTeamID = updated.Team2ID.Int64
+			loserTeamID = updated.Team1ID.Int64
+		}
+	}
+
 	// Also set winner/loser via the existing CompleteMatch logic.
 	if winnerTeamID > 0 && loserTeamID > 0 {
 		final, err := s.queries.UpdateMatchResult(ctx, generated.UpdateMatchResultParams{
