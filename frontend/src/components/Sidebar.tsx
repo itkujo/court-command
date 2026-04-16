@@ -6,8 +6,9 @@ import { ThemeToggle } from './ThemeToggle'
 import { Avatar } from './Avatar'
 import {
   LayoutDashboard, Trophy, Medal, MapPin, Users, UsersRound, Building2, Tv, Menu, ChevronLeft, LogOut,
-  Gavel, ClipboardList, Zap,
+  Gavel, ClipboardList, Zap, Search,
 } from 'lucide-react'
+import { useSearchModal } from '../features/search/SearchContext'
 
 interface SidebarProps {
   user: { first_name: string; last_name: string; public_id: string; display_name?: string | null }
@@ -130,8 +131,30 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
 }
 
 function NavContent({ expanded, isActive }: { expanded: boolean; isActive: (path: string) => unknown }) {
+  const { openSearch } = useSearchModal()
+
   return (
     <div className="space-y-4">
+      {/* Search trigger */}
+      <button
+        onClick={openSearch}
+        className={cn(
+          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm w-full text-(--color-text-secondary) hover:bg-(--color-bg-hover) hover:text-(--color-text-primary) transition-colors',
+          expanded ? '' : 'justify-center px-2',
+        )}
+        title={!expanded ? 'Search (Cmd+K)' : undefined}
+      >
+        <Search className="h-5 w-5 shrink-0" />
+        {expanded && (
+          <>
+            <span className="flex-1 text-left">Search</span>
+            <kbd className="text-[10px] font-medium text-(--color-text-secondary) border border-(--color-border) rounded px-1 py-0.5">
+              {'\u2318'}K
+            </kbd>
+          </>
+        )}
+      </button>
+
       {navGroups.map((group, gi) => (
         <div key={gi}>
           {group.label && expanded && (

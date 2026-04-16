@@ -95,20 +95,6 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
     }
   }, [open])
 
-  // Global keyboard shortcut: Cmd+K / Ctrl+K
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault()
-        if (open) {
-          onClose()
-        }
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [open, onClose])
-
   const handleNavigate = useCallback(() => {
     setQuery('')
     onClose()
