@@ -1,18 +1,23 @@
 // frontend/src/features/referee/RefMatchConsole.tsx
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { Skeleton } from '../../components/Skeleton'
 import { useToast } from '../../components/Toast'
+import { useAuth } from '../auth/hooks'
 import { DisconnectBanner } from '../scoring/DisconnectBanner'
+import { GameOverConfirmModal } from '../scoring/GameOverConfirmModal'
+import { MatchCompleteBanner } from '../scoring/MatchCompleteBanner'
 import { MatchScoreboard } from '../scoring/MatchScoreboard'
 import { MatchSetup } from '../scoring/MatchSetup'
+import { ScoreOverrideModal } from '../scoring/ScoreOverrideModal'
 import { playTick, vibrate } from '../scoring/feedback'
 import {
   useCallTimeout,
   useConfirmGameOver,
   useConfirmMatchOver,
   useMatch,
+  usePauseMatch,
+  useResumeMatch,
   useScorePoint,
   useSideOut,
   useStartMatch,
@@ -27,9 +32,21 @@ export interface RefMatchConsoleProps {
   publicId: string
 }
 
+// Roles that can perform score overrides. The backend currently only recognises
+// 'platform_admin' (see backend/db/migrations/00001_create_users.sql), but the
+// product direction calls for future 'tournament_director' and 'head_referee'
+// roles. Gate on all three so the UI is forward-compatible without requiring a
+// backend migration for the frontend to ship.
+const PRIVILEGED_ROLES = new Set([
+  'platform_admin',
+  'tournament_director',
+  'head_referee',
+])
+
 export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
   const { toast } = useToast()
   const navigate = useNavigate()
+  const auth = useAuth()
   const matchQuery = useMatch(publicId)
   const ws = useMatchWebSocket(publicId)
   const { prefs } = useScoringPrefs()
@@ -41,12 +58,17 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
   const callTimeout = useCallTimeout()
   const confirmGameOver = useConfirmGameOver()
   const confirmMatchOver = useConfirmMatchOver()
+  const pauseMatch = usePauseMatch()
+  const resumeMatch = useResumeMatch()
 
   const [gameOverPrompt, setGameOverPrompt] = useState(false)
   const [matchOverPrompt, setMatchOverPrompt] = useState(false)
+  const [overrideOpen, setOverrideOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const match = matchQuery.data
   const disabled = ws.state !== 'open'
+  const canOverride = !!auth.user && PRIVILEGED_ROLES.has(auth.user.role)
 
   function feedback(variant: 'point' | 'side_out' | 'undo' | 'error' = 'point') {
     if (prefs.haptic) vibrate(50)
@@ -124,6 +146,35 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
     )
   }
 
+  function handlePauseToggle() {
+    if (!match) return
+    if (match.is_paused) {
+      resumeMatch.mutate(
+        { publicId },
+        {
+          onSuccess: () => toast('success', 'Match resumed'),
+          onError: (err) =>
+            toast(
+              'error',
+              err instanceof Error ? err.message : 'Failed to resume match',
+            ),
+        },
+      )
+    } else {
+      pauseMatch.mutate(
+        { publicId },
+        {
+          onSuccess: () => toast('success', 'Match paused'),
+          onError: (err) =>
+            toast(
+              'error',
+              err instanceof Error ? err.message : 'Failed to pause match',
+            ),
+        },
+      )
+    }
+  }
+
   // Side-out: '1' triggers POINT (no team specified). Rally: '1' = team 1, '2' = team 2.
   useKeyboardShortcuts(
     {
@@ -147,6 +198,7 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
       onEscape: () => {
         setGameOverPrompt(false)
         setMatchOverPrompt(false)
+        setMenuOpen(false)
       },
     },
     prefs.keyboard && match?.status === 'in_progress' && !disabled,
@@ -165,7 +217,7 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
 
   if (matchQuery.isError || !match) {
     return (
-      <div className="p-4 text-(--color-error)">
+      <div className="p-4 text-red-500">
         Failed to load match.{' '}
         <button
           type="button"
@@ -203,6 +255,13 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
           }
           onCancel={() => navigate({ to: '/ref' })}
         />
+      ) : match.status === 'completed' ? (
+        <div className="p-3 md:p-4 flex-1 max-w-md mx-auto w-full">
+          <MatchCompleteBanner
+            match={match}
+            onBackToCourts={() => navigate({ to: '/ref' })}
+          />
+        </div>
       ) : (
         <div className="p-3 md:p-4 flex-1">
           <MatchScoreboard
@@ -219,19 +278,64 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
             onSideOut={handleSideOut}
             onUndo={handleUndo}
             onTimeout={handleTimeout}
+            onMenu={() => setMenuOpen((v) => !v)}
           />
         </div>
       )}
 
-      <ConfirmDialog
+      {menuOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-20"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden
+          />
+          <div
+            role="menu"
+            className="fixed top-16 right-4 z-30 w-56 rounded-md border border-(--color-border) bg-(--color-bg-secondary) shadow-lg p-1"
+          >
+            {canOverride && (
+              <button
+                type="button"
+                role="menuitem"
+                className="block w-full text-left px-3 py-2 hover:bg-(--color-bg-hover) rounded text-sm text-(--color-text-primary)"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setOverrideOpen(true)
+                }}
+              >
+                Override Score
+              </button>
+            )}
+            <button
+              type="button"
+              role="menuitem"
+              className="block w-full text-left px-3 py-2 hover:bg-(--color-bg-hover) rounded text-sm text-(--color-text-primary)"
+              disabled={pauseMatch.isPending || resumeMatch.isPending}
+              onClick={() => {
+                setMenuOpen(false)
+                handlePauseToggle()
+              }}
+            >
+              {match.is_paused ? 'Resume Match' : 'Pause Match'}
+            </button>
+            <Link
+              role="menuitem"
+              to="/settings/scoring"
+              className="block px-3 py-2 hover:bg-(--color-bg-hover) rounded text-sm text-(--color-text-primary)"
+              onClick={() => setMenuOpen(false)}
+            >
+              Scoring Settings
+            </Link>
+          </div>
+        </>
+      )}
+
+      <GameOverConfirmModal
         open={gameOverPrompt}
-        onClose={() => setGameOverPrompt(false)}
-        title="Game Over?"
-        message="The scoring threshold has been reached. Confirm to end this game."
-        confirmText="End Game"
-        variant="primary"
-        loading={confirmGameOver.isPending}
-        onConfirm={() => {
+        match={match}
+        pending={confirmGameOver.isPending}
+        onConfirm={() =>
           confirmGameOver.mutate(
             { publicId },
             {
@@ -246,18 +350,15 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
                 ),
             },
           )
-        }}
+        }
+        onContinue={() => setGameOverPrompt(false)}
       />
 
-      <ConfirmDialog
+      <GameOverConfirmModal
         open={matchOverPrompt}
-        onClose={() => setMatchOverPrompt(false)}
-        title="Match Over?"
-        message="The match-winning condition has been met. Confirm to end the match."
-        confirmText="End Match"
-        variant="primary"
-        loading={confirmMatchOver.isPending}
-        onConfirm={() => {
+        match={match}
+        pending={confirmMatchOver.isPending}
+        onConfirm={() =>
           confirmMatchOver.mutate(
             { publicId },
             {
@@ -272,8 +373,17 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
                 ),
             },
           )
-        }}
+        }
+        onContinue={() => setMatchOverPrompt(false)}
       />
+
+      {canOverride && (
+        <ScoreOverrideModal
+          open={overrideOpen}
+          onClose={() => setOverrideOpen(false)}
+          match={match}
+        />
+      )}
     </div>
   )
 }
