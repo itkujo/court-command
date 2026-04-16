@@ -6,6 +6,7 @@ import { Button } from '../../../components/Button'
 import { Input } from '../../../components/Input'
 import { Textarea } from '../../../components/Textarea'
 import { FormField } from '../../../components/FormField'
+import { ImageUpload } from '../../../components/ImageUpload'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
@@ -31,6 +32,7 @@ export function OrgForm({ org }: OrgFormProps) {
     org?.founded_year ? String(org.founded_year) : '',
   )
   const [bio, setBio] = useState(org?.bio ?? '')
+  const [logoUrl, setLogoUrl] = useState<string | null>(org?.logo_url ?? null)
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -57,6 +59,7 @@ export function OrgForm({ org }: OrgFormProps) {
       country: country.trim() || null,
       founded_year: foundedYear ? Number(foundedYear) : null,
       bio: bio.trim() || null,
+      logo_url: logoUrl,
     }
 
     const mutation = isEditing ? updateOrg : createOrg
@@ -156,6 +159,12 @@ export function OrgForm({ org }: OrgFormProps) {
             error={!!errors.founded_year}
           />
         </FormField>
+
+        <ImageUpload
+          value={logoUrl}
+          onChange={setLogoUrl}
+          label="Organization Logo"
+        />
 
         <FormField label="Bio" htmlFor="bio">
           <Textarea

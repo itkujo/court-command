@@ -6,6 +6,7 @@ import { Button } from '../../../components/Button'
 import { Input } from '../../../components/Input'
 import { Textarea } from '../../../components/Textarea'
 import { FormField } from '../../../components/FormField'
+import { ImageUpload } from '../../../components/ImageUpload'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
@@ -31,6 +32,9 @@ export function VenueForm({ venue }: VenueFormProps) {
   const [websiteUrl, setWebsiteUrl] = useState(venue?.website_url ?? '')
   const [contactEmail, setContactEmail] = useState(venue?.contact_email ?? '')
   const [bio, setBio] = useState(venue?.bio ?? '')
+  const [logoUrl, setLogoUrl] = useState<string | null>(venue?.logo_url ?? null)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(venue?.photo_url ?? null)
+  const [mapUrl, setMapUrl] = useState<string | null>(venue?.venue_map_url ?? null)
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -57,6 +61,9 @@ export function VenueForm({ venue }: VenueFormProps) {
       website_url: websiteUrl.trim() || null,
       contact_email: contactEmail.trim() || null,
       bio: bio.trim() || null,
+      logo_url: logoUrl,
+      photo_url: photoUrl,
+      venue_map_url: mapUrl,
     }
 
     const mutation = isEditing ? updateVenue : createVenue
@@ -172,6 +179,24 @@ export function VenueForm({ venue }: VenueFormProps) {
             error={!!errors.contact_email}
           />
         </FormField>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <ImageUpload
+            value={logoUrl}
+            onChange={setLogoUrl}
+            label="Venue Logo"
+          />
+          <ImageUpload
+            value={photoUrl}
+            onChange={setPhotoUrl}
+            label="Venue Photo"
+          />
+          <ImageUpload
+            value={mapUrl}
+            onChange={setMapUrl}
+            label="Venue Map"
+          />
+        </div>
 
         <FormField label="Bio" htmlFor="bio">
           <Textarea

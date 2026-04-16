@@ -23,6 +23,8 @@ export interface Venue {
   website_url: string | null
   contact_email: string | null
   logo_url: string | null
+  photo_url: string | null
+  venue_map_url: string | null
   bio: string | null
   court_count: number
   created_at: string

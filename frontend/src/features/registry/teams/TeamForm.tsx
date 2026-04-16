@@ -6,6 +6,7 @@ import { Button } from '../../../components/Button'
 import { Input } from '../../../components/Input'
 import { Textarea } from '../../../components/Textarea'
 import { FormField } from '../../../components/FormField'
+import { ImageUpload } from '../../../components/ImageUpload'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
@@ -28,6 +29,7 @@ export function TeamForm({ team }: TeamFormProps) {
   const [city, setCity] = useState(team?.city ?? '')
   const [foundedYear, setFoundedYear] = useState(team?.founded_year ? String(team.founded_year) : '')
   const [bio, setBio] = useState(team?.bio ?? '')
+  const [logoUrl, setLogoUrl] = useState<string | null>(team?.logo_url ?? null)
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -54,6 +56,7 @@ export function TeamForm({ team }: TeamFormProps) {
       city: city.trim() || null,
       founded_year: foundedYear ? Number(foundedYear) : null,
       bio: bio.trim() || null,
+      logo_url: logoUrl,
     }
 
     const mutation = isEditing ? updateTeam : createTeam
@@ -152,6 +155,12 @@ export function TeamForm({ team }: TeamFormProps) {
             error={!!errors.founded_year}
           />
         </FormField>
+
+        <ImageUpload
+          value={logoUrl}
+          onChange={setLogoUrl}
+          label="Team Logo"
+        />
 
         <FormField label="Bio" htmlFor="bio">
           <Textarea
