@@ -1,5 +1,6 @@
 import { usePlayer } from './hooks'
 import { Badge } from '../../../components/Badge'
+import { InfoRow } from '../../../components/InfoRow'
 import { Skeleton } from '../../../components/Skeleton'
 import { EmptyState } from '../../../components/EmptyState'
 import { Button } from '../../../components/Button'
@@ -94,17 +95,6 @@ export function PlayerDetail({ playerId }: PlayerDetailProps) {
       </div>
 
       <AdSlot size="medium-rectangle" slot="player-detail-bottom" className="mt-6" />
-    </div>
-  )
-}
-
-function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm text-(--color-text-primary)">{value || '\u2014'}</dd>
     </div>
   )
 }

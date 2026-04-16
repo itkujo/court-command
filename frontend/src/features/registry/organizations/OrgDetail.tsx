@@ -1,5 +1,6 @@
 import { useOrg } from './hooks'
 import { MembersPanel } from './MembersPanel'
+import { InfoRow } from '../../../components/InfoRow'
 import { Skeleton } from '../../../components/Skeleton'
 import { EmptyState } from '../../../components/EmptyState'
 import { Button } from '../../../components/Button'
@@ -94,23 +95,6 @@ export function OrgDetail({ orgId }: OrgDetailProps) {
       </div>
 
       <AdSlot size="medium-rectangle" slot="org-detail-bottom" className="mt-6" />
-    </div>
-  )
-}
-
-function InfoRow({
-  label,
-  value,
-}: {
-  label: string
-  value: React.ReactNode | string | null | undefined
-}) {
-  return (
-    <div>
-      <dt className="text-xs font-medium text-(--color-text-secondary) uppercase tracking-wider">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm text-(--color-text-primary)">{value || '\u2014'}</dd>
     </div>
   )
 }
