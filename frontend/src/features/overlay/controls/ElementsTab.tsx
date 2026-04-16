@@ -1,0 +1,616 @@
+// frontend/src/features/overlay/controls/ElementsTab.tsx
+//
+// Control Panel: Elements tab.
+//
+// Per-element controls for the 12 canonical overlay elements. Each
+// element has a visibility toggle (the primary on/off) and optionally
+// a small set of per-element knobs (rotation cadence, auto-dismiss
+// timers, text content, zone placement). Updates flow through the
+// single PUT /config/elements endpoint — we merge locally, debounce,
+// then send the whole ElementsConfig object server-side in one call.
+//
+// Grouping: elements are organized by visual zone so the operator can
+// scan the UI and understand where each element lives on-screen.
+
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
+import { Input } from '../../../components/Input'
+import { Select } from '../../../components/Select'
+import { FormField } from '../../../components/FormField'
+import { useToast } from '../../../components/Toast'
+import { cn } from '../../../lib/cn'
+import type {
+  CourtOverlayConfig,
+  CustomTextConfig,
+  ElementsConfig,
+  MatchResultConfig,
+  PlayerCardConfig,
+  SponsorBugConfig,
+  TeamCardConfig,
+} from '../types'
+import { ELEMENT_KEY, type ElementKey } from '../contract'
+import { useUpdateElements } from '../hooks'
+
+// Debounce interval for text / number inputs before firing the PUT.
+const COMMIT_DEBOUNCE_MS = 400
+
+// Visual grouping for the UI (does not affect the wire shape).
+interface ElementGroup {
+  label: string
+  description: string
+  keys: ElementKey[]
+}
+
+const ELEMENT_GROUPS: ElementGroup[] = [
+  {
+    label: 'Core',
+    description: 'Always-on elements that carry live scoreboard data.',
+    keys: [ELEMENT_KEY.SCOREBOARD, ELEMENT_KEY.SERIES_SCORE],
+  },
+  {
+    label: 'Branding',
+    description: 'Sponsor rotator, tournament logo, and match banners.',
+    keys: [
+      ELEMENT_KEY.SPONSOR_BUG,
+      ELEMENT_KEY.TOURNAMENT_BUG,
+      ELEMENT_KEY.LOWER_THIRD,
+    ],
+  },
+  {
+    label: 'Cards & callouts',
+    description:
+      'Trigger-fired overlays for player intros, team rosters, and operator text.',
+    keys: [
+      ELEMENT_KEY.PLAYER_CARD,
+      ELEMENT_KEY.TEAM_CARD,
+      ELEMENT_KEY.MATCH_RESULT,
+      ELEMENT_KEY.CUSTOM_TEXT,
+    ],
+  },
+  {
+    label: 'Tournament context',
+    description: 'Narrative elements shown between matches.',
+    keys: [
+      ELEMENT_KEY.COMING_UP_NEXT,
+      ELEMENT_KEY.BRACKET_SNAPSHOT,
+      ELEMENT_KEY.POOL_STANDINGS,
+    ],
+  },
+]
+
+const ELEMENT_LABELS: Record<ElementKey, string> = {
+  scoreboard: 'Scoreboard',
+  lower_third: 'Lower third',
+  player_card: 'Player card',
+  team_card: 'Team card',
+  sponsor_bug: 'Sponsor bug',
+  tournament_bug: 'Tournament bug',
+  coming_up_next: 'Coming up next',
+  match_result: 'Match result',
+  custom_text: 'Custom text',
+  bracket_snapshot: 'Bracket snapshot',
+  pool_standings: 'Pool standings',
+  series_score: 'Series score',
+}
+
+const ELEMENT_DESCRIPTIONS: Record<ElementKey, string> = {
+  scoreboard:
+    'Bottom-left persistent scoreboard with team rows, serve indicator, game history, and timeouts.',
+  lower_third: 'Full-width announcement banner. Slides up from the bottom.',
+  player_card: 'Center-bottom card introducing a selected player.',
+  team_card: 'Center-bottom card showing both rosters side-by-side.',
+  sponsor_bug: 'Top-right rotating sponsor logos.',
+  tournament_bug: 'Top-left static tournament or league mark.',
+  coming_up_next:
+    'Top-center banner teasing the next match in the court queue.',
+  match_result:
+    'Full-center winner reveal with confetti. Shown at match completion.',
+  custom_text: 'Operator-controlled free-form text banner.',
+  bracket_snapshot: 'Full-center bracket snapshot (between-match narrative).',
+  pool_standings:
+    'Full-center pool standings table (between-match narrative).',
+  series_score: 'Top-right dot grid showing BO3/BO5/BO7 series progress.',
+}
+
+const CUSTOM_TEXT_ZONES = [
+  { value: 'top', label: 'Top' },
+  { value: 'center', label: 'Center' },
+  { value: 'bottom', label: 'Bottom' },
+]
+
+const DISMISS_OPTIONS = [
+  { value: '0', label: 'Manual (stay until dismissed)' },
+  { value: '5', label: 'Auto dismiss after 5s' },
+  { value: '10', label: 'Auto dismiss after 10s' },
+  { value: '30', label: 'Auto dismiss after 30s' },
+  { value: '60', label: 'Auto dismiss after 60s' },
+]
+
+interface ElementsTabProps {
+  courtID: number
+  config: CourtOverlayConfig | undefined
+  loading: boolean
+}
+
+export function ElementsTab({ courtID, config, loading }: ElementsTabProps) {
+  const { toast } = useToast()
+  const updateElements = useUpdateElements(courtID)
+
+  // Local draft that reflects the server config but can be edited
+  // freely. The debounce timer flushes to the server.
+  const [draft, setDraft] = useState<ElementsConfig | null>(null)
+  const flushTimer = useRef<number | null>(null)
+  const pendingRef = useRef<ElementsConfig | null>(null)
+
+  useEffect(() => {
+    if (config?.elements) {
+      setDraft(config.elements)
+    }
+  }, [config?.elements])
+
+  // Clean up timer on unmount.
+  useEffect(() => () => {
+    if (flushTimer.current) window.clearTimeout(flushTimer.current)
+  }, [])
+
+  function commit(next: ElementsConfig) {
+    pendingRef.current = next
+    if (flushTimer.current) window.clearTimeout(flushTimer.current)
+    flushTimer.current = window.setTimeout(() => {
+      const pending = pendingRef.current
+      if (!pending) return
+      updateElements.mutate(
+        { elements: pending },
+        {
+          onError: (err) => {
+            toast('error', err.message || 'Could not save element settings')
+          },
+        },
+      )
+    }, COMMIT_DEBOUNCE_MS)
+  }
+
+  function patch<K extends ElementKey>(
+    key: K,
+    patchValue: Partial<ElementsConfig[K]>,
+  ) {
+    if (!draft) return
+    const next: ElementsConfig = {
+      ...draft,
+      [key]: { ...draft[key], ...patchValue },
+    }
+    setDraft(next)
+    commit(next)
+  }
+
+  if (loading || !draft) {
+    return (
+      <div className="flex items-center gap-2 py-12 justify-center text-(--color-text-secondary)">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Loading elements…</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-8">
+      <SaveIndicator pending={updateElements.isPending} />
+
+      {ELEMENT_GROUPS.map((group) => (
+        <section key={group.label} aria-labelledby={`grp-${group.label}`}>
+          <div className="mb-3">
+            <h2
+              id={`grp-${group.label}`}
+              className="text-sm font-semibold text-(--color-text-primary) uppercase tracking-wider"
+            >
+              {group.label}
+            </h2>
+            <p className="text-xs text-(--color-text-secondary) mt-0.5">
+              {group.description}
+            </p>
+          </div>
+          <div className="space-y-2">
+            {group.keys.map((key) => (
+              <ElementRow
+                key={key}
+                elementKey={key}
+                config={draft[key]}
+                onToggle={(visible) =>
+                  patch(key, { visible } as Partial<ElementsConfig[typeof key]>)
+                }
+                onPatch={(p) => patch(key, p)}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Per-element row with expand/collapse for knobs
+// ---------------------------------------------------------------------------
+
+interface ElementRowProps<K extends ElementKey> {
+  elementKey: K
+  config: ElementsConfig[K]
+  onToggle: (visible: boolean) => void
+  onPatch: (patch: Partial<ElementsConfig[K]>) => void
+}
+
+function ElementRow<K extends ElementKey>({
+  elementKey,
+  config,
+  onToggle,
+  onPatch,
+}: ElementRowProps<K>) {
+  const [expanded, setExpanded] = useState(false)
+  const hasKnobs = useMemo(() => elementHasKnobs(elementKey), [elementKey])
+  const rowId = `elem-${elementKey}`
+
+  return (
+    <div
+      className={cn(
+        'rounded-lg border border-(--color-border) transition-colors',
+        config.visible
+          ? 'bg-(--color-bg-secondary)'
+          : 'bg-(--color-bg-primary)',
+      )}
+    >
+      <div className="flex items-center gap-3 p-3">
+        {/* Expand toggle */}
+        {hasKnobs ? (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="flex h-6 w-6 items-center justify-center rounded text-(--color-text-secondary) hover:bg-(--color-bg-hover) hover:text-(--color-text-primary)"
+            aria-expanded={expanded}
+            aria-controls={`${rowId}-panel`}
+            aria-label={expanded ? 'Collapse settings' : 'Expand settings'}
+          >
+            {expanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+        ) : (
+          <div className="h-6 w-6" aria-hidden="true" />
+        )}
+
+        <div className="flex-1 min-w-0">
+          <label
+            htmlFor={`${rowId}-visible`}
+            className="block text-sm font-medium text-(--color-text-primary) cursor-pointer"
+          >
+            {ELEMENT_LABELS[elementKey]}
+          </label>
+          <p className="text-xs text-(--color-text-secondary) mt-0.5 truncate">
+            {ELEMENT_DESCRIPTIONS[elementKey]}
+          </p>
+        </div>
+
+        <Toggle
+          id={`${rowId}-visible`}
+          checked={config.visible}
+          onChange={onToggle}
+          label={`Toggle ${ELEMENT_LABELS[elementKey]}`}
+        />
+      </div>
+
+      {hasKnobs && expanded && (
+        <div
+          id={`${rowId}-panel`}
+          className="border-t border-(--color-border) p-4 bg-(--color-bg-primary)"
+        >
+          <ElementKnobs elementKey={elementKey} config={config} onPatch={onPatch} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Knob renderers per element kind
+// ---------------------------------------------------------------------------
+
+function elementHasKnobs(key: ElementKey): boolean {
+  return (
+    key === ELEMENT_KEY.SPONSOR_BUG ||
+    key === ELEMENT_KEY.PLAYER_CARD ||
+    key === ELEMENT_KEY.TEAM_CARD ||
+    key === ELEMENT_KEY.MATCH_RESULT ||
+    key === ELEMENT_KEY.CUSTOM_TEXT
+  )
+}
+
+interface KnobsProps<K extends ElementKey> {
+  elementKey: K
+  config: ElementsConfig[K]
+  onPatch: (patch: Partial<ElementsConfig[K]>) => void
+}
+
+function ElementKnobs<K extends ElementKey>({ elementKey, config, onPatch }: KnobsProps<K>) {
+  switch (elementKey) {
+    case ELEMENT_KEY.SPONSOR_BUG:
+      return (
+        <SponsorBugKnobs
+          config={config as SponsorBugConfig}
+          onPatch={onPatch as (p: Partial<SponsorBugConfig>) => void}
+        />
+      )
+    case ELEMENT_KEY.PLAYER_CARD:
+      return (
+        <CardDismissKnobs
+          label="Player card"
+          config={config as PlayerCardConfig}
+          onPatch={onPatch as (p: Partial<PlayerCardConfig>) => void}
+        />
+      )
+    case ELEMENT_KEY.TEAM_CARD:
+      return (
+        <CardDismissKnobs
+          label="Team card"
+          config={config as TeamCardConfig}
+          onPatch={onPatch as (p: Partial<TeamCardConfig>) => void}
+        />
+      )
+    case ELEMENT_KEY.MATCH_RESULT:
+      return (
+        <MatchResultKnobs
+          config={config as MatchResultConfig}
+          onPatch={onPatch as (p: Partial<MatchResultConfig>) => void}
+        />
+      )
+    case ELEMENT_KEY.CUSTOM_TEXT:
+      return (
+        <CustomTextKnobs
+          config={config as CustomTextConfig}
+          onPatch={onPatch as (p: Partial<CustomTextConfig>) => void}
+        />
+      )
+    default:
+      return null
+  }
+}
+
+function SponsorBugKnobs({
+  config,
+  onPatch,
+}: {
+  config: SponsorBugConfig
+  onPatch: (p: Partial<SponsorBugConfig>) => void
+}) {
+  // Use a local input value so the text cursor doesn't jump while
+  // the user is typing. We forward the parsed number on change.
+  const rotation = config.rotation_seconds ?? 8
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <FormField label="Rotation cadence (seconds)" htmlFor="sponsor-rotation">
+        <Input
+          id="sponsor-rotation"
+          type="number"
+          min={2}
+          max={120}
+          step={1}
+          value={rotation}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10)
+            if (!Number.isFinite(v) || v <= 0) return
+            onPatch({ rotation_seconds: v })
+          }}
+        />
+        <p className="text-xs text-(--color-text-secondary) mt-1">
+          How often logos cross-fade. Defaults to 8s if unset.
+        </p>
+      </FormField>
+      <FormField label="Auto-animate" htmlFor="sponsor-animate">
+        <Toggle
+          id="sponsor-animate"
+          checked={config.auto_animate ?? true}
+          onChange={(checked) => onPatch({ auto_animate: checked })}
+          label="Auto-animate sponsor rotation"
+        />
+      </FormField>
+    </div>
+  )
+}
+
+function CardDismissKnobs({
+  label,
+  config,
+  onPatch,
+}: {
+  label: string
+  config: PlayerCardConfig | TeamCardConfig
+  onPatch: (p: Partial<PlayerCardConfig | TeamCardConfig>) => void
+}) {
+  const seconds = config.auto_dismiss_seconds ?? 0
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <FormField label="Default dismiss" htmlFor={`${label}-dismiss`}>
+        <Select
+          id={`${label}-dismiss`}
+          value={String(seconds)}
+          onChange={(e) =>
+            onPatch({ auto_dismiss_seconds: parseInt(e.target.value, 10) || 0 })
+          }
+        >
+          {DISMISS_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </Select>
+        <p className="text-xs text-(--color-text-secondary) mt-1">
+          When a trigger fires this card, this is the default timer.
+          Operators can still override per-trigger.
+        </p>
+      </FormField>
+    </div>
+  )
+}
+
+function MatchResultKnobs({
+  config,
+  onPatch,
+}: {
+  config: MatchResultConfig
+  onPatch: (p: Partial<MatchResultConfig>) => void
+}) {
+  const show = config.auto_show_delay_seconds ?? 0
+  const dismiss = config.auto_dismiss_seconds ?? 30
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <FormField label="Show delay (seconds)" htmlFor="mr-delay">
+        <Input
+          id="mr-delay"
+          type="number"
+          min={0}
+          max={60}
+          step={1}
+          value={show}
+          onChange={(e) =>
+            onPatch({
+              auto_show_delay_seconds: Math.max(0, parseInt(e.target.value, 10) || 0),
+            })
+          }
+        />
+        <p className="text-xs text-(--color-text-secondary) mt-1">
+          How long after match completion to reveal the winner banner.
+        </p>
+      </FormField>
+      <FormField label="Dismiss after (seconds)" htmlFor="mr-dismiss">
+        <Input
+          id="mr-dismiss"
+          type="number"
+          min={5}
+          max={120}
+          step={1}
+          value={dismiss}
+          onChange={(e) =>
+            onPatch({
+              auto_dismiss_seconds: Math.max(1, parseInt(e.target.value, 10) || 30),
+            })
+          }
+        />
+      </FormField>
+    </div>
+  )
+}
+
+function CustomTextKnobs({
+  config,
+  onPatch,
+}: {
+  config: CustomTextConfig
+  onPatch: (p: Partial<CustomTextConfig>) => void
+}) {
+  const [local, setLocal] = useState(config.text ?? '')
+  // Keep local in sync when upstream changes (e.g. WS pushes a new
+  // value). Guard so our own typing doesn't fight the debounce.
+  useEffect(() => {
+    if (config.text !== local && document.activeElement?.id !== 'ct-text') {
+      setLocal(config.text ?? '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.text])
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <FormField label="Text" htmlFor="ct-text" className="md:col-span-2">
+        <Input
+          id="ct-text"
+          placeholder="e.g. Championship Final — Court A"
+          value={local}
+          onChange={(e) => {
+            setLocal(e.target.value)
+            onPatch({ text: e.target.value })
+          }}
+        />
+      </FormField>
+      <FormField label="Placement zone" htmlFor="ct-zone">
+        <Select
+          id="ct-zone"
+          value={config.zone ?? 'bottom'}
+          onChange={(e) => onPatch({ zone: e.target.value })}
+        >
+          {CUSTOM_TEXT_ZONES.map((z) => (
+            <option key={z.value} value={z.value}>
+              {z.label}
+            </option>
+          ))}
+        </Select>
+      </FormField>
+      <FormField label="Auto-dismiss" htmlFor="ct-dismiss">
+        <Select
+          id="ct-dismiss"
+          value={String(config.auto_dismiss_seconds ?? 0)}
+          onChange={(e) =>
+            onPatch({ auto_dismiss_seconds: parseInt(e.target.value, 10) || 0 })
+          }
+        >
+          {DISMISS_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </Select>
+      </FormField>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Toggle switch
+// ---------------------------------------------------------------------------
+
+function Toggle({
+  id,
+  checked,
+  onChange,
+  label,
+}: {
+  id?: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+  label: string
+}) {
+  return (
+    <button
+      id={id}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2',
+        checked ? 'bg-cyan-500' : 'bg-(--color-bg-hover)',
+      )}
+    >
+      <span
+        className={cn(
+          'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform',
+          checked ? 'translate-x-5' : 'translate-x-0.5',
+        )}
+      />
+    </button>
+  )
+}
+
+function SaveIndicator({ pending }: { pending: boolean }) {
+  if (!pending) return null
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="inline-flex items-center gap-2 rounded-md bg-(--color-bg-secondary) px-3 py-1.5 text-xs text-(--color-text-secondary)"
+    >
+      <Loader2 className="h-3 w-3 animate-spin" />
+      Saving…
+    </div>
+  )
+}

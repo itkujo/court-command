@@ -25,6 +25,7 @@ import { AlertCircle, ExternalLink, Loader2, Lock } from 'lucide-react'
 import { Button } from '../../components/Button'
 import { TabLayout } from '../../components/TabLayout'
 import { useAuth } from '../../features/auth/hooks'
+import { ElementsTab } from '../../features/overlay/controls/ElementsTab'
 import { PreviewPane } from '../../features/overlay/PreviewPane'
 import {
   useOverlayConfig,
@@ -216,15 +217,6 @@ function TabStub({ title, description }: { title: string; description: string })
         Coming next in Phase 4C
       </p>
     </div>
-  )
-}
-
-function ElementsTab(_: TabStubProps) {
-  return (
-    <TabStub
-      title="Elements"
-      description="Toggle individual overlay elements on/off and tweak per-element knobs like sponsor rotation cadence and custom text."
-    />
   )
 }
 
