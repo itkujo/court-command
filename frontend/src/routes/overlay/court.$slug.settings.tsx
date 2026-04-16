@@ -27,6 +27,7 @@ import { TabLayout } from '../../components/TabLayout'
 import { useAuth } from '../../features/auth/hooks'
 import { ElementsTab } from '../../features/overlay/controls/ElementsTab'
 import { ObsUrlTab } from '../../features/overlay/controls/ObsUrlTab'
+import { OverridesTab } from '../../features/overlay/controls/OverridesTab'
 import { SourceTab } from '../../features/overlay/controls/SourceTab'
 import { ThemeTab } from '../../features/overlay/controls/ThemeTab'
 import { TriggersTab } from '../../features/overlay/controls/TriggersTab'
@@ -199,30 +200,7 @@ function Header({ slug, courtID }: { slug: string; courtID: number }) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Overrides stub — filled in by 4C-F commit.
-// ---------------------------------------------------------------------------
 
-interface TabStubProps {
-  courtID: number
-  config: ReturnType<typeof useOverlayConfig>['data']
-  loading: boolean
-}
-
-function OverridesTab(_: TabStubProps) {
-  return (
-    <div className="rounded-lg border border-dashed border-(--color-border) p-8 text-center">
-      <h2 className="text-lg font-semibold text-(--color-text-primary)">Overrides</h2>
-      <p className="mt-2 text-sm text-(--color-text-secondary) max-w-prose mx-auto">
-        Manually override any OverlayData field — team names, scores, sponsor
-        logos — for demo, media day, or troubleshooting.
-      </p>
-      <p className="mt-4 text-xs uppercase tracking-wider text-(--color-text-muted)">
-        Coming next in Phase 4C
-      </p>
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // Shared states
