@@ -1,38 +1,34 @@
-// frontend/src/features/overlay/renderer/elements/Scoreboard.tsx
+// frontend/src/features/overlay/renderer/elements/scoreboard/ClassicScoreboard.tsx
 //
-// Bottom-left fixed scoreboard — the core broadcast element.
-// Sub-components in this file (kept colocated because they're not
-// meaningful outside the scoreboard zone):
-//   - TeamRow   : color bar + short name + initials + score
+// Classic layout: bottom-left stacked card, two team rows with a
+// hairline separator, optional extras bar (game history, timeouts,
+// paused badge) and a bottom context strip.
+//
+// This is the original scoreboard implementation, moved behind the
+// layout registry. Behavior is unchanged.
+//
+// Sub-components (kept colocated because they're not meaningful
+// outside the classic layout):
+//   - TeamRow        : color bar + short name + initials + score
 //   - ServeIndicator : triangular tick next to the serving team
 //   - GameHistoryDots: one dot per completed game, won-by color
 //   - TimeoutPips    : remaining-timeout indicators per team
 //   - MatchContextBar: division / round / match info strip
 //
 // Animations:
-//   - Score pulse 300ms on change (data-driven CSS animation)
-//   - Game-over flash on current_game increment
+//   - Score pulse 300ms on change
 //   - Match-over glow when match_status === 'completed'
-//
-// Rendering contract:
-//   - Returns null when config.visible === false
-//   - Presentational only; no queries, no state except animation refs
-//   - Reads --overlay-primary / accent / text / radius / font-family
-//     from OverlayThemeProvider scope
 
 import { useEffect, useRef, useState } from 'react'
-import type { OverlayData, ScoreboardConfig } from '../../types'
-import { MATCH_STATUS } from '../../contract'
+import type { OverlayData } from '../../../types'
+import { MATCH_STATUS } from '../../../contract'
+import type { ScoreboardLayoutProps } from './types'
 
-export interface ScoreboardProps {
-  data: OverlayData
-  config: ScoreboardConfig
-}
-
-export function Scoreboard({ data, config }: ScoreboardProps) {
+export function ClassicScoreboard({ data, config }: ScoreboardLayoutProps) {
   if (!config.visible) return null
 
-  const servingTeam = data.serving_team === 1 || data.serving_team === 2 ? data.serving_team : 0
+  const servingTeam =
+    data.serving_team === 1 || data.serving_team === 2 ? data.serving_team : 0
   const isCompleted = data.match_status === MATCH_STATUS.COMPLETED
   const isPaused = data.is_paused
 
@@ -50,6 +46,7 @@ export function Scoreboard({ data, config }: ScoreboardProps) {
         transition: 'box-shadow 600ms ease',
       }}
       data-match-status={data.match_status}
+      data-scoreboard-layout="classic"
     >
       <TeamRow
         name={data.team_1.short_name || data.team_1.name}
@@ -172,7 +169,7 @@ function initialsFromName(name: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// ServeIndicator — triangle that points at the serving team
+// ServeIndicator
 // ---------------------------------------------------------------------------
 
 function ServeIndicator({ visible }: { visible: boolean }) {
@@ -224,7 +221,7 @@ function AnimatedScore({ value }: { value: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// GameHistoryDots — one per completed game, colored by winner
+// GameHistoryDots
 // ---------------------------------------------------------------------------
 
 interface GameHistoryDotsProps {
@@ -259,7 +256,6 @@ function GameHistoryDots({ games }: GameHistoryDotsProps) {
 // ---------------------------------------------------------------------------
 
 function TimeoutPips({ remaining, label }: { remaining: number; label: string }) {
-  // Assume max 2 timeouts per team (BG standard). Clamp for display safety.
   const shown = Math.max(0, Math.min(2, remaining))
   return (
     <span className="inline-flex items-center gap-1" title={`${label} timeouts: ${remaining}`}>
@@ -285,11 +281,13 @@ function TimeoutPips({ remaining, label }: { remaining: number; label: string })
 }
 
 // ---------------------------------------------------------------------------
-// MatchContextBar — optional strip with division / round / match info
+// MatchContextBar
 // ---------------------------------------------------------------------------
 
 function MatchContextBar({ data }: { data: OverlayData }) {
-  const parts = [data.division_name, data.round_label, data.match_info].filter(Boolean)
+  const parts = [data.division_name, data.round_label, data.match_info].filter(
+    Boolean,
+  )
   if (!parts.length) return null
   return (
     <div

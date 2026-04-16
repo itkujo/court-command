@@ -110,7 +110,23 @@ export interface ElementConfigBase {
   auto_animate?: boolean
 }
 
-export interface ScoreboardConfig extends ElementConfigBase {}
+/**
+ * Scoreboard layout identifier. Themes control color/font tokens;
+ * layouts control composition and structure. Adding a new layout is
+ * a pure frontend change — the string flows through the elements JSON
+ * column untouched.
+ *
+ * Known layouts:
+ *   - `classic` (default): bottom-left stacked card, two team rows
+ *     separated by a hairline, optional extras bar and context strip.
+ *   - `banner`: wide horizontal broadcast-style banner with top + bottom
+ *     context strips and a dark inset score column on the right.
+ */
+export type ScoreboardLayout = 'classic' | 'banner'
+
+export interface ScoreboardConfig extends ElementConfigBase {
+  layout?: ScoreboardLayout
+}
 
 export interface LowerThirdConfig extends ElementConfigBase {}
 

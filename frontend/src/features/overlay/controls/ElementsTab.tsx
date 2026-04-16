@@ -25,11 +25,14 @@ import type {
   ElementsConfig,
   MatchResultConfig,
   PlayerCardConfig,
+  ScoreboardConfig,
+  ScoreboardLayout,
   SponsorBugConfig,
   TeamCardConfig,
 } from '../types'
 import { ELEMENT_KEY, type ElementKey } from '../contract'
 import { useUpdateElements } from '../hooks'
+import { SCOREBOARD_LAYOUT_OPTIONS } from '../renderer/elements/scoreboard'
 
 // Debounce interval for text / number inputs before firing the PUT.
 const COMMIT_DEBOUNCE_MS = 400
@@ -388,6 +391,8 @@ function SettingsRow<K extends ElementKey>({
 // what the operator can tune.
 function settingsHint(key: ElementKey): string {
   switch (key) {
+    case ELEMENT_KEY.SCOREBOARD:
+      return 'Layout (Classic / Banner)'
     case ELEMENT_KEY.SPONSOR_BUG:
       return 'Rotation cadence · auto-animate'
     case ELEMENT_KEY.PLAYER_CARD:
@@ -409,6 +414,7 @@ function settingsHint(key: ElementKey): string {
 
 function elementHasKnobs(key: ElementKey): boolean {
   return (
+    key === ELEMENT_KEY.SCOREBOARD ||
     key === ELEMENT_KEY.SPONSOR_BUG ||
     key === ELEMENT_KEY.PLAYER_CARD ||
     key === ELEMENT_KEY.TEAM_CARD ||
@@ -425,6 +431,13 @@ interface KnobsProps<K extends ElementKey> {
 
 function ElementKnobs<K extends ElementKey>({ elementKey, config, onPatch }: KnobsProps<K>) {
   switch (elementKey) {
+    case ELEMENT_KEY.SCOREBOARD:
+      return (
+        <ScoreboardKnobs
+          config={config as ScoreboardConfig}
+          onPatch={onPatch as (p: Partial<ScoreboardConfig>) => void}
+        />
+      )
     case ELEMENT_KEY.SPONSOR_BUG:
       return (
         <SponsorBugKnobs
@@ -465,6 +478,41 @@ function ElementKnobs<K extends ElementKey>({ elementKey, config, onPatch }: Kno
     default:
       return null
   }
+}
+
+function ScoreboardKnobs({
+  config,
+  onPatch,
+}: {
+  config: ScoreboardConfig
+  onPatch: (p: Partial<ScoreboardConfig>) => void
+}) {
+  const current: ScoreboardLayout = config.layout ?? 'classic'
+  const activeOption =
+    SCOREBOARD_LAYOUT_OPTIONS.find((o) => o.value === current) ??
+    SCOREBOARD_LAYOUT_OPTIONS[0]
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <FormField label="Layout" htmlFor="scoreboard-layout">
+        <Select
+          id="scoreboard-layout"
+          value={current}
+          onChange={(e) =>
+            onPatch({ layout: e.target.value as ScoreboardLayout })
+          }
+        >
+          {SCOREBOARD_LAYOUT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </Select>
+        <p className="text-xs text-(--color-text-secondary) mt-1">
+          {activeOption.description}
+        </p>
+      </FormField>
+    </div>
+  )
 }
 
 function SponsorBugKnobs({

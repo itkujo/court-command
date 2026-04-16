@@ -2,7 +2,7 @@
 // Barrel export for the 12 canonical overlay elements.
 // Import order matches ALL_ELEMENT_KEYS in ../../contract.ts.
 
-export { Scoreboard } from './Scoreboard'
+export { Scoreboard } from './scoreboard'
 export { LowerThird } from './LowerThird'
 export { PlayerCard } from './PlayerCard'
 export { TeamCard } from './TeamCard'
