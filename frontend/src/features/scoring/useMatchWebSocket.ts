@@ -18,9 +18,9 @@ function buildWsUrl(publicId: string): string {
   // Allow Vite proxy/host override via VITE_WS_URL; otherwise same host as page
   const base = (import.meta.env.VITE_WS_URL as string | undefined) || ''
   if (base) {
-    return `${base.replace(/\/$/, '')}/ws/matches/${publicId}`
+    return `${base.replace(/\/$/, '')}/ws/match/${publicId}`
   }
-  return `${proto}//${window.location.host}/ws/matches/${publicId}`
+  return `${proto}//${window.location.host}/ws/match/${publicId}`
 }
 
 export function useMatchWebSocket(publicId: string | undefined): {
