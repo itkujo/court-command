@@ -47,6 +47,7 @@ export function useOverlayConfig(courtID: number | null | undefined) {
     queryFn: () =>
       apiGet<CourtOverlayConfig>(`/api/v1/overlay/court/${courtID}/config`),
     enabled: courtID != null && courtID > 0,
+    staleTime: 2 * 60 * 1000,
   })
 }
 
@@ -82,6 +83,7 @@ export function useOverlayData(
         `/api/v1/overlay/court/${courtID}/data${query ? '?' + query : ''}`,
       ),
     enabled: courtID != null && courtID > 0,
+    staleTime: 0,
     retry: 1,
   })
 }
@@ -150,6 +152,7 @@ export function useSourceProfiles() {
   return useQuery<SourceProfile[]>({
     queryKey: ['source-profiles'],
     queryFn: () => apiGet<SourceProfile[]>('/api/v1/source-profiles'),
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -160,6 +163,7 @@ export function useSourceProfile(profileID: number | null | undefined) {
     queryFn: () =>
       apiGet<SourceProfile>(`/api/v1/source-profiles/${profileID}`),
     enabled: profileID != null && profileID > 0,
+    staleTime: 2 * 60 * 1000,
   })
 }
 

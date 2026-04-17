@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Badge } from './Badge'
 
 type EntityType = 'tournament' | 'division' | 'league' | 'season' | 'registration' | 'venue'
@@ -39,11 +40,11 @@ interface StatusBadgeProps {
   className?: string
 }
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
+export const StatusBadge = memo(function StatusBadge({ status, className }: StatusBadgeProps) {
   const variant = STATUS_VARIANTS[status] || 'default'
   return (
     <Badge variant={variant} className={className}>
       {formatStatus(status)}
     </Badge>
   )
-}
+})

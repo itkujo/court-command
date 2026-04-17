@@ -42,6 +42,7 @@ export function useTeamSearch(query: string, limit: number, offset: number) {
         `/api/v1/teams/search${buildQueryString({ q: query, limit, offset })}`,
       ),
     enabled: true,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -50,6 +51,7 @@ export function useTeam(id: string) {
     queryKey: ['teams', id],
     queryFn: () => apiGet<Team>(`/api/v1/teams/${id}`),
     enabled: !!id,
+    staleTime: 2 * 60 * 1000,
   })
 }
 
@@ -88,6 +90,7 @@ export function useTeamRoster(teamId: string) {
     queryKey: ['teams', teamId, 'roster'],
     queryFn: () => apiGet<TeamRosterEntry[]>(`/api/v1/teams/${teamId}/roster`),
     enabled: !!teamId,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

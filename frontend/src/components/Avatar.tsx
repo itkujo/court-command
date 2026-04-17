@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { cn } from '../lib/cn'
 import { getInitials } from '../lib/formatters'
 
@@ -14,10 +15,10 @@ const sizes = {
   lg: 'h-12 w-12 text-base',
 }
 
-export function Avatar({ name, src, size = 'md', className }: AvatarProps) {
+export const Avatar = memo(function Avatar({ name, src, size = 'md', className }: AvatarProps) {
   if (src) {
     return (
-      <img src={src} alt={name} className={cn('rounded-full object-cover', sizes[size], className)} loading="lazy" />
+      <img src={src} alt={name} className={cn('rounded-full object-cover', sizes[size], className)} loading="lazy" decoding="async" />
     )
   }
   return (
@@ -25,4 +26,4 @@ export function Avatar({ name, src, size = 'md', className }: AvatarProps) {
       {getInitials(name)}
     </div>
   )
-}
+})

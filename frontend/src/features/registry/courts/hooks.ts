@@ -11,6 +11,7 @@ export function useFloatingCourts(limit: number, offset: number) {
     queryFn: () =>
       apiGetPaginated<Court>(`/api/v1/courts${buildQueryString({ limit, offset })}`),
     enabled: true,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -19,6 +20,7 @@ export function useCourt(id: string) {
     queryKey: ['courts', id],
     queryFn: () => apiGet<Court>(`/api/v1/courts/${id}`),
     enabled: !!id,
+    staleTime: 2 * 60 * 1000,
   })
 }
 

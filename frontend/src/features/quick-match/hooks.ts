@@ -17,6 +17,7 @@ export function useMyQuickMatches() {
   return useQuery<Match[]>({
     queryKey: ['quick-matches'],
     queryFn: () => apiGet<Match[]>('/api/v1/quick-matches'),
+    staleTime: 5 * 60 * 1000,
   })
 }
 

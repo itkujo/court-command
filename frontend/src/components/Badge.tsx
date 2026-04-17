@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { cn } from '../lib/cn'
 
 interface BadgeProps {
@@ -14,10 +15,10 @@ const variants = {
   info: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400',
 }
 
-export function Badge({ variant = 'default', children, className }: BadgeProps) {
+export const Badge = memo(function Badge({ variant = 'default', children, className }: BadgeProps) {
   return (
     <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', variants[variant], className)}>
       {children}
     </span>
   )
-}
+})

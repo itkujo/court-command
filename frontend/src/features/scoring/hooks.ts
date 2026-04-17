@@ -16,6 +16,7 @@ export function useMatch(publicId: string | undefined) {
     queryKey: ['matches', publicId],
     queryFn: () => apiGet<Match>(`/api/v1/matches/public/${publicId}`),
     enabled: !!publicId,
+    staleTime: 0,
   })
 }
 
@@ -36,6 +37,7 @@ export function useAllCourts() {
       return page.items
     },
     retry: false,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -45,6 +47,7 @@ export function useMatchEvents(publicId: string | undefined) {
     queryFn: () =>
       apiGet<MatchEvent[]>(`/api/v1/matches/public/${publicId}/events`),
     enabled: !!publicId,
+    staleTime: 0,
     // Events can legitimately be empty for a fresh match; don't
     // thrash the network retrying a non-transient 404.
     retry: false,
@@ -56,6 +59,7 @@ export function useCourtMatches(courtId: number | undefined) {
     queryKey: ['courts', courtId, 'matches'],
     queryFn: () => apiGet<Match[]>(`/api/v1/courts/${courtId}/matches`),
     enabled: !!courtId,
+    staleTime: 0,
   })
 }
 
@@ -65,6 +69,7 @@ export function useCourtsForTournament(tournamentId: number | undefined) {
     queryFn: () =>
       apiGet<CourtSummary[]>(`/api/v1/tournaments/${tournamentId}/courts`),
     enabled: !!tournamentId,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -74,6 +79,7 @@ export function useMatchSeries(publicId: string | undefined) {
     queryFn: () =>
       apiGet<MatchSeriesSummary>(`/api/v1/match-series/${publicId}`),
     enabled: !!publicId,
+    staleTime: 2 * 60 * 1000,
   })
 }
 

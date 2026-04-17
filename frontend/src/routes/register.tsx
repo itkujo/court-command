@@ -53,8 +53,8 @@ function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-(--color-bg-primary) p-4">
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-8">
-          <img src="/logo-wordmark.svg" alt="Court Command" className="h-10 dark:block hidden" />
-          <img src="/logo-wordmark-dark.svg" alt="Court Command" className="h-10 dark:hidden" />
+          <img src="/logo-wordmark.svg" alt="Court Command" className="h-10 dark:block hidden" decoding="async" />
+          <img src="/logo-wordmark-dark.svg" alt="Court Command" className="h-10 dark:hidden" decoding="async" />
         </div>
         <div className="rounded-xl border border-(--color-border) bg-(--color-bg-secondary) p-6">
           <h1 className="text-xl font-semibold text-(--color-text-primary) mb-6">Create account</h1>

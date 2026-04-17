@@ -55,6 +55,7 @@ export function useVenueSearch(query: string, limit: number, offset: number) {
         `/api/v1/venues/search${buildQueryString({ q: query, limit, offset })}`,
       ),
     enabled: true,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -63,6 +64,7 @@ export function useVenue(id: string) {
     queryKey: ['venues', id],
     queryFn: () => apiGet<Venue>(`/api/v1/venues/${id}`),
     enabled: !!id,
+    staleTime: 2 * 60 * 1000,
   })
 }
 
@@ -111,6 +113,7 @@ export function useVenueCourts(venueId: string) {
     queryKey: ['venues', venueId, 'courts'],
     queryFn: () => apiGet<Court[]>(`/api/v1/venues/${venueId}/courts`),
     enabled: !!venueId,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

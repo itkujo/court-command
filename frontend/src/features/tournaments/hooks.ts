@@ -167,6 +167,7 @@ export function useListTournaments(
       apiGetPaginated<Tournament>(
         `/api/v1/tournaments${buildQueryString({ query, status, limit, offset })}`,
       ),
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -175,6 +176,7 @@ export function useGetTournament(id: string) {
     queryKey: ['tournaments', id],
     queryFn: () => apiGet<Tournament>(`/api/v1/tournaments/${id}`),
     enabled: !!id,
+    staleTime: 2 * 60 * 1000,
   })
 }
 
@@ -241,6 +243,7 @@ export function useListDivisions(tournamentId: string) {
     queryFn: () =>
       apiGet<Division[]>(`/api/v1/tournaments/${tournamentId}/divisions`),
     enabled: !!tournamentId,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -252,6 +255,7 @@ export function useGetDivision(tournamentId: string, divisionId: string) {
         `/api/v1/tournaments/${tournamentId}/divisions/${divisionId}`,
       ),
     enabled: !!tournamentId && !!divisionId,
+    staleTime: 2 * 60 * 1000,
   })
 }
 
@@ -338,6 +342,7 @@ export function useListRegistrations(
         `/api/v1/divisions/${divisionId}/registrations${buildQueryString({ status, limit, offset })}`,
       ),
     enabled: !!divisionId,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -475,6 +480,7 @@ export function useListPods(divisionId: string) {
     queryKey: ['divisions', divisionId, 'pods'],
     queryFn: () => apiGet<Pod[]>(`/api/v1/divisions/${divisionId}/pods`),
     enabled: !!divisionId,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -532,6 +538,7 @@ export function useListTournamentAnnouncements(
         `/api/v1/tournaments/${tournamentId}/announcements${buildQueryString({ division_id: divisionId })}`,
       ),
     enabled: !!tournamentId,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -596,6 +603,7 @@ export function useListBracketMatches(divisionId: string) {
     queryFn: () =>
       apiGet<BracketMatch[]>(`/api/v1/divisions/${divisionId}/matches`),
     enabled: !!divisionId,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -623,6 +631,7 @@ export function useSearchLeagues(query: string) {
         `/api/v1/leagues${buildQueryString({ query, limit: 20, offset: 0 })}`,
       ),
     enabled: query.length > 0,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -632,5 +641,6 @@ export function useLeagueSeasons(leagueId: number | null) {
     queryFn: () =>
       apiGet<Season[]>(`/api/v1/leagues/${leagueId}/seasons`),
     enabled: !!leagueId,
+    staleTime: 5 * 60 * 1000,
   })
 }

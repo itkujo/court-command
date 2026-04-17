@@ -67,6 +67,7 @@ export function usePublicTournaments(params: {
           status: params.status,
         })}`,
       ),
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -75,6 +76,7 @@ export function usePublicTournamentBySlug(slug: string) {
     queryKey: ['public-tournament', slug],
     queryFn: () => apiGet<PublicTournament>(`/api/v1/public/tournaments/${slug}`),
     enabled: !!slug,
+    staleTime: 2 * 60 * 1000,
   })
 }
 
@@ -88,6 +90,7 @@ export function usePublicLeagues(params: { limit: number; offset: number }) {
           offset: params.offset,
         })}`,
       ),
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -96,6 +99,7 @@ export function usePublicLeagueBySlug(slug: string) {
     queryKey: ['public-league', slug],
     queryFn: () => apiGet<PublicLeague>(`/api/v1/public/leagues/${slug}`),
     enabled: !!slug,
+    staleTime: 2 * 60 * 1000,
   })
 }
 
@@ -109,6 +113,7 @@ export function usePublicVenues(params: { limit: number; offset: number }) {
           offset: params.offset,
         })}`,
       ),
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -117,5 +122,6 @@ export function usePublicVenueBySlug(slug: string) {
     queryKey: ['public-venue', slug],
     queryFn: () => apiGet<PublicVenue>(`/api/v1/public/venues/${slug}`),
     enabled: !!slug,
+    staleTime: 2 * 60 * 1000,
   })
 }

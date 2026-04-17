@@ -44,6 +44,7 @@ export function useOrgSearch(query: string, limit: number, offset: number) {
         `/api/v1/organizations/search${buildQueryString({ q: query, limit, offset })}`,
       ),
     enabled: true,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -52,6 +53,7 @@ export function useOrg(id: string) {
     queryKey: ['organizations', id],
     queryFn: () => apiGet<Organization>(`/api/v1/organizations/${id}`),
     enabled: !!id,
+    staleTime: 2 * 60 * 1000,
   })
 }
 
@@ -92,6 +94,7 @@ export function useOrgMembers(orgId: string) {
     queryKey: ['organizations', orgId, 'members'],
     queryFn: () => apiGet<OrgMember[]>(`/api/v1/organizations/${orgId}/members`),
     enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

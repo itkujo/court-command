@@ -34,6 +34,7 @@ export function usePlayerSearch(query: string, limit: number, offset: number) {
         `/api/v1/players/search${buildQueryString({ q: query, limit, offset })}`,
       ),
     enabled: true,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -42,6 +43,7 @@ export function usePlayer(id: string) {
     queryKey: ['players', id],
     queryFn: () => apiGet<Player>(`/api/v1/players/${id}`),
     enabled: !!id,
+    staleTime: 2 * 60 * 1000,
   })
 }
 
@@ -49,6 +51,7 @@ export function useMyProfile() {
   return useQuery<Player>({
     queryKey: ['players', 'me'],
     queryFn: () => apiGet<Player>('/api/v1/players/me'),
+    staleTime: 2 * 60 * 1000,
   })
 }
 

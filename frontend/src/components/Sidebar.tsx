@@ -115,8 +115,8 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
           <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-(--color-text-secondary) hover:bg-(--color-bg-hover)" aria-label="Open navigation">
             <Menu className="h-5 w-5" />
           </button>
-          <img src="/logo-wordmark.svg" alt="Court Command" className="h-6 dark:block hidden" />
-          <img src="/logo-wordmark-dark.svg" alt="Court Command" className="h-6 dark:hidden" />
+          <img src="/logo-wordmark.svg" alt="Court Command" className="h-6 dark:block hidden" decoding="async" />
+          <img src="/logo-wordmark-dark.svg" alt="Court Command" className="h-6 dark:hidden" decoding="async" />
           {user ? (
             <Avatar name={displayName} size="sm" />
           ) : (
@@ -131,8 +131,8 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
             <nav aria-label="Main navigation" className="fixed top-0 left-0 bottom-0 z-50 w-[280px] bg-(--color-bg-sidebar) border-r border-(--color-border) overflow-y-auto">
               <div className="p-4">
                 <div className="flex items-center justify-between mb-6">
-                  <img src="/logo-wordmark.svg" alt="Court Command" className="h-7 dark:block hidden" />
-                  <img src="/logo-wordmark-dark.svg" alt="Court Command" className="h-7 dark:hidden" />
+                  <img src="/logo-wordmark.svg" alt="Court Command" className="h-7 dark:block hidden" decoding="async" />
+                  <img src="/logo-wordmark-dark.svg" alt="Court Command" className="h-7 dark:hidden" decoding="async" />
                   <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg text-(--color-text-secondary) hover:bg-(--color-bg-hover)" aria-label="Close navigation">
                     <ChevronLeft className="h-5 w-5" />
                   </button>
@@ -156,8 +156,8 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
       <div className={cn('flex items-center h-14 border-b border-(--color-border)', expanded ? 'px-4 justify-between' : 'justify-center')}>
         {expanded ? (
           <>
-            <img src="/logo-wordmark.svg" alt="Court Command" className="h-6 dark:block hidden" />
-            <img src="/logo-wordmark-dark.svg" alt="Court Command" className="h-6 dark:hidden" />
+            <img src="/logo-wordmark.svg" alt="Court Command" className="h-6 dark:block hidden" decoding="async" />
+            <img src="/logo-wordmark-dark.svg" alt="Court Command" className="h-6 dark:hidden" decoding="async" />
             <button onClick={() => setExpanded(false)} className="p-1.5 rounded-lg text-(--color-text-secondary) hover:bg-(--color-bg-hover)" aria-label="Collapse sidebar">
               <ChevronLeft className="h-4 w-4" />
             </button>
