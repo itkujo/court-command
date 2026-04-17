@@ -12,9 +12,9 @@
 //   - Operators copy the URL (optionally with ?token=...) into OBS
 //   - Revoking rotates the underlying secret so old URLs stop working
 //
-// Licensing: CourtOverlayConfig doesn't yet have is_licensed (Phase 6).
-// We show a watermark warning to match the current always-unlicensed
-// OverlayRenderer behavior.
+// Licensing: derived via getIsLicensed() (Phase 6 D3 resolution).
+// Currently returns false (free tier). When billing ships, update
+// licensing.ts to check subscription status.
 
 import { useMemo, useState } from 'react'
 import {
@@ -33,6 +33,7 @@ import { Button } from '../../../components/Button'
 import { ConfirmDialog } from '../../../components/ConfirmDialog'
 import { useToast } from '../../../components/Toast'
 import type { CourtOverlayConfig } from '../types'
+import { getIsLicensed } from '../licensing'
 import {
   useGenerateOverlayToken,
   useRevokeOverlayToken,
@@ -62,8 +63,7 @@ export function ObsUrlTab({ slug, courtID, config, loading }: ObsUrlTabProps) {
     [baseUrl, token],
   )
 
-  // Unlicensed until Phase 6 wires it up — matches OverlayRenderer.
-  const isLicensed = false
+  const isLicensed = getIsLicensed(config)
 
   const handleCopy = async () => {
     try {

@@ -16,6 +16,7 @@
 import { useEffect, useMemo } from 'react'
 import { OverlayThemeProvider } from './ThemeProvider'
 import { OverlayWatermark } from './OverlayWatermark'
+import { getIsLicensed } from './licensing'
 import { useOverlayConfig, useOverlayDataBySlug } from './hooks'
 import { useOverlayWebSocket } from './useOverlayWebSocket'
 import { useTriggerQueue } from './useTriggerQueue'
@@ -102,7 +103,7 @@ export function OverlayRenderer({
   if (!config) return null
   const data = overlayQuery.data
   const elements = config.elements
-  const isLicensed = false // TODO Phase 6 — wire from config/tenant
+  const isLicensed = getIsLicensed(config)
 
   return (
     <OverlayThemeProvider
