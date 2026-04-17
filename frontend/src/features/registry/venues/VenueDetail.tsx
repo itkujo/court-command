@@ -1,5 +1,6 @@
 import { useVenue } from './hooks'
 import { CourtListPanel } from './CourtListPanel'
+import { VenueManagersPanel } from './VenueManagersPanel'
 import { Badge } from '../../../components/Badge'
 import { InfoRow } from '../../../components/InfoRow'
 import { Skeleton } from '../../../components/Skeleton'
@@ -108,6 +109,7 @@ export function VenueDetail({ venueId }: VenueDetailProps) {
         </div>
 
         <CourtListPanel venueId={venueId} />
+        <VenueManagersPanel venueId={venueId} />
       </div>
 
       <AdSlot size="medium-rectangle" slot="venue-detail-bottom" className="mt-6" />

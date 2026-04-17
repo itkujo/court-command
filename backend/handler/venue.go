@@ -44,6 +44,12 @@ func (h *VenueHandler) Routes() chi.Router {
 	r.Get("/{venueID}/courts", h.ListCourts)
 	r.Post("/{venueID}/courts", h.CreateCourtForVenue)
 
+	// Manager sub-routes
+	r.Get("/{venueID}/managers", h.ListManagers)
+	r.Post("/{venueID}/managers", h.AddManager)
+	r.Delete("/{venueID}/managers/{userID}", h.RemoveManager)
+	r.Patch("/{venueID}/managers/{userID}", h.UpdateManagerRole)
+
 	return r
 }
 
@@ -177,6 +183,17 @@ func (h *VenueHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Permission check: only venue managers, creators, or platform admins can edit
+	canManage, err := h.venueService.CanManageVenue(r.Context(), venueID, sess.UserID, sess.Role)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	if !canManage {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "You do not have permission to edit this venue")
+		return
+	}
+
 	var body struct {
 		Name            *string         `json:"name"`
 		AddressLine1    *string         `json:"address_line_1"`
@@ -271,6 +288,17 @@ func (h *VenueHandler) DeleteVenue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Permission check: only venue admins, creators, or platform admins can delete
+	canAdmin, err := h.venueService.CanAdminVenue(r.Context(), venueID, sess.UserID, sess.Role)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	if !canAdmin {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "You do not have permission to delete this venue")
+		return
+	}
+
 	if err := h.venueService.DeleteVenue(r.Context(), venueID); err != nil {
 		handleServiceError(w, err)
 		return
@@ -351,6 +379,17 @@ func (h *VenueHandler) SubmitForReview(w http.ResponseWriter, r *http.Request) {
 	venueID, err := strconv.ParseInt(chi.URLParam(r, "venueID"), 10, 64)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid venue ID")
+		return
+	}
+
+	// Permission check: only venue managers can submit for review
+	canManage, err := h.venueService.CanManageVenue(r.Context(), venueID, sess.UserID, sess.Role)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	if !canManage {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "You do not have permission to submit this venue for review")
 		return
 	}
 
@@ -450,6 +489,17 @@ func (h *VenueHandler) CreateCourtForVenue(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Permission check: only venue managers can add courts
+	canManage, err := h.venueService.CanManageVenue(r.Context(), venueID, sess.UserID, sess.Role)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	if !canManage {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "You do not have permission to add courts to this venue")
+		return
+	}
+
 	var body struct {
 		Name        string  `json:"name"`
 		SurfaceType *string `json:"surface_type"`
@@ -508,4 +558,166 @@ func (h *VenueHandler) CreateCourtForVenue(w http.ResponseWriter, r *http.Reques
 // handleServiceError is a local alias for HandleServiceError for backward compatibility.
 func handleServiceError(w http.ResponseWriter, err error) {
 	HandleServiceError(w, err)
+}
+
+// --- Venue Manager Handlers ---
+
+// ListManagers returns all managers for a venue.
+func (h *VenueHandler) ListManagers(w http.ResponseWriter, r *http.Request) {
+	venueID, err := strconv.ParseInt(chi.URLParam(r, "venueID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid venue ID")
+		return
+	}
+
+	managers, err := h.venueService.ListVenueManagers(r.Context(), venueID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, managers)
+}
+
+// AddManager adds a user as a manager for a venue.
+func (h *VenueHandler) AddManager(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	venueID, err := strconv.ParseInt(chi.URLParam(r, "venueID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid venue ID")
+		return
+	}
+
+	// Only venue admins, creators, or platform admins can add managers
+	canAdmin, err := h.venueService.CanAdminVenue(r.Context(), venueID, sess.UserID, sess.Role)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	if !canAdmin {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Only venue admins can manage managers")
+		return
+	}
+
+	var body struct {
+		UserID int64  `json:"user_id"`
+		Role   string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", "Invalid request body")
+		return
+	}
+
+	if body.UserID == 0 {
+		WriteError(w, http.StatusBadRequest, "MISSING_FIELD", "user_id is required")
+		return
+	}
+	if body.Role == "" {
+		body.Role = "manager"
+	}
+
+	manager, err := h.venueService.AddVenueManager(r.Context(), venueID, body.UserID, body.Role, sess.UserID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Created(w, manager)
+}
+
+// RemoveManager removes a user from a venue's managers.
+func (h *VenueHandler) RemoveManager(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	venueID, err := strconv.ParseInt(chi.URLParam(r, "venueID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid venue ID")
+		return
+	}
+
+	targetUserID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid user ID")
+		return
+	}
+
+	// Only venue admins, creators, or platform admins can remove managers
+	canAdmin, err := h.venueService.CanAdminVenue(r.Context(), venueID, sess.UserID, sess.Role)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	if !canAdmin {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Only venue admins can manage managers")
+		return
+	}
+
+	// Prevent removing yourself if you're the last admin
+	if targetUserID == sess.UserID {
+		WriteError(w, http.StatusBadRequest, "CANNOT_REMOVE_SELF", "Cannot remove yourself as a manager. Transfer admin role first.")
+		return
+	}
+
+	if err := h.venueService.RemoveVenueManager(r.Context(), venueID, targetUserID); err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	NoContent(w)
+}
+
+// UpdateManagerRole updates a venue manager's role.
+func (h *VenueHandler) UpdateManagerRole(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	venueID, err := strconv.ParseInt(chi.URLParam(r, "venueID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid venue ID")
+		return
+	}
+
+	targetUserID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid user ID")
+		return
+	}
+
+	// Only venue admins, creators, or platform admins can change roles
+	canAdmin, err := h.venueService.CanAdminVenue(r.Context(), venueID, sess.UserID, sess.Role)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+	if !canAdmin {
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", "Only venue admins can manage managers")
+		return
+	}
+
+	var body struct {
+		Role string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", "Invalid request body")
+		return
+	}
+
+	if err := h.venueService.UpdateVenueManagerRole(r.Context(), venueID, targetUserID, body.Role); err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	NoContent(w)
 }

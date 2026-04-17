@@ -592,3 +592,12 @@ type Venue struct {
 	UpdatedAt       time.Time          `json:"updated_at"`
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
 }
+
+type VenueManager struct {
+	ID      int64       `json:"id"`
+	VenueID int64       `json:"venue_id"`
+	UserID  int64       `json:"user_id"`
+	Role    string      `json:"role"`
+	AddedAt time.Time   `json:"added_at"`
+	AddedBy pgtype.Int8 `json:"added_by"`
+}

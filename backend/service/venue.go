@@ -230,6 +230,14 @@ func (s *VenueService) CreateVenue(ctx context.Context, params generated.CreateV
 		return VenueResponse{}, fmt.Errorf("failed to create venue: %w", err)
 	}
 
+	// Auto-add creator as admin manager
+	_, _ = s.queries.AddVenueManager(ctx, generated.AddVenueManagerParams{
+		VenueID: venue.ID,
+		UserID:  params.CreatedByUserID,
+		Role:    "admin",
+		AddedBy: pgtype.Int8{Int64: params.CreatedByUserID, Valid: true},
+	})
+
 	return toVenueResponse(venue, 0), nil
 }
 
@@ -620,4 +628,155 @@ func (s *VenueService) matchToResponse(ctx context.Context, m generated.Match) M
 		return s.matchService.enrichedMatchResponse(ctx, m)
 	}
 	return toMatchResponse(m)
+}
+
+// --- Venue Managers ---
+
+// VenueManagerResponse is the public representation of a venue manager.
+type VenueManagerResponse struct {
+	ID          int64   `json:"id"`
+	VenueID     int64   `json:"venue_id"`
+	UserID      int64   `json:"user_id"`
+	Role        string  `json:"role"`
+	AddedAt     string  `json:"added_at"`
+	FirstName   string  `json:"first_name"`
+	LastName    string  `json:"last_name"`
+	Email       *string `json:"email,omitempty"`
+	DisplayName *string `json:"display_name,omitempty"`
+	PublicID    string  `json:"public_id"`
+}
+
+// CanManageVenue checks if a user can manage (edit) a venue.
+// Returns true if the user is a venue manager/admin, the venue creator, or a platform admin.
+func (s *VenueService) CanManageVenue(ctx context.Context, venueID int64, userID int64, userRole string) (bool, error) {
+	if userRole == "platform_admin" {
+		return true, nil
+	}
+
+	// Check venue creator
+	venue, err := s.queries.GetVenueByID(ctx, venueID)
+	if err != nil {
+		return false, err
+	}
+	if venue.CreatedByUserID == userID {
+		return true, nil
+	}
+
+	// Check venue_managers table
+	isMgr, err := s.queries.IsVenueManager(ctx, generated.IsVenueManagerParams{
+		VenueID: venueID,
+		UserID:  userID,
+	})
+	if err != nil {
+		return false, err
+	}
+	return isMgr, nil
+}
+
+// CanAdminVenue checks if a user has admin-level access to a venue
+// (can add/remove managers). Returns true for venue admins, creator, or platform admin.
+func (s *VenueService) CanAdminVenue(ctx context.Context, venueID int64, userID int64, userRole string) (bool, error) {
+	if userRole == "platform_admin" {
+		return true, nil
+	}
+
+	venue, err := s.queries.GetVenueByID(ctx, venueID)
+	if err != nil {
+		return false, err
+	}
+	if venue.CreatedByUserID == userID {
+		return true, nil
+	}
+
+	isAdmin, err := s.queries.IsVenueAdmin(ctx, generated.IsVenueAdminParams{
+		VenueID: venueID,
+		UserID:  userID,
+	})
+	if err != nil {
+		return false, err
+	}
+	return isAdmin, nil
+}
+
+// ListVenueManagers returns all managers for a venue.
+func (s *VenueService) ListVenueManagers(ctx context.Context, venueID int64) ([]VenueManagerResponse, error) {
+	rows, err := s.queries.ListVenueManagers(ctx, venueID)
+	if err != nil {
+		return nil, fmt.Errorf("listing venue managers: %w", err)
+	}
+
+	results := make([]VenueManagerResponse, 0, len(rows))
+	for _, r := range rows {
+		results = append(results, VenueManagerResponse{
+			ID:          r.ID,
+			VenueID:     r.VenueID,
+			UserID:      r.UserID,
+			Role:        r.Role,
+			AddedAt:     r.AddedAt.Format(time.RFC3339),
+			FirstName:   r.FirstName,
+			LastName:    r.LastName,
+			Email:       r.Email,
+			DisplayName: r.DisplayName,
+			PublicID:    r.PublicID,
+		})
+	}
+	return results, nil
+}
+
+// AddVenueManager adds a user as a manager for a venue.
+func (s *VenueService) AddVenueManager(ctx context.Context, venueID int64, userID int64, role string, addedBy int64) (VenueManagerResponse, error) {
+	if role != "manager" && role != "admin" {
+		return VenueManagerResponse{}, &ValidationError{Message: "role must be 'manager' or 'admin'"}
+	}
+
+	vm, err := s.queries.AddVenueManager(ctx, generated.AddVenueManagerParams{
+		VenueID: venueID,
+		UserID:  userID,
+		Role:    role,
+		AddedBy: pgtype.Int8{Int64: addedBy, Valid: true},
+	})
+	if err != nil {
+		return VenueManagerResponse{}, fmt.Errorf("adding venue manager: %w", err)
+	}
+
+	// Fetch user details for response
+	user, err := s.queries.GetUserByID(ctx, userID)
+	if err != nil {
+		return VenueManagerResponse{}, fmt.Errorf("fetching user: %w", err)
+	}
+
+	return VenueManagerResponse{
+		ID:          vm.ID,
+		VenueID:     vm.VenueID,
+		UserID:      vm.UserID,
+		Role:        vm.Role,
+		AddedAt:     vm.AddedAt.Format(time.RFC3339),
+		FirstName:   user.FirstName,
+		LastName:    user.LastName,
+		Email:       user.Email,
+		DisplayName: user.DisplayName,
+		PublicID:    user.PublicID,
+	}, nil
+}
+
+// RemoveVenueManager removes a user from a venue's managers.
+func (s *VenueService) RemoveVenueManager(ctx context.Context, venueID int64, userID int64) error {
+	return s.queries.RemoveVenueManager(ctx, generated.RemoveVenueManagerParams{
+		VenueID: venueID,
+		UserID:  userID,
+	})
+}
+
+// UpdateVenueManagerRole changes a manager's role.
+func (s *VenueService) UpdateVenueManagerRole(ctx context.Context, venueID int64, userID int64, role string) error {
+	if role != "manager" && role != "admin" {
+		return &ValidationError{Message: "role must be 'manager' or 'admin'"}
+	}
+
+	_, err := s.queries.UpdateVenueManagerRole(ctx, generated.UpdateVenueManagerRoleParams{
+		VenueID: venueID,
+		UserID:  userID,
+		Role:    role,
+	})
+	return err
 }

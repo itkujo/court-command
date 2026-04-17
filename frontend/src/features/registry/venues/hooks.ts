@@ -150,3 +150,59 @@ export function useDeleteVenueCourt(venueId: string, courtId: number) {
     },
   })
 }
+
+// --- Venue Managers ---
+
+export interface VenueManager {
+  id: number
+  venue_id: number
+  user_id: number
+  role: string
+  added_at: string
+  first_name: string
+  last_name: string
+  email: string | null
+  display_name: string | null
+  public_id: string
+}
+
+export function useVenueManagers(venueId: string) {
+  return useQuery<VenueManager[]>({
+    queryKey: ['venues', venueId, 'managers'],
+    queryFn: () => apiGet<VenueManager[]>(`/api/v1/venues/${venueId}/managers`),
+    enabled: !!venueId,
+  })
+}
+
+export function useAddVenueManager(venueId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { user_id: number; role?: string }) =>
+      apiPost<VenueManager>(`/api/v1/venues/${venueId}/managers`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues', venueId, 'managers'] })
+    },
+  })
+}
+
+export function useRemoveVenueManager(venueId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: number) =>
+      apiDelete<void>(`/api/v1/venues/${venueId}/managers/${userId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues', venueId, 'managers'] })
+    },
+  })
+}
+
+export function useUpdateVenueManagerRole(venueId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, role }: { userId: number; role: string }) =>
+      apiPatch<void>(`/api/v1/venues/${venueId}/managers/${userId}`, { role }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues', venueId, 'managers'] })
+    },
+  })
+}
