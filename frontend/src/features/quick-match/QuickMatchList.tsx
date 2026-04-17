@@ -35,7 +35,7 @@ export function QuickMatchList() {
           <Skeleton className="h-16" />
         </div>
       ) : isError ? (
-        <div className="text-red-500">Failed to load quick matches.</div>
+        <div className="text-red-500" role="alert">Failed to load quick matches.</div>
       ) : !data || data.length === 0 ? (
         <EmptyState
           title="No active quick matches"

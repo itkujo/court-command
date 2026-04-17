@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import { Activity, ChevronDown, ChevronRight } from 'lucide-react'
 import { useActivityLogs } from './hooks'
 import type { ActivityLogEntry } from './types'
@@ -170,6 +170,16 @@ function ActivityRow({ entry }: { entry: ActivityLogEntry }) {
           hasMetadata && 'cursor-pointer hover:bg-(--color-bg-hover)',
         )}
         onClick={() => hasMetadata && setExpanded(!expanded)}
+        {...(hasMetadata && {
+          role: 'button',
+          tabIndex: 0,
+          onKeyDown: (e: KeyboardEvent<HTMLTableRowElement>) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setExpanded(!expanded)
+            }
+          },
+        })}
       >
         <td className="px-3 py-2 text-(--color-text-muted)">
           {hasMetadata &&

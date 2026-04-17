@@ -110,7 +110,7 @@ function LoadingGrid() {
 
 function ErrorMessage({ message }: { message: string }) {
   return (
-    <p className="text-sm text-red-500 py-4">{message}</p>
+    <p className="text-sm text-red-500 py-4" role="alert">{message}</p>
   )
 }
 

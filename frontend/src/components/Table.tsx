@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import { cn } from '../lib/cn'
 
 interface Column<T> {
@@ -28,13 +28,29 @@ export function Table<T>({ columns, data, onRowClick, keyExtractor, className }:
           </tr>
         </thead>
         <tbody>
-          {data.map((row) => (
-            <tr key={keyExtractor(row)} className={cn('border-b border-(--color-border) last:border-0', onRowClick && 'cursor-pointer hover:bg-(--color-bg-hover) transition-colors')} onClick={() => onRowClick?.(row)}>
-              {columns.map((col) => (
-                <td key={col.key} className={cn('px-4 py-3', col.className)}>{col.render(row)}</td>
-              ))}
-            </tr>
-          ))}
+          {data.map((row) => {
+            const handleKeyDown = onRowClick
+              ? (e: KeyboardEvent<HTMLTableRowElement>) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onRowClick(row)
+                  }
+                }
+              : undefined
+
+            return (
+              <tr
+                key={keyExtractor(row)}
+                className={cn('border-b border-(--color-border) last:border-0', onRowClick && 'cursor-pointer hover:bg-(--color-bg-hover) transition-colors')}
+                onClick={() => onRowClick?.(row)}
+                {...(onRowClick && { role: 'button', tabIndex: 0, onKeyDown: handleKeyDown })}
+              >
+                {columns.map((col) => (
+                  <td key={col.key} className={cn('px-4 py-3', col.className)}>{col.render(row)}</td>
+                ))}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

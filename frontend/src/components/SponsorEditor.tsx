@@ -79,15 +79,18 @@ export function SponsorEditor({ value, onChange }: SponsorEditorProps) {
                   value={s.name}
                   onChange={(e) => updateSponsor(i, 'name', e.target.value)}
                   placeholder="Sponsor name"
+                  aria-label="Sponsor name"
                 />
                 <Input
                   value={s.link_url}
                   onChange={(e) => updateSponsor(i, 'link_url', e.target.value)}
                   placeholder="Website URL"
+                  aria-label="Sponsor website URL"
                 />
                 <Select
                   value={s.tier}
                   onChange={(e) => updateSponsor(i, 'tier', e.target.value)}
+                  aria-label="Sponsor tier"
                 >
                   {TIER_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -132,15 +135,18 @@ export function SponsorEditor({ value, onChange }: SponsorEditorProps) {
                 value={draft.name}
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                 placeholder="Sponsor name"
+                aria-label="Sponsor name"
               />
               <Input
                 value={draft.link_url}
                 onChange={(e) => setDraft({ ...draft, link_url: e.target.value })}
                 placeholder="Website URL"
+                aria-label="Sponsor website URL"
               />
               <Select
                 value={draft.tier}
                 onChange={(e) => setDraft({ ...draft, tier: e.target.value })}
+                aria-label="Sponsor tier"
               >
                 {TIER_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>

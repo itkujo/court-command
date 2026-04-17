@@ -157,7 +157,7 @@ export function ThemeTab({ courtID, config, loading }: ThemeTabProps) {
             <span className="text-sm">Loading themes…</span>
           </div>
         ) : themesQuery.isError ? (
-          <p className="text-sm text-red-500">
+          <p className="text-sm text-red-500" role="alert">
             Could not load themes. Try reloading.
           </p>
         ) : (

@@ -208,10 +208,11 @@ export function ApiKeyManager() {
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-(--color-text-primary)">
+              <label htmlFor="api-key-name" className="mb-1 block text-sm font-medium text-(--color-text-primary)">
                 Name
               </label>
               <Input
+                id="api-key-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My API Key"

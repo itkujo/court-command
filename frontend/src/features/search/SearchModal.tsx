@@ -141,6 +141,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search players, teams, tournaments..."
+            aria-label="Search players, teams, tournaments"
             className="flex-1 bg-transparent text-sm text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none"
             onKeyDown={(e) => {
               if (e.key === 'Escape') onClose()

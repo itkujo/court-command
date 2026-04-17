@@ -206,6 +206,7 @@ function TeamRow({
           className={`h-2 w-2 rounded-full ${serving ? 'bg-(--color-accent)' : 'bg-transparent'}`}
           aria-hidden="true"
         />
+        {serving && <span className="sr-only">Serving:</span>}
         <span className="truncate text-(--color-text-primary)">{name}</span>
       </div>
       <div className="flex items-center gap-3 shrink-0">

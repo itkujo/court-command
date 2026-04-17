@@ -94,6 +94,9 @@ export function ImageUpload({
         </div>
       ) : (
         <div
+          role="button"
+          tabIndex={0}
+          aria-label={label || 'Upload image'}
           className={cn(
             'flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors',
             dragOver
@@ -102,6 +105,12 @@ export function ImageUpload({
             uploading && 'pointer-events-none opacity-50',
           )}
           onClick={() => inputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              inputRef.current?.click()
+            }
+          }}
           onDragOver={(e) => {
             e.preventDefault()
             setDragOver(true)
@@ -132,7 +141,7 @@ export function ImageUpload({
           e.target.value = ''
         }}
       />
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-400" role="alert">{error}</p>}
     </div>
   )
 }

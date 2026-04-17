@@ -213,7 +213,7 @@ function HeroSlide({
       {tournament.logo_url ? (
         <img
           src={tournament.logo_url}
-          alt=""
+          alt={`${tournament.name} logo`}
           className="h-28 md:h-40 mb-8 object-contain"
         />
       ) : (
@@ -516,18 +516,18 @@ function KioskMatchLine({
 function StatusDot({ status }: { status: string | null }) {
   if (status === 'in_progress')
     return (
-      <span className="inline-block h-3 w-3 rounded-full bg-(--color-success) animate-pulse" />
+      <span className="inline-block h-3 w-3 rounded-full bg-(--color-success) animate-pulse" role="img" aria-label="In progress" />
     )
   if (status === 'paused')
     return (
-      <span className="inline-block h-3 w-3 rounded-full bg-(--color-warning)" />
+      <span className="inline-block h-3 w-3 rounded-full bg-(--color-warning)" role="img" aria-label="Paused" />
     )
   if (status === 'completed')
     return (
-      <span className="inline-block h-3 w-3 rounded-full bg-(--color-text-muted)" />
+      <span className="inline-block h-3 w-3 rounded-full bg-(--color-text-muted)" role="img" aria-label="Completed" />
     )
   return (
-    <span className="inline-block h-3 w-3 rounded-full bg-(--color-bg-tertiary)" />
+    <span className="inline-block h-3 w-3 rounded-full bg-(--color-bg-tertiary)" role="img" aria-label="Scheduled" />
   )
 }
 

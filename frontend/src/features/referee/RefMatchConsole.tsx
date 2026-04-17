@@ -217,7 +217,7 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
 
   if (matchQuery.isError || !match) {
     return (
-      <div className="p-4 text-red-500">
+      <div className="p-4 text-red-500" role="alert">
         Failed to load match.{' '}
         <button
           type="button"

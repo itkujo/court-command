@@ -21,7 +21,7 @@ export function Avatar({ name, src, size = 'md', className }: AvatarProps) {
     )
   }
   return (
-    <div className={cn('rounded-full flex items-center justify-center font-medium bg-cyan-500/20 text-cyan-400', sizes[size], className)} aria-label={name}>
+    <div className={cn('rounded-full flex items-center justify-center font-medium bg-cyan-500/20 text-cyan-400', sizes[size], className)} role="img" aria-label={name}>
       {getInitials(name)}
     </div>
   )

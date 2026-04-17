@@ -116,7 +116,7 @@ function SponsorLogoSlot({ logo }: { logo: SponsorLogo }) {
       {logo.logo_url ? (
         <img
           src={logo.logo_url}
-          alt={logo.name || ''}
+          alt={logo.name || 'Sponsor logo'}
           className="h-14 w-auto object-contain"
           style={{ maxWidth: 220 }}
           onError={(e) => {

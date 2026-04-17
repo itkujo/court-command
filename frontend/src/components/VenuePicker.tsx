@@ -103,6 +103,7 @@ export function VenuePicker({ value, onChange, className }: VenuePickerProps) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search venues..."
+              aria-label="Search venues"
               className="w-full rounded-md border border-(--color-border) bg-(--color-bg-secondary) px-3 py-1.5 text-sm text-(--color-text-primary) placeholder:text-(--color-text-secondary) focus:outline-none focus:ring-1 focus:ring-cyan-500"
               autoFocus
             />

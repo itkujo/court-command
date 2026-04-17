@@ -65,7 +65,7 @@ export function PlayerDashboard() {
       {/* Error */}
       {isError && (
         <Card>
-          <p className="text-sm text-red-500">
+          <p className="text-sm text-red-500" role="alert">
             Failed to load dashboard{error instanceof Error ? `: ${error.message}` : '.'}
           </p>
         </Card>

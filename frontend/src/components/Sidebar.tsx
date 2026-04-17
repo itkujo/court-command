@@ -128,7 +128,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
         {mobileOpen && (
           <>
             <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setMobileOpen(false)} aria-hidden />
-            <nav className="fixed top-0 left-0 bottom-0 z-50 w-[280px] bg-(--color-bg-sidebar) border-r border-(--color-border) overflow-y-auto">
+            <nav aria-label="Main navigation" className="fixed top-0 left-0 bottom-0 z-50 w-[280px] bg-(--color-bg-sidebar) border-r border-(--color-border) overflow-y-auto">
               <div className="p-4">
                 <div className="flex items-center justify-between mb-6">
                   <img src="/logo-wordmark.svg" alt="Court Command" className="h-7 dark:block hidden" />
@@ -152,7 +152,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
   }
 
   return (
-    <nav className={cn('fixed top-0 left-0 bottom-0 z-30 flex flex-col border-r border-(--color-border) bg-(--color-bg-sidebar) transition-[width] duration-200 ease-in-out', expanded ? 'w-[220px]' : 'w-14')}>
+    <nav aria-label="Main navigation" className={cn('fixed top-0 left-0 bottom-0 z-30 flex flex-col border-r border-(--color-border) bg-(--color-bg-sidebar) transition-[width] duration-200 ease-in-out', expanded ? 'w-[220px]' : 'w-14')}>
       <div className={cn('flex items-center h-14 border-b border-(--color-border)', expanded ? 'px-4 justify-between' : 'justify-center')}>
         {expanded ? (
           <>

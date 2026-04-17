@@ -166,7 +166,7 @@ export function MatchDetail({ publicId }: MatchDetailProps) {
             <Skeleton className="h-4" />
           </div>
         ) : eventsQuery.isError ? (
-          <div className="p-4 text-red-500">Failed to load events.</div>
+          <div className="p-4 text-red-500" role="alert">Failed to load events.</div>
         ) : (
           <EventsTimeline events={eventsQuery.data ?? []} />
         )}

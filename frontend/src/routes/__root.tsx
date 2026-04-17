@@ -33,12 +33,12 @@ const NO_SHELL_PATTERNS: RegExp[] = [
 export const Route = createRootRoute({
   component: RootLayout,
   notFoundComponent: () => (
-    <div className="flex items-center justify-center min-h-screen">
+    <main className="flex items-center justify-center min-h-screen">
       <div className="text-center">
         <h1 className="text-4xl font-bold text-(--color-text-primary) mb-2">404</h1>
         <p className="text-(--color-text-secondary)">Page not found</p>
       </div>
-    </div>
+    </main>
   ),
 })
 
