@@ -112,21 +112,15 @@ function PublicLayout() {
     return () => window.removeEventListener('storage', handler)
   }, [])
 
-  // Avoid layout flash while auth probe is in flight.
-  if (isLoading) {
-    return (
-      <main className="min-h-screen">
-        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-          <Outlet />
-        </div>
-      </main>
-    )
-  }
-
+  // Always render sidebar on public routes — show anonymous nav immediately,
+  // upgrade to authenticated nav once auth resolves. No blank-page flash.
   return (
     <>
       <a href="#main-content" className="skip-to-content">Skip to content</a>
-      <Sidebar user={user ?? undefined} onLogout={user ? () => logout.mutate() : undefined} />
+      <Sidebar
+        user={isLoading ? undefined : (user ?? undefined)}
+        onLogout={user && !isLoading ? () => logout.mutate() : undefined}
+      />
       <main id="main-content" className={cn('min-h-screen transition-[margin] duration-200 ease-in-out', isMobile ? 'pt-14' : expanded ? 'ml-[220px]' : 'ml-14')}>
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
           <Outlet />
