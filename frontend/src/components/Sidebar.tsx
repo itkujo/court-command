@@ -6,7 +6,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { Avatar } from './Avatar'
 import {
   LayoutDashboard, Trophy, Medal, MapPin, Users, UsersRound, Building2, Tv, Menu, ChevronLeft, LogOut,
-  Gavel, ClipboardList, Zap, Search, LogIn, Shield,
+  Gavel, ClipboardList, Zap, Search, LogIn, Shield, Home,
 } from 'lucide-react'
 import { useSearchModal } from '../features/search/SearchContext'
 
@@ -30,7 +30,10 @@ interface NavGroup { label?: string; items: NavItem[] }
 
 // Full nav for authenticated users
 const baseAuthNavGroups: NavGroup[] = [
-  { items: [{ label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' }] },
+  { items: [
+    { label: 'Home', icon: Home, path: '/' },
+    { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  ]},
   { label: 'Events', items: [
     { label: 'Tournaments', icon: Trophy, path: '/tournaments' },
     { label: 'Leagues', icon: Medal, path: '/leagues' },
@@ -64,6 +67,7 @@ function getAuthNavGroups(role?: string): NavGroup[] {
 
 // Reduced nav for logged-out users
 const publicNavGroups: NavGroup[] = [
+  { items: [{ label: 'Home', icon: Home, path: '/' }] },
   { label: 'Browse', items: [
     { label: 'Tournaments', icon: Trophy, path: '/public/tournaments' },
     { label: 'Leagues', icon: Medal, path: '/public/leagues' },
