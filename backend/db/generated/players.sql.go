@@ -67,6 +67,7 @@ const countSearchPlayers = `-- name: CountSearchPlayers :one
 SELECT count(*) FROM users
 WHERE deleted_at IS NULL
   AND status != 'merged'
+  AND is_profile_hidden = false
   AND (
     $1::TEXT IS NULL
     OR first_name ILIKE '%' || $1::TEXT || '%'
@@ -300,6 +301,7 @@ const searchPlayers = `-- name: SearchPlayers :many
 SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude FROM users
 WHERE deleted_at IS NULL
   AND status != 'merged'
+  AND is_profile_hidden = false
   AND (
     $3::TEXT IS NULL
     OR first_name ILIKE '%' || $3::TEXT || '%'

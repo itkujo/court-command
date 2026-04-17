@@ -47,6 +47,7 @@ RETURNING *;
 SELECT * FROM users
 WHERE deleted_at IS NULL
   AND status != 'merged'
+  AND is_profile_hidden = false
   AND (
     sqlc.narg('query')::TEXT IS NULL
     OR first_name ILIKE '%' || sqlc.narg('query')::TEXT || '%'
@@ -64,6 +65,7 @@ LIMIT $1 OFFSET $2;
 SELECT count(*) FROM users
 WHERE deleted_at IS NULL
   AND status != 'merged'
+  AND is_profile_hidden = false
   AND (
     sqlc.narg('query')::TEXT IS NULL
     OR first_name ILIKE '%' || sqlc.narg('query')::TEXT || '%'

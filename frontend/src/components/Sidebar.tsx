@@ -272,11 +272,13 @@ function SidebarFooter({ expanded, displayName, publicId, onLogout }: { expanded
       <ThemeToggle collapsed={!expanded} />
       {expanded ? (
         <div className="flex items-center gap-3 px-3 py-2">
-          <Avatar name={displayName} size="sm" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-(--color-text-primary) truncate">{displayName}</p>
-            <p className="text-xs text-(--color-text-secondary)">{publicId}</p>
-          </div>
+          <Link to="/profile" className="flex items-center gap-3 flex-1 min-w-0 rounded-lg hover:bg-(--color-bg-hover) -mx-1 px-1 py-0.5 transition-colors">
+            <Avatar name={displayName} size="sm" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-(--color-text-primary) truncate">{displayName}</p>
+              <p className="text-xs text-(--color-text-secondary)">{publicId}</p>
+            </div>
+          </Link>
           <button onClick={onLogout} className="p-1.5 rounded-lg text-(--color-text-secondary) hover:bg-(--color-bg-hover)" aria-label="Log out">
             <LogOut className="h-4 w-4" />
           </button>

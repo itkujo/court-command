@@ -169,7 +169,7 @@ func (h *PlayerHandler) AcceptWaiver(w http.ResponseWriter, r *http.Request) {
 	Success(w, profile)
 }
 
-// GetPlayer retrieves a player profile by numeric ID.
+// GetPlayer retrieves a player profile by numeric ID or public ID (CC-XXXXX).
 func (h *PlayerHandler) GetPlayer(w http.ResponseWriter, r *http.Request) {
 	data := session.SessionData(r.Context())
 	if data == nil {
@@ -178,18 +178,24 @@ func (h *PlayerHandler) GetPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	playerIDStr := chi.URLParam(r, "playerID")
-	playerID, err := strconv.ParseInt(playerIDStr, 10, 64)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid player ID")
+
+	// Try numeric ID first, fall back to public_id lookup
+	if playerID, err := strconv.ParseInt(playerIDStr, 10, 64); err == nil {
+		profile, err := h.playerService.GetProfile(r.Context(), playerID, data.UserID, data.Role)
+		if err != nil {
+			HandleServiceError(w, err)
+			return
+		}
+		Success(w, profile)
 		return
 	}
 
-	profile, err := h.playerService.GetProfile(r.Context(), playerID, data.UserID, data.Role)
+	// Fall back to public_id (e.g. "CC-10295")
+	profile, err := h.playerService.GetProfileByPublicID(r.Context(), playerIDStr, data.UserID, data.Role)
 	if err != nil {
 		HandleServiceError(w, err)
 		return
 	}
-
 	Success(w, profile)
 }
 
