@@ -352,6 +352,30 @@ Fix (`backend/service/overlay_response.go` new, `backend/handler/overlay.go` + `
 
 Verification: `go build && go vet && go test ./...` clean. End-to-end smoke test (16 steps) now fully green — `color_overrides`, `elements`, `data_overrides` render as JSON objects on GET /config; `field_mapping` renders as a dict on source profile responses; triggers, overrides, token generation/revocation, and `POST /source-profiles/test` (HTTP 200, 4 discovered paths, sample payload) all functional.
 
+### Frontend Phase 6: Admin & Platform Management
+
+Platform admin surface behind role-gated `/admin/*` routes. All pages require `platform_admin` role via `AdminGuard` (redirects non-admins to `/dashboard`). Sidebar shows "Admin" group only for platform admins.
+
+**Admin Dashboard** (`/admin`) — 8 stat cards: Total Users, Total Matches, Active Tournaments, Total Leagues, Total Venues, Pending Venues (amber highlight + links to approval queue), Total Courts, Active Matches. Loading skeleton, error+retry.
+
+**User Search** (`/admin/users`) — paginated table with debounced search, role filter (11 roles), status filter. Columns: Public ID, Name, Email, Role (color-coded Badge), Status (StatusBadge), Created. Row click navigates to user detail.
+
+**User Detail** (`/admin/users/$userId`) — role assignment dropdown with all 11 roles from migration 00030 (platform_admin, organization_admin, league_admin, tournament_director, head_referee, referee, scorekeeper, broadcast_operator, team_coach, api_readonly, player). Status management: suspend/ban/reinstate with required reason textarea and session revocation warning. Info section with full user metadata.
+
+**Venue Approval** (`/admin/venues`) — card grid of pending venues with approve (publishes) and reject (reverts to draft with feedback textarea) actions. Pagination at 12 per page.
+
+**Activity Log** (`/admin/activity`) — filterable paginated log with entity_type dropdown (10 types) and action text filter. Expandable rows showing JSON metadata. Custom HTML table with timestamp, user, action, entity type, entity ID columns.
+
+**API Key Manager** (`/admin/api-keys`) — table of keys with name, prefix, scopes, dates, status. Create modal with name/scopes/expiry. One-time key display with clipboard copy and "will not be shown again" warning. Revoke with danger confirmation.
+
+**Upload Browser** (`/admin/uploads`) — file grid with image thumbnails (or FileText icon), filename, type, formatted size, date. Delete with confirmation.
+
+**D3 Resolution** — `isLicensed` hardcoded `false` in `ObsUrlTab.tsx` and `OverlayRenderer.tsx` replaced with centralized `getIsLicensed()` from `features/overlay/licensing.ts`. Currently returns `false` (free tier); single function to update when billing/subscription system ships.
+
+**D4 Resolution** — Role assignment UI in UserDetail dropdown renders all 11 roles from the `ALL_ROLES` constant with human-readable labels via `ROLE_LABELS`. Calls `PATCH /admin/users/:id/role`.
+
+Commits: `681518f`..`87a7c8c` (11 commits). 12 new files, 3 modified. Zero type errors, zero spec deviations.
+
 ### Known Deferred Defects (Phase 3)
 
 Resolved in Phase 4A Task 1 remediation batch (commit `6848d23`). Items that remain deferred to later phases:
