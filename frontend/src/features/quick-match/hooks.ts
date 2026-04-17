@@ -4,13 +4,13 @@ import { apiGet, apiPost } from '../../lib/api'
 import type { Match } from '../scoring/types'
 
 export interface CreateQuickMatchInput {
-  team_1_name: string
-  team_2_name: string
-  scoring_preset_id?: number
-  points_to_win?: number
-  win_by?: number
-  best_of?: number
-  scoring_type?: 'side_out' | 'rally'
+  games_per_set: number
+  sets_to_win: number
+  points_to_win: number
+  win_by: number
+  rally_scoring: boolean
+  timeouts_per_game?: number
+  timeout_duration_sec?: number
 }
 
 export function useMyQuickMatches() {

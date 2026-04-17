@@ -47,9 +47,9 @@ export function MembersPanel({ orgId }: MembersPanelProps) {
   const debouncedPlayerSearch = useDebounce(playerSearch)
   const { data: searchResults } = usePlayerSearch(debouncedPlayerSearch, 10, 0)
 
-  const handleAdd = (userId: number) => {
+  const handleAdd = (playerId: number) => {
     addMember.mutate(
-      { user_id: userId },
+      { player_id: playerId },
       {
         onSuccess: () => {
           toast('success', 'Member added')

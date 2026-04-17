@@ -181,7 +181,7 @@ export function RefMatchConsole({ publicId }: RefMatchConsoleProps) {
       onPointTeam1: () => {
         if (!match) return
         if (match.scoring_type === 'rally') handlePoint(1)
-        else handlePoint()
+        else handlePoint(match.serving_team as 1 | 2)
       },
       onPointTeam2: () => {
         if (!match) return

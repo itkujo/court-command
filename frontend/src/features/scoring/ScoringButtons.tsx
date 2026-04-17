@@ -59,7 +59,7 @@ export function ScoringButtons({
         className="h-20 text-lg font-bold"
         disabled={disabled || !match.serving_team}
         loading={pending}
-        onClick={() => onPoint()}
+        onClick={() => onPoint(match.serving_team as 1 | 2)}
       >
         POINT
       </Button>

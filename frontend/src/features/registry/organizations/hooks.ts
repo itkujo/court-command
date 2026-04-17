@@ -101,7 +101,7 @@ export function useOrgMembers(orgId: string) {
 export function useAddMember(orgId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: { user_id: number; role?: string }) =>
+    mutationFn: (data: { player_id: number; role?: string }) =>
       apiPost<OrgMember>(`/api/v1/organizations/${orgId}/members`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'members'] })

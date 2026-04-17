@@ -8,6 +8,14 @@ INSERT INTO users (
 )
 RETURNING *;
 
+-- name: CreateUnclaimedUser :one
+INSERT INTO users (
+    first_name, last_name, date_of_birth, password_hash, role, status
+) VALUES (
+    $1, $2, $3, '', 'player', 'unclaimed'
+)
+RETURNING *;
+
 -- name: GetUserByID :one
 SELECT * FROM users
 WHERE id = $1 AND deleted_at IS NULL;

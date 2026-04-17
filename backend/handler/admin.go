@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -42,6 +43,7 @@ func (h *AdminHandler) Routes() chi.Router {
 
 	// User management
 	r.Get("/users", h.SearchUsers)
+	r.Post("/users/create-player", h.CreateUnclaimedPlayer)
 	r.Get("/users/{userID}", h.GetUser)
 	r.Put("/users/{userID}/role", h.UpdateUserRole)
 	r.Put("/users/{userID}/status", h.UpdateUserStatus)
@@ -374,15 +376,30 @@ func (h *AdminHandler) GetSystemStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Count pending venues
+	pendingStatus := "pending_review"
+	pendingVenues, err := h.queries.CountVenues(ctx, &pendingStatus)
+	if err != nil {
+		pendingVenues = 0
+	}
+
+	// Count active matches
+	activeMatches, err := h.queries.CountMatchesByStatus(ctx, "in_progress")
+	if err != nil {
+		activeMatches = 0
+	}
+
 	Success(w, map[string]int64{
-		"users":         users,
-		"tournaments":   tournaments,
-		"leagues":       leagues,
-		"matches":       matches,
-		"venues":        venues,
-		"courts":        courts,
-		"teams":         teams,
-		"organizations": orgs,
+		"total_users":         users,
+		"total_tournaments":   tournaments,
+		"total_leagues":       leagues,
+		"total_matches":       matches,
+		"total_venues":        venues,
+		"total_courts":        courts,
+		"total_teams":         teams,
+		"total_organizations": orgs,
+		"pending_venues":      pendingVenues,
+		"active_matches":      activeMatches,
 	})
 }
 
@@ -502,6 +519,60 @@ func (h *AdminHandler) RevokeApiKey(w http.ResponseWriter, r *http.Request) {
 	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "revoke_api_key", "api_key", &keyID, nil, r.RemoteAddr)
 
 	NoContent(w)
+}
+
+// CreateUnclaimedPlayer creates a placeholder player account that can be claimed later.
+func (h *AdminHandler) CreateUnclaimedPlayer(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		Unauthorized(w, "Not authenticated")
+		return
+	}
+
+	var body struct {
+		FirstName   string `json:"first_name"`
+		LastName    string `json:"last_name"`
+		DateOfBirth string `json:"date_of_birth"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		BadRequest(w, "Invalid request body")
+		return
+	}
+
+	if body.FirstName == "" || body.LastName == "" || body.DateOfBirth == "" {
+		BadRequest(w, "first_name, last_name, and date_of_birth are required")
+		return
+	}
+
+	dob, err := time.Parse("2006-01-02", body.DateOfBirth)
+	if err != nil {
+		BadRequest(w, "date_of_birth must be YYYY-MM-DD format")
+		return
+	}
+
+	user, err := h.queries.CreateUnclaimedUser(r.Context(), generated.CreateUnclaimedUserParams{
+		FirstName:   body.FirstName,
+		LastName:    body.LastName,
+		DateOfBirth: dob,
+	})
+	if err != nil {
+		InternalError(w, "Failed to create player")
+		return
+	}
+
+	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "create_unclaimed_player", "user", &user.ID, nil, r.RemoteAddr)
+
+	Created(w, adminUserResponse{
+		ID:        user.ID,
+		PublicID:  user.PublicID,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Role:      user.Role,
+		Status:    user.Status,
+		CreatedAt: user.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: user.UpdatedAt.Format(time.RFC3339),
+	})
 }
 
 // NOTE: parsePagination is defined in team.go within the same package.

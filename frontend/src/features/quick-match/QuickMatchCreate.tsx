@@ -9,36 +9,26 @@ import { Select } from '../../components/Select'
 import { useToast } from '../../components/Toast'
 import { useCreateQuickMatch } from './hooks'
 
+
 export function QuickMatchCreate() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const create = useCreateQuickMatch()
 
-  const [team1, setTeam1] = useState('')
-  const [team2, setTeam2] = useState('')
   const [scoringType, setScoringType] = useState<'side_out' | 'rally'>('side_out')
   const [pointsTo, setPointsTo] = useState('11')
   const [winBy, setWinBy] = useState('2')
   const [bestOf, setBestOf] = useState('1')
-  const [errors, setErrors] = useState<{ team1?: string; team2?: string }>({})
 
   function submit() {
-    const next: typeof errors = {}
-    if (!team1.trim()) next.team1 = 'Required'
-    if (!team2.trim()) next.team2 = 'Required'
-    if (Object.keys(next).length > 0) {
-      setErrors(next)
-      return
-    }
-    setErrors({})
+    const setsToWin = Math.ceil((Number(bestOf) || 1) / 2)
     create.mutate(
       {
-        team_1_name: team1.trim(),
-        team_2_name: team2.trim(),
-        scoring_type: scoringType,
+        games_per_set: 1,
+        sets_to_win: setsToWin,
         points_to_win: Number(pointsTo) || 11,
         win_by: Number(winBy) || 2,
-        best_of: Number(bestOf) || 1,
+        rally_scoring: scoringType === 'rally',
       },
       {
         onSuccess: (m) => {
@@ -64,23 +54,6 @@ export function QuickMatchCreate() {
       </p>
 
       <Card className="flex flex-col gap-3">
-        <FormField label="Team 1 Name" htmlFor="qm-team-1" error={errors.team1} required>
-          <Input
-            id="qm-team-1"
-            value={team1}
-            onChange={(e) => setTeam1(e.target.value)}
-            placeholder="e.g. Smith / Lee"
-          />
-        </FormField>
-        <FormField label="Team 2 Name" htmlFor="qm-team-2" error={errors.team2} required>
-          <Input
-            id="qm-team-2"
-            value={team2}
-            onChange={(e) => setTeam2(e.target.value)}
-            placeholder="e.g. Garcia / Patel"
-          />
-        </FormField>
-
         <FormField label="Scoring" htmlFor="qm-scoring">
           <Select
             id="qm-scoring"

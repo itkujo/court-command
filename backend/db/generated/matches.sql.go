@@ -64,6 +64,17 @@ func (q *Queries) CountMatchesByDivisionAndStatus(ctx context.Context, arg Count
 	return count, err
 }
 
+const countMatchesByStatus = `-- name: CountMatchesByStatus :one
+SELECT count(*) FROM matches WHERE status = $1
+`
+
+func (q *Queries) CountMatchesByStatus(ctx context.Context, status string) (int64, error) {
+	row := q.db.QueryRow(ctx, countMatchesByStatus, status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countMatchesByTeam = `-- name: CountMatchesByTeam :one
 SELECT count(*) FROM matches
 WHERE team1_id = $1 OR team2_id = $1

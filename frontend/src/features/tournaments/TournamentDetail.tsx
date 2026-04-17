@@ -90,7 +90,7 @@ export function TournamentDetail({ tournamentId }: TournamentDetailProps) {
           />
         )}
         {activeTab === 'courts' && (
-          <TournamentCourts tournamentId={tournament.id} />
+          <TournamentCourts tournamentId={tournament.id} venueId={tournament.venue_id} />
         )}
         {activeTab === 'registrations' && (
           <RegistrationTable

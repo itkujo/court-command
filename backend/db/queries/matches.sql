@@ -291,3 +291,6 @@ ORDER BY created_at;
 
 -- name: CountMatches :one
 SELECT count(*) FROM matches;
+
+-- name: CountMatchesByStatus :one
+SELECT count(*) FROM matches WHERE status = $1;

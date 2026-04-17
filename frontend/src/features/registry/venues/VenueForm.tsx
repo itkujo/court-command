@@ -4,6 +4,8 @@ import { useCreateVenue, useUpdateVenue, type Venue } from './hooks'
 import { useToast } from '../../../components/Toast'
 import { Button } from '../../../components/Button'
 import { Input } from '../../../components/Input'
+import { Select } from '../../../components/Select'
+import { US_STATES, US_TIMEZONES } from '../../../lib/constants'
 import { Textarea } from '../../../components/Textarea'
 import { FormField } from '../../../components/FormField'
 import { ImageUpload } from '../../../components/ImageUpload'
@@ -121,12 +123,16 @@ export function VenueForm({ venue }: VenueFormProps) {
           </FormField>
 
           <FormField label="State / Province" htmlFor="state_province">
-            <Input
+            <Select
               id="state_province"
               value={stateProvince}
               onChange={(e) => setStateProvince(e.target.value)}
-              placeholder="State"
-            />
+            >
+              <option value="">Select state...</option>
+              {US_STATES.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </Select>
           </FormField>
         </div>
 
@@ -151,12 +157,16 @@ export function VenueForm({ venue }: VenueFormProps) {
         </div>
 
         <FormField label="Timezone" htmlFor="timezone">
-          <Input
+          <Select
             id="timezone"
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            placeholder="America/New_York"
-          />
+          >
+            <option value="">Select timezone...</option>
+            {US_TIMEZONES.map((tz) => (
+              <option key={tz.value} value={tz.value}>{tz.label}</option>
+            ))}
+          </Select>
         </FormField>
 
         <FormField label="Website URL" htmlFor="website_url">

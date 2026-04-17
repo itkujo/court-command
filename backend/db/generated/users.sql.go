@@ -71,6 +71,60 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const createUnclaimedUser = `-- name: CreateUnclaimedUser :one
+INSERT INTO users (
+    first_name, last_name, date_of_birth, password_hash, role, status
+) VALUES (
+    $1, $2, $3, '', 'player', 'unclaimed'
+)
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden
+`
+
+type CreateUnclaimedUserParams struct {
+	FirstName   string    `json:"first_name"`
+	LastName    string    `json:"last_name"`
+	DateOfBirth time.Time `json:"date_of_birth"`
+}
+
+func (q *Queries) CreateUnclaimedUser(ctx context.Context, arg CreateUnclaimedUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, createUnclaimedUser, arg.FirstName, arg.LastName, arg.DateOfBirth)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.FirstName,
+		&i.LastName,
+		&i.DateOfBirth,
+		&i.DisplayName,
+		&i.Status,
+		&i.MergedIntoID,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.Gender,
+		&i.Handedness,
+		&i.AvatarUrl,
+		&i.Bio,
+		&i.City,
+		&i.StateProvince,
+		&i.Country,
+		&i.Phone,
+		&i.PaddleBrand,
+		&i.PaddleModel,
+		&i.DuprID,
+		&i.VairID,
+		&i.EmergencyContactName,
+		&i.EmergencyContactPhone,
+		&i.MedicalNotes,
+		&i.WaiverAcceptedAt,
+		&i.IsProfileHidden,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 
 INSERT INTO users (

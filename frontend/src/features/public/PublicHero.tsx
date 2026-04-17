@@ -11,7 +11,9 @@ export function PublicHero() {
       <img
         src="/logo-wordmark.svg"
         alt="Court Command"
-        className="h-12 md:h-16 mx-auto mb-6"
+        width={240}
+        height={64}
+        className="h-12 md:h-16 w-auto mx-auto mb-6"
       />
       <h1 className="text-3xl md:text-4xl font-bold text-(--color-text-primary) mb-3">
         Pickleball Tournament & League Management
@@ -20,8 +22,10 @@ export function PublicHero() {
         Organize tournaments, manage leagues, and broadcast live scores — all in
         one platform.
       </p>
-      {!isLoading && (
-        isAuthenticated ? (
+      <div className="h-12">
+        {isLoading ? (
+          <div className="h-10 w-36 mx-auto rounded-lg bg-(--color-bg-hover) animate-pulse" />
+        ) : isAuthenticated ? (
           <Button
             size="lg"
             onClick={() => navigate({ to: '/dashboard' as string })}
@@ -35,8 +39,8 @@ export function PublicHero() {
           >
             Sign In
           </Button>
-        )
-      )}
+        )}
+      </div>
     </section>
   )
 }
