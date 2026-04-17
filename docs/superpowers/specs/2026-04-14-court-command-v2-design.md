@@ -1371,6 +1371,51 @@ GitHub Actions:
 - Auto-detection of platform from URL pattern
 - Displays on court public page + match detail page
 
+### Venue Managers & RBAC (Added During Bug Testing)
+- **`venue_managers` join table** (migration 00032): `venue_id`, `user_id`, `role` (manager|admin), `added_at`, `added_by`
+- Venue creator is auto-added as admin manager on creation (backfill migration covers existing venues)
+- **Permission gating**: UpdateVenue, DeleteVenue, SubmitForReview, CreateCourtForVenue all check `CanManageVenue()` — returns 403 if user is not platform_admin, venue creator, or venue manager
+- **Admin-level actions** (add/remove managers, change roles) require `CanAdminVenue()` — platform_admin, venue creator, or manager with role='admin'
+- **Frontend**: VenueManagersPanel on VenueDetail page with search-to-add, role toggle, remove with confirmation
+- **API endpoints**: `GET/POST /venues/{id}/managers`, `DELETE/PATCH /venues/{id}/managers/{userId}`
+
+### Operator Hub / My Assets (Added During Bug Testing)
+- **`/manage` route** — authenticated page showing resources the current user owns or manages
+- **4 sections**: My Venues (via venue_managers), My Tournaments (creator or TD), My Leagues (creator), My Organizations (member, with role badge)
+- Each section shows card grid with status badges and links to detail pages
+- Quick-create links for tournaments and leagues
+- **Sidebar entry**: "My Assets" with FolderKanban icon, between Dashboard and Events
+- **Backend endpoints**: `GET /api/v1/venues/my` (new), `GET /api/v1/organizations/my` (new). Tournaments and leagues `/my` already existed.
+
+### Admin Create Unclaimed Player (Added During Bug Testing)
+- **`POST /api/v1/admin/users/create-player`** — Platform Admin or TD can create placeholder player accounts
+- Creates user with `status: 'unclaimed'`, requires only `first_name`, `last_name`, `date_of_birth`
+- No email or password needed — placeholder accounts can be claimed by real users later (per Cat 1 dedup model)
+- **Frontend**: "Create Player" button on PlayerList page (gated by admin role), modal with 3 required fields
+
+### State & Timezone Dropdowns (Added During Bug Testing)
+- Venue and Organization forms use `<Select>` dropdowns instead of free-text `<Input>` for:
+  - **State/Province**: 55 US states and territories (AL through WY + DC, AS, GU, MP, PR, VI)
+  - **Timezone**: 10 US IANA timezone entries (America/New_York through Pacific/Honolulu)
+- Constants defined in `frontend/src/lib/constants.ts`
+- International state/timezone support deferred — current implementation covers US launch market
+
+### Content Management System (Decided During Bug Testing — Not Yet Built)
+- **Ghost CMS** selected as the content platform for news, blog, and editorial content
+- **Deployment**: Ghost as invisible backend at `cms.courtcommand.com`, React frontend renders articles at `courtcommand.com/news`
+- Writers access Ghost admin separately (acceptable for small writer pool — no SSO needed at launch)
+- **Separate branded news domain** planned for future (Court Command branded, separate domain for SEO)
+- **Legal pages** (Terms of Service, Privacy Policy, DMCA, betting disclaimer) are **static React routes** — no CMS needed
+- Readers don't need Ghost accounts — articles rendered in Court Command's frontend, not Ghost's theme layer
+- This is PARKED — not built yet, revisit after core product launch
+
+### Navigation Hierarchy (Added During Bug Testing)
+- **Sidebar order**: Home > Dashboard > My Assets > Events (Leagues, Tournaments) > Manage (Venues, Players, Teams, Orgs) > Scoring > Broadcast > Admin
+- **Leagues listed above Tournaments** — matches data hierarchy (League → Season → Tournament)
+- **Home link** at top of both authenticated and anonymous sidebar nav
+- **Anonymous users** see reduced "Browse" nav: Home, Leagues, Tournaments, Venues (linking to /public/* routes)
+- **Public layout** renders sidebar immediately during auth loading (no flash)
+
 ---
 
 ## 30. Competitive Differentiation
@@ -1387,3 +1432,5 @@ GitHub Actions:
 10. **Producer monitor** — real-time multi-court overview for broadcast directors, a feature no competitor offers
 11. **Ad monetization built-in** — IAB-standard ad slots on public/registry pages, excluded from broadcast surfaces and admin
 12. **Community theme presets** — popular palettes (Catppuccin, Dracula, Nord, etc.) ship out of the box for app UI and overlay color customization
+13. **Multi-manager venues** — venue_managers RBAC allows multiple operators per venue with admin/manager roles, unlike competitors with single-owner models
+14. **Operator hub** — dedicated /manage page shows all assets a user controls (venues, tournaments, leagues, orgs) in one view
