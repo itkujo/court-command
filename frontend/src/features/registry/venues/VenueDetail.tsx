@@ -1,4 +1,6 @@
-import { useVenue } from './hooks'
+import { useVenue, useSubmitForReview, useUpdateVenueStatus } from './hooks'
+import { useAuth } from '../../auth/hooks'
+import { useToast } from '../../../components/Toast'
 import { CourtListPanel } from './CourtListPanel'
 import { VenueManagersPanel } from './VenueManagersPanel'
 import { Badge } from '../../../components/Badge'
@@ -24,6 +26,11 @@ const STATUS_VARIANT: Record<string, 'default' | 'success' | 'warning'> = {
 
 export function VenueDetail({ venueId }: VenueDetailProps) {
   const { data: venue, isLoading, error } = useVenue(venueId)
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const submitForReview = useSubmitForReview(venueId)
+  const updateStatus = useUpdateVenueStatus(venueId)
+  const isAdmin = user?.role === 'platform_admin'
 
   if (isLoading) {
     return (
@@ -78,6 +85,90 @@ export function VenueDetail({ venueId }: VenueDetailProps) {
           </Badge>
         </div>
       </div>
+
+      {/* Status transition actions */}
+      {venue.status === 'draft' && (
+        <div className="mb-6 p-4 rounded-lg border border-(--color-border) bg-(--color-bg-secondary) flex items-center gap-3">
+          <span className="text-sm text-(--color-text-secondary)">This venue is in draft.</span>
+          <Button
+            size="sm"
+            variant="secondary"
+            loading={submitForReview.isPending}
+            onClick={() =>
+              submitForReview.mutate(undefined, {
+                onSuccess: () => toast('success', 'Submitted for review'),
+                onError: (err) => toast('error', (err as Error).message),
+              })
+            }
+          >
+            Submit for Review
+          </Button>
+          {isAdmin && (
+            <Button
+              size="sm"
+              loading={updateStatus.isPending}
+              onClick={() =>
+                updateStatus.mutate('published', {
+                  onSuccess: () => toast('success', 'Venue published'),
+                  onError: (err) => toast('error', (err as Error).message),
+                })
+              }
+            >
+              Publish Now
+            </Button>
+          )}
+        </div>
+      )}
+
+      {venue.status === 'pending_review' && isAdmin && (
+        <div className="mb-6 p-4 rounded-lg border border-(--color-border) bg-(--color-bg-secondary) flex items-center gap-3">
+          <span className="text-sm text-(--color-text-secondary)">Pending review.</span>
+          <Button
+            size="sm"
+            loading={updateStatus.isPending}
+            onClick={() =>
+              updateStatus.mutate('published', {
+                onSuccess: () => toast('success', 'Venue published'),
+                onError: (err) => toast('error', (err as Error).message),
+              })
+            }
+          >
+            Approve & Publish
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            loading={updateStatus.isPending}
+            onClick={() =>
+              updateStatus.mutate('draft', {
+                onSuccess: () => toast('warning', 'Venue sent back to draft'),
+                onError: (err) => toast('error', (err as Error).message),
+              })
+            }
+          >
+            Reject
+          </Button>
+        </div>
+      )}
+
+      {venue.status === 'published' && isAdmin && (
+        <div className="mb-6 p-4 rounded-lg border border-(--color-border) bg-(--color-bg-secondary) flex items-center gap-3">
+          <span className="text-sm text-(--color-text-secondary)">This venue is live.</span>
+          <Button
+            size="sm"
+            variant="secondary"
+            loading={updateStatus.isPending}
+            onClick={() =>
+              updateStatus.mutate('archived', {
+                onSuccess: () => toast('warning', 'Venue archived'),
+                onError: (err) => toast('error', (err as Error).message),
+              })
+            }
+          >
+            Archive
+          </Button>
+        </div>
+      )}
 
       <div className="space-y-6">
         <div className="rounded-xl border border-(--color-border) bg-(--color-bg-secondary) p-6">

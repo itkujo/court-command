@@ -3,6 +3,7 @@ import {
   apiGet,
   apiPost,
   apiPatch,
+  apiPut,
   apiDelete,
   apiGetPaginated,
   type PaginatedData,
@@ -106,6 +107,17 @@ export function useSubmitForReview(id: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => apiPost<Venue>(`/api/v1/venues/${id}/submit-for-review`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues'] })
+    },
+  })
+}
+
+export function useUpdateVenueStatus(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (status: string) =>
+      apiPut<Venue>(`/api/v1/admin/venues/${id}/status`, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] })
     },
