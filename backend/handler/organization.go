@@ -29,6 +29,7 @@ func (h *OrgHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", h.ListOrgs)
+	r.Get("/search", h.SearchOrgs)
 	r.Post("/", h.CreateOrg)
 	r.Get("/{orgID}", h.GetOrg)
 	r.Get("/by-slug/{slug}", h.GetOrgBySlug)
@@ -232,6 +233,49 @@ func (h *OrgHandler) ListOrgs(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 
 	orgs, total, err := h.orgService.ListOrgs(r.Context(), limit, offset)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Paginated(w, orgs, total, int(limit), int(offset))
+}
+
+// SearchOrgs searches organizations with filters.
+func (h *OrgHandler) SearchOrgs(w http.ResponseWriter, r *http.Request) {
+	limit, offset := parsePagination(r)
+	query := r.URL.Query()
+
+	params := generated.SearchOrgsParams{
+		Limit:  limit,
+		Offset: offset,
+	}
+	if q := query.Get("q"); q != "" {
+		params.Query = &q
+	}
+	if c := query.Get("city"); c != "" {
+		params.City = &c
+	}
+	if s := query.Get("state_province"); s != "" {
+		params.StateProvince = &s
+	}
+	if c := query.Get("country"); c != "" {
+		params.Country = &c
+	}
+
+	orgs, err := h.orgService.SearchOrgs(r.Context(), params)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	countParams := generated.CountSearchOrgsParams{
+		Query:         params.Query,
+		City:          params.City,
+		StateProvince: params.StateProvince,
+		Country:       params.Country,
+	}
+	total, err := h.orgService.CountSearchOrgs(r.Context(), countParams)
 	if err != nil {
 		HandleServiceError(w, err)
 		return

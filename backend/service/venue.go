@@ -294,6 +294,24 @@ func (s *VenueService) ListVenues(ctx context.Context, limit, offset int32, stat
 	return result, count, nil
 }
 
+// SearchVenues searches venues with filters.
+func (s *VenueService) SearchVenues(ctx context.Context, params generated.SearchVenuesParams) ([]VenueResponse, error) {
+	venues, err := s.queries.SearchVenues(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search venues: %w", err)
+	}
+	result := make([]VenueResponse, len(venues))
+	for i, v := range venues {
+		result[i] = toVenueResponse(v, 0)
+	}
+	return result, nil
+}
+
+// CountSearchVenues counts venues matching search filters.
+func (s *VenueService) CountSearchVenues(ctx context.Context, params generated.CountSearchVenuesParams) (int64, error) {
+	return s.queries.CountSearchVenues(ctx, params)
+}
+
 // SubmitVenueForReview transitions a venue from draft to pending_review.
 // Only the creator can submit.
 func (s *VenueService) SubmitVenueForReview(ctx context.Context, venueID int64, requesterID int64) (VenueResponse, error) {

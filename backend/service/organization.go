@@ -204,6 +204,24 @@ func (s *OrganizationService) ListOrgs(ctx context.Context, limit, offset int32)
 	return result, count, nil
 }
 
+// SearchOrgs searches organizations with filters.
+func (s *OrganizationService) SearchOrgs(ctx context.Context, params generated.SearchOrgsParams) ([]OrgResponse, error) {
+	orgs, err := s.queries.SearchOrgs(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search organizations: %w", err)
+	}
+	result := make([]OrgResponse, len(orgs))
+	for i, o := range orgs {
+		result[i] = toOrgResponse(o)
+	}
+	return result, nil
+}
+
+// CountSearchOrgs counts organizations matching search filters.
+func (s *OrganizationService) CountSearchOrgs(ctx context.Context, params generated.CountSearchOrgsParams) (int64, error) {
+	return s.queries.CountSearchOrgs(ctx, params)
+}
+
 // AddMember adds a player to an organization.
 func (s *OrganizationService) AddMember(ctx context.Context, orgID, playerID int64, role string, requesterID int64, requesterRole string) (generated.OrgMembership, error) {
 	if err := s.requireOrgAdmin(ctx, orgID, requesterID, requesterRole); err != nil {

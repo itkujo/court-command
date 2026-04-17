@@ -29,6 +29,7 @@ func (h *VenueHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", h.ListVenues)
+	r.Get("/search", h.SearchVenues)
 	r.Post("/", h.CreateVenue)
 	r.Get("/{venueID}", h.GetVenue)
 	r.Patch("/{venueID}", h.UpdateVenue)
@@ -290,6 +291,49 @@ func (h *VenueHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 	venues, total, err := h.venueService.ListVenues(r.Context(), limit, offset, status)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
+		return
+	}
+
+	Paginated(w, venues, total, int(limit), int(offset))
+}
+
+// SearchVenues searches venues with filters.
+func (h *VenueHandler) SearchVenues(w http.ResponseWriter, r *http.Request) {
+	limit, offset := parsePagination(r)
+	query := r.URL.Query()
+
+	params := generated.SearchVenuesParams{
+		Limit:  limit,
+		Offset: offset,
+	}
+	if q := query.Get("q"); q != "" {
+		params.Query = &q
+	}
+	if c := query.Get("city"); c != "" {
+		params.City = &c
+	}
+	if s := query.Get("state_province"); s != "" {
+		params.StateProvince = &s
+	}
+	if c := query.Get("country"); c != "" {
+		params.Country = &c
+	}
+
+	venues, err := h.venueService.SearchVenues(r.Context(), params)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	countParams := generated.CountSearchVenuesParams{
+		Query:         params.Query,
+		City:          params.City,
+		StateProvince: params.StateProvince,
+		Country:       params.Country,
+	}
+	total, err := h.venueService.CountSearchVenues(r.Context(), countParams)
+	if err != nil {
+		HandleServiceError(w, err)
 		return
 	}
 
