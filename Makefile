@@ -1,5 +1,5 @@
 # Makefile
-.PHONY: dev dev-frontend dev-all up down full full-down build migrate-up migrate-down migrate-create sqlc test backup backup-full restore restore-db backup-list backup-before-deploy
+.PHONY: dev dev-frontend dev-all up down full full-down build migrate-up migrate-down migrate-create sqlc test seed backup backup-full restore restore-db backup-list backup-before-deploy
 
 # Start Docker services (db + redis only)
 up:
@@ -52,6 +52,12 @@ sqlc:
 # Run tests
 test: up
 	cd backend && go test ./... -v -count=1
+
+# Seed development data (all entity types — run after migrations)
+seed: up
+	@echo "Seeding development data..."
+	docker compose exec -T db psql -U courtcommand -d courtcommand < backend/db/seed.sql
+	@echo "Done! Login with admin@courtcommand.com / TestPass123!"
 
 # ---- Backup & Restore ----
 
