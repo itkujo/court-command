@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useAdminUser, useUpdateUserRole, useUpdateUserStatus } from './hooks'
+import { useAdminUser, useUpdateUserRole, useUpdateUserStatus, useStartImpersonation } from './hooks'
 import { ALL_ROLES, ROLE_LABELS } from './types'
 import type { UserRole } from './types'
 import { Card } from '../../components/Card'
@@ -12,7 +12,8 @@ import { InfoRow } from '../../components/InfoRow'
 import { Modal } from '../../components/Modal'
 import { Skeleton } from '../../components/Skeleton'
 import { useToast } from '../../components/Toast'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Eye } from 'lucide-react'
+import { useAuth } from '../auth/hooks'
 import { formatDate, formatDateTime } from '../../lib/formatters'
 
 const ROLE_VARIANT: Record<string, 'success' | 'warning' | 'error' | 'info' | 'default'> = {
@@ -40,6 +41,8 @@ export function UserDetail({ userId }: UserDetailProps) {
 
   const updateRole = useUpdateUserRole()
   const updateStatus = useUpdateUserStatus()
+  const startImpersonation = useStartImpersonation()
+  const { user: currentUser, isImpersonating } = useAuth()
 
   const [selectedRole, setSelectedRole] = useState<string | null>(null)
   const [statusAction, setStatusAction] = useState<'suspended' | 'banned' | 'active' | null>(null)
@@ -79,6 +82,19 @@ export function UserDetail({ userId }: UserDetailProps) {
         },
       },
     )
+  }
+
+  function handleImpersonate() {
+    if (!user) return
+    startImpersonation.mutate(user.id, {
+      onSuccess: () => {
+        // Full reload to reset all cached state and enter impersonation mode
+        window.location.href = '/dashboard'
+      },
+      onError: (err) => {
+        toast('error', err.message || 'Failed to start impersonation.')
+      },
+    })
   }
 
   if (isLoading) {
@@ -130,6 +146,18 @@ export function UserDetail({ userId }: UserDetailProps) {
           {ROLE_LABELS[user.role as UserRole] ?? user.role}
         </Badge>
         <StatusBadge status={user.status} />
+        {/* Impersonate button — only show if not already impersonating and not viewing self */}
+        {!isImpersonating && user.status === 'active' && currentUser?.public_id !== user.public_id && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleImpersonate}
+            loading={startImpersonation.isPending}
+          >
+            <Eye className="h-4 w-4 mr-1" />
+            View as {user.first_name}
+          </Button>
+        )}
       </div>
       <p className="text-sm text-(--color-text-secondary)">
         <span className="font-mono">{user.public_id}</span> &middot; {user.email}

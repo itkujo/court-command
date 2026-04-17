@@ -179,3 +179,31 @@ export function useDeleteUpload() {
     },
   })
 }
+
+// ── Impersonation ──────────────────────────────────────────────────────
+
+export function useStartImpersonation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: number) =>
+      apiPost<{ impersonating: { user_id: number; public_id: string; name: string; role: string } }>(
+        `/api/v1/admin/impersonate/${userId}`,
+      ),
+    onSuccess: () => {
+      // Refetch /auth/me to get the impersonated user's data
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+    },
+  })
+}
+
+export function useStopImpersonation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiPost<{ restored: boolean }>('/api/v1/admin/stop-impersonation'),
+    onSuccess: () => {
+      // Refetch /auth/me to get the admin's own data back
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+    },
+  })
+}

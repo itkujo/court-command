@@ -11,6 +11,10 @@ export interface User {
   role: string
   status: string
   created_at: string
+  impersonation?: {
+    active: boolean
+    impersonator_id: string
+  } | null
 }
 
 export function useAuth() {
@@ -32,6 +36,7 @@ export function useAuth() {
     user: query.data ?? null,
     isLoading: query.isLoading,
     isAuthenticated: !!query.data,
+    isImpersonating: !!query.data?.impersonation?.active,
     error: query.error,
   }
 }

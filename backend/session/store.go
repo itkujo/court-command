@@ -30,6 +30,16 @@ type Data struct {
 	Role      string `json:"role"`
 	PublicID  string `json:"public_id"`
 	CreatedAt int64  `json:"created_at"`
+
+	// Impersonation fields — set when an admin is viewing as another user.
+	ImpersonatorID       int64  `json:"impersonator_id,omitempty"`
+	ImpersonatorPublicID string `json:"impersonator_public_id,omitempty"`
+	ImpersonatorToken    string `json:"impersonator_token,omitempty"`
+}
+
+// IsImpersonating returns true if this session is an impersonation session.
+func (d *Data) IsImpersonating() bool {
+	return d.ImpersonatorID > 0
 }
 
 // Store manages sessions in Redis.

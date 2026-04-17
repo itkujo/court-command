@@ -1,6 +1,7 @@
 import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Sidebar } from '../components/Sidebar'
+import { ImpersonationBanner } from '../components/ImpersonationBanner'
 import { AuthGuard } from '../features/auth/AuthGuard'
 import { useAuth, useLogout } from '../features/auth/hooks'
 import { cn } from '../lib/cn'
@@ -76,13 +77,15 @@ function AuthenticatedLayout() {
     return () => window.removeEventListener('storage', handler)
   }, [])
 
+  const { isImpersonating } = useAuth()
   if (!user) return null
 
   return (
     <>
+      <ImpersonationBanner />
       <a href="#main-content" className="skip-to-content">Skip to content</a>
       <Sidebar user={user} onLogout={() => logout.mutate()} />
-      <main id="main-content" className={cn('min-h-screen transition-[margin] duration-200 ease-in-out', isMobile ? 'pt-14' : expanded ? 'ml-[220px]' : 'ml-14')}>
+      <main id="main-content" className={cn('min-h-screen transition-[margin] duration-200 ease-in-out', isImpersonating ? 'pt-10' : '', isMobile ? 'pt-14' : expanded ? 'ml-[220px]' : 'ml-14')}>
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
           <Outlet />
         </div>
@@ -116,6 +119,7 @@ function PublicLayout() {
   // upgrade to authenticated nav once auth resolves. No blank-page flash.
   return (
     <>
+      <ImpersonationBanner />
       <a href="#main-content" className="skip-to-content">Skip to content</a>
       <Sidebar
         user={isLoading ? undefined : (user ?? undefined)}

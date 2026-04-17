@@ -98,6 +98,18 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	NoContent(w)
 }
 
+// MeResponse wraps the user with optional impersonation metadata.
+type MeResponse struct {
+	*service.UserResponse
+	Impersonation *ImpersonationInfo `json:"impersonation,omitempty"`
+}
+
+// ImpersonationInfo describes who is impersonating whom.
+type ImpersonationInfo struct {
+	Active         bool   `json:"active"`
+	ImpersonatorID string `json:"impersonator_id"`
+}
+
 // Me handles GET /api/v1/auth/me.
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	sessionData := session.SessionData(r.Context())
@@ -117,7 +129,16 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Success(w, user)
+	resp := &MeResponse{UserResponse: user}
+
+	if sessionData.IsImpersonating() {
+		resp.Impersonation = &ImpersonationInfo{
+			Active:         true,
+			ImpersonatorID: sessionData.ImpersonatorPublicID,
+		}
+	}
+
+	Success(w, resp)
 }
 
 // setSessionCookie writes the session token as an HTTP-only cookie.

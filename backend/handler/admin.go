@@ -63,6 +63,10 @@ func (h *AdminHandler) Routes() chi.Router {
 	r.Post("/api-keys", h.CreateApiKey)
 	r.Delete("/api-keys/{keyID}", h.RevokeApiKey)
 
+	// Impersonation
+	r.Post("/impersonate/{userID}", h.StartImpersonation)
+	r.Post("/stop-impersonation", h.StopImpersonation)
+
 	return r
 }
 
@@ -572,6 +576,131 @@ func (h *AdminHandler) CreateUnclaimedPlayer(w http.ResponseWriter, r *http.Requ
 		Status:    user.Status,
 		CreatedAt: user.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: user.UpdatedAt.Format(time.RFC3339),
+	})
+}
+
+// StartImpersonation handles POST /admin/impersonate/{userID}.
+// Creates a new session as the target user with impersonator metadata.
+func (h *AdminHandler) StartImpersonation(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		Unauthorized(w, "not authenticated")
+		return
+	}
+
+	// Don't allow nested impersonation
+	if sess.IsImpersonating() {
+		WriteError(w, http.StatusBadRequest, "ALREADY_IMPERSONATING", "stop current impersonation first")
+		return
+	}
+
+	userIDStr := chi.URLParam(r, "userID")
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "invalid user ID")
+		return
+	}
+
+	// Don't impersonate yourself
+	if userID == sess.UserID {
+		WriteError(w, http.StatusBadRequest, "SELF_IMPERSONATION", "cannot impersonate yourself")
+		return
+	}
+
+	// Look up the target user
+	targetUser, err := h.queries.GetUserByID(r.Context(), userID)
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "USER_NOT_FOUND", "user not found")
+		return
+	}
+
+	// Get admin's current session token so we can restore it later
+	adminCookie, err := r.Cookie(session.SessionCookieName)
+	if err != nil {
+		InternalError(w, "failed to read session cookie")
+		return
+	}
+
+	// Create an impersonation session as the target user
+	impersonationData := &session.Data{
+		UserID: targetUser.ID,
+		Email: func() string {
+			if targetUser.Email != nil {
+				return *targetUser.Email
+			}
+			return ""
+		}(),
+		Role:                 targetUser.Role,
+		PublicID:             targetUser.PublicID,
+		ImpersonatorID:       sess.UserID,
+		ImpersonatorPublicID: sess.PublicID,
+		ImpersonatorToken:    adminCookie.Value,
+	}
+
+	token, err := h.sessionStore.Create(r.Context(), impersonationData)
+	if err != nil {
+		InternalError(w, "failed to create impersonation session")
+		return
+	}
+
+	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "start_impersonation", "user", &userID, map[string]interface{}{
+		"target_user_public_id": targetUser.PublicID,
+	}, r.RemoteAddr)
+
+	// Set the new impersonation session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     session.SessionCookieName,
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int((4 * time.Hour).Seconds()), // shorter TTL for impersonation
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	Success(w, map[string]interface{}{
+		"impersonating": map[string]interface{}{
+			"user_id":   targetUser.ID,
+			"public_id": targetUser.PublicID,
+			"name":      targetUser.FirstName + " " + targetUser.LastName,
+			"role":      targetUser.Role,
+		},
+	})
+}
+
+// StopImpersonation handles POST /admin/stop-impersonation.
+// Restores the admin's original session.
+func (h *AdminHandler) StopImpersonation(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		Unauthorized(w, "not authenticated")
+		return
+	}
+
+	if !sess.IsImpersonating() {
+		WriteError(w, http.StatusBadRequest, "NOT_IMPERSONATING", "not currently impersonating anyone")
+		return
+	}
+
+	// Delete the impersonation session
+	currentCookie, err := r.Cookie(session.SessionCookieName)
+	if err == nil {
+		_ = h.sessionStore.Delete(r.Context(), currentCookie.Value)
+	}
+
+	h.activityLogSvc.LogActivity(r.Context(), sess.ImpersonatorID, "stop_impersonation", "user", &sess.UserID, nil, r.RemoteAddr)
+
+	// Restore the admin's original session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     session.SessionCookieName,
+		Value:    sess.ImpersonatorToken,
+		Path:     "/",
+		MaxAge:   int((30 * 24 * time.Hour).Seconds()),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	Success(w, map[string]interface{}{
+		"restored": true,
 	})
 }
 
