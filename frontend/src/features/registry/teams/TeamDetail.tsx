@@ -1,12 +1,15 @@
-import { useTeam } from './hooks'
+import { useState } from 'react'
+import { useTeam, useDeleteTeam } from './hooks'
 import { RosterPanel } from './RosterPanel'
 import { Badge } from '../../../components/Badge'
 import { InfoRow } from '../../../components/InfoRow'
 import { Skeleton } from '../../../components/Skeleton'
 import { EmptyState } from '../../../components/EmptyState'
 import { Button } from '../../../components/Button'
-import { ArrowLeft, Pencil } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { ConfirmDialog } from '../../../components/ConfirmDialog'
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
+import { Link, useNavigate } from '@tanstack/react-router'
+import { useToast } from '../../../components/Toast'
 import { formatDate } from '../../../lib/formatters'
 import { AdSlot } from '../../../components/AdSlot'
 
@@ -16,6 +19,10 @@ interface TeamDetailProps {
 
 export function TeamDetail({ teamId }: TeamDetailProps) {
   const { data: team, isLoading, error } = useTeam(teamId)
+  const deleteTeam = useDeleteTeam(teamId)
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   if (isLoading) {
     return (
@@ -71,6 +78,10 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
               Edit
             </Button>
           </Link>
+          <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)}>
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
+          </Button>
           <Badge variant="info">{team.short_name}</Badge>
         </div>
       </div>
@@ -125,6 +136,25 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
       </div>
 
       <AdSlot size="medium-rectangle" slot="team-detail-bottom" className="mt-6" />
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={() => {
+          deleteTeam.mutate(undefined, {
+            onSuccess: () => {
+              toast('success', 'Team deleted')
+              navigate({ to: '/teams' })
+            },
+            onError: (err: unknown) => toast('error', (err as Error).message),
+          })
+        }}
+        title="Delete Team"
+        message={`Are you sure you want to delete "${team.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+        loading={deleteTeam.isPending}
+      />
     </div>
   )
 }

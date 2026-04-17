@@ -20,6 +20,7 @@ func NewPlayerService(queries *generated.Queries) *PlayerService {
 
 // PlayerProfileResponse is the public representation of a player profile.
 type PlayerProfileResponse struct {
+	ID              int64    `json:"id"`
 	PublicID        string   `json:"public_id"`
 	Email           *string  `json:"email,omitempty"`
 	FirstName       string   `json:"first_name"`
@@ -69,6 +70,7 @@ func toPublicProfile(u generated.User) PlayerProfileResponse {
 	}
 
 	return PlayerProfileResponse{
+		ID:              u.ID,
 		PublicID:        u.PublicID,
 		FirstName:       u.FirstName,
 		LastName:        u.LastName,
@@ -134,6 +136,7 @@ func (s *PlayerService) GetProfile(ctx context.Context, playerID int64, requeste
 	if user.IsProfileHidden {
 		// Return minimal info for hidden profiles
 		return PlayerProfileResponse{
+			ID:        user.ID,
 			PublicID:  user.PublicID,
 			FirstName: user.FirstName,
 			LastName:  user.LastName,
@@ -193,6 +196,7 @@ func (s *PlayerService) SearchPlayers(ctx context.Context, params generated.Sear
 	for i, p := range players {
 		if p.IsProfileHidden {
 			profiles[i] = PlayerProfileResponse{
+				ID:        p.ID,
 				PublicID:  p.PublicID,
 				FirstName: p.FirstName,
 				LastName:  p.LastName,
