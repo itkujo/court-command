@@ -1,5 +1,5 @@
 # Makefile
-.PHONY: dev dev-frontend dev-all up down full full-down build migrate-up migrate-down migrate-create sqlc test
+.PHONY: dev dev-frontend dev-all up down full full-down build migrate-up migrate-down migrate-create sqlc test backup
 
 # Start Docker services (db + redis only)
 up:
@@ -52,6 +52,12 @@ sqlc:
 # Run tests
 test: up
 	cd backend && go test ./... -v -count=1
+
+# Backup database to timestamped SQL file
+backup:
+	@mkdir -p backups
+	docker exec courtcommand-db pg_dump -U courtcommand courtcommand > backups/backup-$$(date +%Y%m%d-%H%M%S).sql
+	@echo "Backup saved to backups/"
 
 # Include .env if it exists
 -include .env
