@@ -780,3 +780,17 @@ func (s *VenueService) UpdateVenueManagerRole(ctx context.Context, venueID int64
 	})
 	return err
 }
+
+// ListVenuesByManager returns all venues the given user manages.
+func (s *VenueService) ListVenuesByManager(ctx context.Context, userID int64) ([]VenueResponse, error) {
+	venues, err := s.queries.ListVenuesByManager(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("listing managed venues: %w", err)
+	}
+
+	results := make([]VenueResponse, 0, len(venues))
+	for _, v := range venues {
+		results = append(results, toVenueResponse(v, 0))
+	}
+	return results, nil
+}

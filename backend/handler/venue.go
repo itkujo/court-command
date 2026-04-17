@@ -30,6 +30,7 @@ func (h *VenueHandler) Routes() chi.Router {
 
 	r.Get("/", h.ListVenues)
 	r.Get("/search", h.SearchVenues)
+	r.Get("/my", h.ListMyVenues)
 	r.Post("/", h.CreateVenue)
 	r.Get("/{venueID}", h.GetVenue)
 	r.Patch("/{venueID}", h.UpdateVenue)
@@ -720,4 +721,21 @@ func (h *VenueHandler) UpdateManagerRole(w http.ResponseWriter, r *http.Request)
 	}
 
 	NoContent(w)
+}
+
+// ListMyVenues lists venues the authenticated user manages.
+func (h *VenueHandler) ListMyVenues(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	venues, err := h.venueService.ListVenuesByManager(r.Context(), sess.UserID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, venues)
 }

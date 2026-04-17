@@ -30,6 +30,7 @@ func (h *OrgHandler) Routes() chi.Router {
 
 	r.Get("/", h.ListOrgs)
 	r.Get("/search", h.SearchOrgs)
+	r.Get("/my", h.ListMyOrgs)
 	r.Post("/", h.CreateOrg)
 	r.Get("/{orgID}", h.GetOrg)
 	r.Get("/by-slug/{slug}", h.GetOrgBySlug)
@@ -473,4 +474,21 @@ func (h *OrgHandler) UnblockOrg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	Success(w, map[string]string{"message": "organization unblocked"})
+}
+
+// ListMyOrgs lists organizations the authenticated user is a member of.
+func (h *OrgHandler) ListMyOrgs(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	orgs, err := h.orgService.ListByUser(r.Context(), sess.UserID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, orgs)
 }

@@ -6,7 +6,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { Avatar } from './Avatar'
 import {
   LayoutDashboard, Trophy, Medal, MapPin, Users, UsersRound, Building2, Tv, Menu, ChevronLeft, LogOut,
-  Gavel, ClipboardList, Zap, Search, LogIn, Shield, Home,
+  Gavel, ClipboardList, Zap, Search, LogIn, Shield, Home, FolderKanban,
 } from 'lucide-react'
 import { useSearchModal } from '../features/search/SearchContext'
 
@@ -33,6 +33,7 @@ const baseAuthNavGroups: NavGroup[] = [
   { items: [
     { label: 'Home', icon: Home, path: '/' },
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+    { label: 'My Assets', icon: FolderKanban, path: '/manage' },
   ]},
   { label: 'Events', items: [
     { label: 'Leagues', icon: Medal, path: '/leagues' },

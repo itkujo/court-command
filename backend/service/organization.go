@@ -403,3 +403,47 @@ func (s *OrganizationService) requireOrgAdmin(ctx context.Context, orgID, reques
 
 	return nil
 }
+
+// MyOrgResponse extends OrgResponse with the user's membership role.
+type MyOrgResponse struct {
+	OrgResponse
+	MembershipRole string `json:"membership_role"`
+}
+
+// ListByUser returns all organizations the given user is a member of.
+func (s *OrganizationService) ListByUser(ctx context.Context, userID int64) ([]MyOrgResponse, error) {
+	rows, err := s.queries.ListOrgsByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("listing user orgs: %w", err)
+	}
+
+	results := make([]MyOrgResponse, 0, len(rows))
+	for _, r := range rows {
+		var foundedYear *int32
+		if r.FoundedYear.Valid {
+			foundedYear = &r.FoundedYear.Int32
+		}
+		results = append(results, MyOrgResponse{
+			OrgResponse: OrgResponse{
+				ID:             r.ID,
+				Name:           r.Name,
+				Slug:           r.Slug,
+				LogoURL:        r.LogoUrl,
+				PrimaryColor:   r.PrimaryColor,
+				SecondaryColor: r.SecondaryColor,
+				WebsiteURL:     r.WebsiteUrl,
+				ContactEmail:   r.ContactEmail,
+				ContactPhone:   r.ContactPhone,
+				City:           r.City,
+				StateProvince:  r.StateProvince,
+				Country:        r.Country,
+				Bio:            r.Bio,
+				FoundedYear:    foundedYear,
+				CreatedAt:      r.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:      r.UpdatedAt.Format(time.RFC3339),
+			},
+			MembershipRole: r.MembershipRole,
+		})
+	}
+	return results, nil
+}
