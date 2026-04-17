@@ -85,13 +85,25 @@ func (h *PublicHandler) ListTournaments(w http.ResponseWriter, r *http.Request) 
 			Offset: offset,
 		})
 	} else {
-		// Default: show only published + active tournaments
-		defaultStatus := "published"
-		tournaments, err = h.queries.ListTournamentsByStatus(r.Context(), generated.ListTournamentsByStatusParams{
-			Status: defaultStatus,
-			Limit:  limit,
+		// No filter: fetch all tournaments and keep only publicly visible ones.
+		// Use a generous limit to compensate for post-filter reduction.
+		all, fetchErr := h.queries.ListTournaments(r.Context(), generated.ListTournamentsParams{
+			Limit:  limit + 50,
 			Offset: offset,
 		})
+		err = fetchErr
+		if err == nil {
+			tournaments = make([]generated.Tournament, 0, len(all))
+			for _, t := range all {
+				if publicTournamentStatuses[t.Status] {
+					tournaments = append(tournaments, t)
+				}
+			}
+			// Respect the original limit after filtering
+			if int32(len(tournaments)) > limit {
+				tournaments = tournaments[:limit]
+			}
+		}
 	}
 
 	if err != nil {
