@@ -79,7 +79,7 @@ WHERE deleted_at IS NULL
 -- name: SearchVenues :many
 SELECT * FROM venues
 WHERE deleted_at IS NULL
-  AND status = 'published'
+  AND (sqlc.narg('status')::TEXT IS NULL OR status = sqlc.narg('status')::TEXT)
   AND (
     sqlc.narg('query')::TEXT IS NULL
     OR name ILIKE '%' || sqlc.narg('query')::TEXT || '%'
@@ -94,7 +94,7 @@ LIMIT $1 OFFSET $2;
 -- name: CountSearchVenues :one
 SELECT count(*) FROM venues
 WHERE deleted_at IS NULL
-  AND status = 'published'
+  AND (sqlc.narg('status')::TEXT IS NULL OR status = sqlc.narg('status')::TEXT)
   AND (
     sqlc.narg('query')::TEXT IS NULL
     OR name ILIKE '%' || sqlc.narg('query')::TEXT || '%'

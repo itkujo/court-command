@@ -38,18 +38,19 @@ func (q *Queries) CountPendingVenues(ctx context.Context) (int64, error) {
 const countSearchVenues = `-- name: CountSearchVenues :one
 SELECT count(*) FROM venues
 WHERE deleted_at IS NULL
-  AND status = 'published'
+  AND ($1::TEXT IS NULL OR status = $1::TEXT)
   AND (
-    $1::TEXT IS NULL
-    OR name ILIKE '%' || $1::TEXT || '%'
-    OR description ILIKE '%' || $1::TEXT || '%'
+    $2::TEXT IS NULL
+    OR name ILIKE '%' || $2::TEXT || '%'
+    OR description ILIKE '%' || $2::TEXT || '%'
   )
-  AND ($2::TEXT IS NULL OR city ILIKE $2::TEXT)
-  AND ($3::TEXT IS NULL OR state_province = $3::TEXT)
-  AND ($4::TEXT IS NULL OR country = $4::TEXT)
+  AND ($3::TEXT IS NULL OR city ILIKE $3::TEXT)
+  AND ($4::TEXT IS NULL OR state_province = $4::TEXT)
+  AND ($5::TEXT IS NULL OR country = $5::TEXT)
 `
 
 type CountSearchVenuesParams struct {
+	Status        *string `json:"status"`
 	Query         *string `json:"query"`
 	City          *string `json:"city"`
 	StateProvince *string `json:"state_province"`
@@ -58,6 +59,7 @@ type CountSearchVenuesParams struct {
 
 func (q *Queries) CountSearchVenues(ctx context.Context, arg CountSearchVenuesParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countSearchVenues,
+		arg.Status,
 		arg.Query,
 		arg.City,
 		arg.StateProvince,
@@ -421,15 +423,15 @@ func (q *Queries) ListVenues(ctx context.Context, arg ListVenuesParams) ([]Venue
 const searchVenues = `-- name: SearchVenues :many
 SELECT id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at FROM venues
 WHERE deleted_at IS NULL
-  AND status = 'published'
+  AND ($3::TEXT IS NULL OR status = $3::TEXT)
   AND (
-    $3::TEXT IS NULL
-    OR name ILIKE '%' || $3::TEXT || '%'
-    OR description ILIKE '%' || $3::TEXT || '%'
+    $4::TEXT IS NULL
+    OR name ILIKE '%' || $4::TEXT || '%'
+    OR description ILIKE '%' || $4::TEXT || '%'
   )
-  AND ($4::TEXT IS NULL OR city ILIKE $4::TEXT)
-  AND ($5::TEXT IS NULL OR state_province = $5::TEXT)
-  AND ($6::TEXT IS NULL OR country = $6::TEXT)
+  AND ($5::TEXT IS NULL OR city ILIKE $5::TEXT)
+  AND ($6::TEXT IS NULL OR state_province = $6::TEXT)
+  AND ($7::TEXT IS NULL OR country = $7::TEXT)
 ORDER BY name
 LIMIT $1 OFFSET $2
 `
@@ -437,6 +439,7 @@ LIMIT $1 OFFSET $2
 type SearchVenuesParams struct {
 	Limit         int32   `json:"limit"`
 	Offset        int32   `json:"offset"`
+	Status        *string `json:"status"`
 	Query         *string `json:"query"`
 	City          *string `json:"city"`
 	StateProvince *string `json:"state_province"`
@@ -447,6 +450,7 @@ func (q *Queries) SearchVenues(ctx context.Context, arg SearchVenuesParams) ([]V
 	rows, err := q.db.Query(ctx, searchVenues,
 		arg.Limit,
 		arg.Offset,
+		arg.Status,
 		arg.Query,
 		arg.City,
 		arg.StateProvince,
