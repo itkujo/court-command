@@ -1,19 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { AdminGuard } from '../../features/admin/AdminGuard'
-
-function ApiKeyManagerStub() {
-  return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-(--color-text-primary)">API Keys</h1>
-      <p className="text-(--color-text-secondary)">Coming in Phase 6B.</p>
-    </div>
-  )
-}
+import { ApiKeyManager } from '../../features/admin/ApiKeyManager'
 
 export const Route = createFileRoute('/admin/api-keys')({
   component: () => (
     <AdminGuard>
-      <ApiKeyManagerStub />
+      <ApiKeyManager />
     </AdminGuard>
   ),
 })
