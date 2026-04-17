@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from '@tanstack/react-router'
 import { apiGet, apiPost, type ApiRequestError } from '../../lib/api'
 
 export interface User {
@@ -76,10 +77,12 @@ export function useRegister() {
 
 export function useLogout() {
   const queryClient = useQueryClient()
+  const router = useRouter()
   return useMutation({
     mutationFn: () => apiPost<void>('/api/v1/auth/logout'),
     onSuccess: () => {
       queryClient.clear()
+      router.navigate({ to: '/' })
     },
   })
 }
