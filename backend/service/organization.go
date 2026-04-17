@@ -27,22 +27,27 @@ func NewOrganizationService(queries *generated.Queries, pool *pgxpool.Pool) *Org
 
 // OrgResponse is the public representation of an organization.
 type OrgResponse struct {
-	ID             int64   `json:"id"`
-	Name           string  `json:"name"`
-	Slug           string  `json:"slug"`
-	LogoURL        *string `json:"logo_url,omitempty"`
-	PrimaryColor   *string `json:"primary_color,omitempty"`
-	SecondaryColor *string `json:"secondary_color,omitempty"`
-	WebsiteURL     *string `json:"website_url,omitempty"`
-	ContactEmail   *string `json:"contact_email,omitempty"`
-	ContactPhone   *string `json:"contact_phone,omitempty"`
-	City           *string `json:"city,omitempty"`
-	StateProvince  *string `json:"state_province,omitempty"`
-	Country        *string `json:"country,omitempty"`
-	Bio            *string `json:"bio,omitempty"`
-	FoundedYear    *int32  `json:"founded_year,omitempty"`
-	CreatedAt      string  `json:"created_at"`
-	UpdatedAt      string  `json:"updated_at"`
+	ID             int64    `json:"id"`
+	Name           string   `json:"name"`
+	Slug           string   `json:"slug"`
+	LogoURL        *string  `json:"logo_url,omitempty"`
+	PrimaryColor   *string  `json:"primary_color,omitempty"`
+	SecondaryColor *string  `json:"secondary_color,omitempty"`
+	WebsiteURL     *string  `json:"website_url,omitempty"`
+	ContactEmail   *string  `json:"contact_email,omitempty"`
+	ContactPhone   *string  `json:"contact_phone,omitempty"`
+	City           *string  `json:"city,omitempty"`
+	StateProvince  *string  `json:"state_province,omitempty"`
+	Country        *string  `json:"country,omitempty"`
+	PostalCode     *string  `json:"postal_code,omitempty"`
+	AddressLine1   *string  `json:"address_line_1,omitempty"`
+	AddressLine2   *string  `json:"address_line_2,omitempty"`
+	Latitude       *float64 `json:"latitude,omitempty"`
+	Longitude      *float64 `json:"longitude,omitempty"`
+	Bio            *string  `json:"bio,omitempty"`
+	FoundedYear    *int32   `json:"founded_year,omitempty"`
+	CreatedAt      string   `json:"created_at"`
+	UpdatedAt      string   `json:"updated_at"`
 }
 
 // OrgMemberResponse represents a member of an organization.
@@ -65,6 +70,14 @@ func toOrgResponse(o generated.Organization) OrgResponse {
 		foundedYear = &o.FoundedYear.Int32
 	}
 
+	var lat, lng *float64
+	if o.Latitude.Valid {
+		lat = &o.Latitude.Float64
+	}
+	if o.Longitude.Valid {
+		lng = &o.Longitude.Float64
+	}
+
 	return OrgResponse{
 		ID:             o.ID,
 		Name:           o.Name,
@@ -78,6 +91,11 @@ func toOrgResponse(o generated.Organization) OrgResponse {
 		City:           o.City,
 		StateProvince:  o.StateProvince,
 		Country:        o.Country,
+		PostalCode:     o.PostalCode,
+		AddressLine1:   o.AddressLine1,
+		AddressLine2:   o.AddressLine2,
+		Latitude:       lat,
+		Longitude:      lng,
 		Bio:            o.Bio,
 		FoundedYear:    foundedYear,
 		CreatedAt:      o.CreatedAt.Format(time.RFC3339),

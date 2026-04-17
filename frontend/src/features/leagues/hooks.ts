@@ -29,6 +29,11 @@ export interface League {
   city: string | null
   state_province: string | null
   country: string | null
+  postal_code: string | null
+  address_line_1: string | null
+  address_line_2: string | null
+  latitude: number | null
+  longitude: number | null
   rules_document_url: string | null
   social_links: Record<string, string> | null
   sponsor_info: SponsorEntry[] | null

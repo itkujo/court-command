@@ -22,6 +22,11 @@ export interface Organization {
   city: string | null
   state_province: string | null
   country: string | null
+  postal_code: string | null
+  address_line_1: string | null
+  address_line_2: string | null
+  latitude: number | null
+  longitude: number | null
   bio: string | null
   founded_year: number | null
   created_at: string

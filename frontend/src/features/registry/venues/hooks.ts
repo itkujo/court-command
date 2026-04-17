@@ -15,13 +15,17 @@ export interface Venue {
   slug: string
   status: string
   address_line_1: string | null
+  address_line_2: string | null
   city: string | null
   state_province: string | null
   country: string | null
   postal_code: string | null
+  latitude: number | null
+  longitude: number | null
   timezone: string | null
   website_url: string | null
   contact_email: string | null
+  contact_phone: string | null
   logo_url: string | null
   photo_url: string | null
   venue_map_url: string | null

@@ -9,6 +9,7 @@ import { FormField } from '../../components/FormField'
 import { Card } from '../../components/Card'
 import { ImageUpload } from '../../components/ImageUpload'
 import { SponsorEditor } from '../../components/SponsorEditor'
+import { AddressInput, type AddressData } from '../../components/AddressInput'
 import { useToast } from '../../components/Toast'
 
 export function LeagueCreate() {
@@ -21,9 +22,11 @@ export function LeagueCreate() {
   const [contactEmail, setContactEmail] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
-  const [city, setCity] = useState('')
-  const [stateProvince, setStateProvince] = useState('')
-  const [country, setCountry] = useState('')
+  const [address, setAddress] = useState<Partial<AddressData>>({
+    city: '',
+    state_province: '',
+    country: 'US',
+  })
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [bannerUrl, setBannerUrl] = useState<string | null>(null)
   const [sponsors, setSponsors] = useState<SponsorEntry[]>([])
@@ -49,9 +52,14 @@ export function LeagueCreate() {
         contact_email: contactEmail.trim() || null,
         contact_phone: contactPhone.trim() || null,
         website_url: websiteUrl.trim() || null,
-        city: city.trim() || null,
-        state_province: stateProvince.trim() || null,
-        country: country.trim() || null,
+        city: address.city?.trim() || null,
+        state_province: address.state_province?.trim() || null,
+        country: address.country?.trim() || null,
+        postal_code: address.postal_code?.trim() || null,
+        address_line_1: address.address_line_1?.trim() || null,
+        address_line_2: address.address_line_2?.trim() || null,
+        latitude: address.latitude ?? null,
+        longitude: address.longitude ?? null,
         logo_url: logoUrl,
         banner_url: bannerUrl,
         sponsor_info: sponsors.length > 0 ? sponsors : null,
@@ -119,26 +127,11 @@ export function LeagueCreate() {
             />
           </FormField>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <FormField label="City">
-              <Input
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
-            </FormField>
-            <FormField label="State/Province">
-              <Input
-                value={stateProvince}
-                onChange={(e) => setStateProvince(e.target.value)}
-              />
-            </FormField>
-            <FormField label="Country">
-              <Input
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-              />
-            </FormField>
-          </div>
+          <AddressInput
+            value={address}
+            onChange={setAddress}
+            label="League HQ Address"
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <ImageUpload

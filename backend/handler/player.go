@@ -64,23 +64,28 @@ func (h *PlayerHandler) UpdateMyProfile(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var body struct {
-		DisplayName           *string `json:"display_name"`
-		Gender                *string `json:"gender"`
-		Handedness            *string `json:"handedness"`
-		AvatarURL             *string `json:"avatar_url"`
-		Bio                   *string `json:"bio"`
-		City                  *string `json:"city"`
-		StateProvince         *string `json:"state_province"`
-		Country               *string `json:"country"`
-		Phone                 *string `json:"phone"`
-		PaddleBrand           *string `json:"paddle_brand"`
-		PaddleModel           *string `json:"paddle_model"`
-		DuprID                *string `json:"dupr_id"`
-		VairID                *string `json:"vair_id"`
-		EmergencyContactName  *string `json:"emergency_contact_name"`
-		EmergencyContactPhone *string `json:"emergency_contact_phone"`
-		MedicalNotes          *string `json:"medical_notes"`
-		IsProfileHidden       *bool   `json:"is_profile_hidden"`
+		DisplayName           *string  `json:"display_name"`
+		Gender                *string  `json:"gender"`
+		Handedness            *string  `json:"handedness"`
+		AvatarURL             *string  `json:"avatar_url"`
+		Bio                   *string  `json:"bio"`
+		City                  *string  `json:"city"`
+		StateProvince         *string  `json:"state_province"`
+		Country               *string  `json:"country"`
+		PostalCode            *string  `json:"postal_code"`
+		AddressLine1          *string  `json:"address_line_1"`
+		AddressLine2          *string  `json:"address_line_2"`
+		Latitude              *float64 `json:"latitude"`
+		Longitude             *float64 `json:"longitude"`
+		Phone                 *string  `json:"phone"`
+		PaddleBrand           *string  `json:"paddle_brand"`
+		PaddleModel           *string  `json:"paddle_model"`
+		DuprID                *string  `json:"dupr_id"`
+		VairID                *string  `json:"vair_id"`
+		EmergencyContactName  *string  `json:"emergency_contact_name"`
+		EmergencyContactPhone *string  `json:"emergency_contact_phone"`
+		MedicalNotes          *string  `json:"medical_notes"`
+		IsProfileHidden       *bool    `json:"is_profile_hidden"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -115,6 +120,9 @@ func (h *PlayerHandler) UpdateMyProfile(w http.ResponseWriter, r *http.Request) 
 		City:                  body.City,
 		StateProvince:         body.StateProvince,
 		Country:               body.Country,
+		PostalCode:            body.PostalCode,
+		AddressLine1:          body.AddressLine1,
+		AddressLine2:          body.AddressLine2,
 		Phone:                 body.Phone,
 		PaddleBrand:           body.PaddleBrand,
 		PaddleModel:           body.PaddleModel,
@@ -127,6 +135,12 @@ func (h *PlayerHandler) UpdateMyProfile(w http.ResponseWriter, r *http.Request) 
 
 	if body.IsProfileHidden != nil {
 		params.IsProfileHidden = pgtype.Bool{Bool: *body.IsProfileHidden, Valid: true}
+	}
+	if body.Latitude != nil {
+		params.Latitude = pgtype.Float8{Float64: *body.Latitude, Valid: true}
+	}
+	if body.Longitude != nil {
+		params.Longitude = pgtype.Float8{Float64: *body.Longitude, Valid: true}
 	}
 
 	profile, err := h.playerService.UpdateProfile(r.Context(), data.UserID, params)

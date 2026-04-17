@@ -35,6 +35,11 @@ type LeagueResponse struct {
 	City             *string         `json:"city,omitempty"`
 	StateProvince    *string         `json:"state_province,omitempty"`
 	Country          *string         `json:"country,omitempty"`
+	PostalCode       *string         `json:"postal_code,omitempty"`
+	AddressLine1     *string         `json:"address_line_1,omitempty"`
+	AddressLine2     *string         `json:"address_line_2,omitempty"`
+	Latitude         *float64        `json:"latitude,omitempty"`
+	Longitude        *float64        `json:"longitude,omitempty"`
 	RulesDocumentURL *string         `json:"rules_document_url,omitempty"`
 	SocialLinks      json.RawMessage `json:"social_links"`
 	SponsorInfo      json.RawMessage `json:"sponsor_info"`
@@ -45,6 +50,14 @@ type LeagueResponse struct {
 }
 
 func toLeagueResponse(l generated.League) LeagueResponse {
+	var lat, lng *float64
+	if l.Latitude.Valid {
+		lat = &l.Latitude.Float64
+	}
+	if l.Longitude.Valid {
+		lng = &l.Longitude.Float64
+	}
+
 	resp := LeagueResponse{
 		ID:               l.ID,
 		PublicID:         l.PublicID,
@@ -60,6 +73,11 @@ func toLeagueResponse(l generated.League) LeagueResponse {
 		City:             l.City,
 		StateProvince:    l.StateProvince,
 		Country:          l.Country,
+		PostalCode:       l.PostalCode,
+		AddressLine1:     l.AddressLine1,
+		AddressLine2:     l.AddressLine2,
+		Latitude:         lat,
+		Longitude:        lng,
 		RulesDocumentURL: l.RulesDocumentUrl,
 		Notes:            l.Notes,
 		CreatedByUserID:  l.CreatedByUserID,

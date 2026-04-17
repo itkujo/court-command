@@ -5,10 +5,11 @@ import { useToast } from '../../../components/Toast'
 import { Button } from '../../../components/Button'
 import { Input } from '../../../components/Input'
 import { Select } from '../../../components/Select'
-import { US_STATES, US_TIMEZONES } from '../../../lib/constants'
+import { US_TIMEZONES } from '../../../lib/constants'
 import { Textarea } from '../../../components/Textarea'
 import { FormField } from '../../../components/FormField'
 import { ImageUpload } from '../../../components/ImageUpload'
+import { AddressInput, type AddressData } from '../../../components/AddressInput'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
@@ -25,14 +26,20 @@ export function VenueForm({ venue }: VenueFormProps) {
   const isEditing = !!venue
 
   const [name, setName] = useState(venue?.name ?? '')
-  const [addressLine1, setAddressLine1] = useState(venue?.address_line_1 ?? '')
-  const [city, setCity] = useState(venue?.city ?? '')
-  const [stateProvince, setStateProvince] = useState(venue?.state_province ?? '')
-  const [country, setCountry] = useState(venue?.country ?? '')
-  const [postalCode, setPostalCode] = useState(venue?.postal_code ?? '')
+  const [address, setAddress] = useState<Partial<AddressData>>({
+    address_line_1: venue?.address_line_1 ?? '',
+    address_line_2: venue?.address_line_2 ?? '',
+    city: venue?.city ?? '',
+    state_province: venue?.state_province ?? '',
+    country: venue?.country ?? 'US',
+    postal_code: venue?.postal_code ?? '',
+    latitude: venue?.latitude ?? undefined,
+    longitude: venue?.longitude ?? undefined,
+  })
   const [timezone, setTimezone] = useState(venue?.timezone ?? '')
   const [websiteUrl, setWebsiteUrl] = useState(venue?.website_url ?? '')
   const [contactEmail, setContactEmail] = useState(venue?.contact_email ?? '')
+  const [contactPhone, setContactPhone] = useState(venue?.contact_phone ?? '')
   const [bio, setBio] = useState(venue?.bio ?? '')
   const [logoUrl, setLogoUrl] = useState<string | null>(venue?.logo_url ?? null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(venue?.photo_url ?? null)
@@ -54,14 +61,18 @@ export function VenueForm({ venue }: VenueFormProps) {
 
     const payload = {
       name: name.trim(),
-      address_line_1: addressLine1.trim() || null,
-      city: city.trim() || null,
-      state_province: stateProvince.trim() || null,
-      country: country.trim() || null,
-      postal_code: postalCode.trim() || null,
+      address_line_1: address.address_line_1?.trim() || null,
+      address_line_2: address.address_line_2?.trim() || null,
+      city: address.city?.trim() || null,
+      state_province: address.state_province?.trim() || null,
+      country: address.country?.trim() || null,
+      postal_code: address.postal_code?.trim() || null,
+      latitude: address.latitude ?? null,
+      longitude: address.longitude ?? null,
       timezone: timezone.trim() || null,
       website_url: websiteUrl.trim() || null,
       contact_email: contactEmail.trim() || null,
+      contact_phone: contactPhone.trim() || null,
       bio: bio.trim() || null,
       logo_url: logoUrl,
       photo_url: photoUrl,
@@ -103,58 +114,11 @@ export function VenueForm({ venue }: VenueFormProps) {
           />
         </FormField>
 
-        <FormField label="Address" htmlFor="address_line_1">
-          <Input
-            id="address_line_1"
-            value={addressLine1}
-            onChange={(e) => setAddressLine1(e.target.value)}
-            placeholder="123 Main St"
-          />
-        </FormField>
-
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="City" htmlFor="city">
-            <Input
-              id="city"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="City"
-            />
-          </FormField>
-
-          <FormField label="State / Province" htmlFor="state_province">
-            <Select
-              id="state_province"
-              value={stateProvince}
-              onChange={(e) => setStateProvince(e.target.value)}
-            >
-              <option value="">Select state...</option>
-              {US_STATES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </Select>
-          </FormField>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Country" htmlFor="country">
-            <Input
-              id="country"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              placeholder="US"
-            />
-          </FormField>
-
-          <FormField label="Postal Code" htmlFor="postal_code">
-            <Input
-              id="postal_code"
-              value={postalCode}
-              onChange={(e) => setPostalCode(e.target.value)}
-              placeholder="12345"
-            />
-          </FormField>
-        </div>
+        <AddressInput
+          value={address}
+          onChange={setAddress}
+          label="Venue Address"
+        />
 
         <FormField label="Timezone" htmlFor="timezone">
           <Select
@@ -179,16 +143,28 @@ export function VenueForm({ venue }: VenueFormProps) {
           />
         </FormField>
 
-        <FormField label="Contact Email" htmlFor="contact_email" error={errors.contact_email}>
-          <Input
-            id="contact_email"
-            type="email"
-            value={contactEmail}
-            onChange={(e) => setContactEmail(e.target.value)}
-            placeholder="info@venue.com"
-            error={!!errors.contact_email}
-          />
-        </FormField>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Contact Email" htmlFor="contact_email" error={errors.contact_email}>
+            <Input
+              id="contact_email"
+              type="email"
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              placeholder="info@venue.com"
+              error={!!errors.contact_email}
+            />
+          </FormField>
+
+          <FormField label="Contact Phone" htmlFor="contact_phone">
+            <Input
+              id="contact_phone"
+              type="tel"
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              placeholder="(555) 123-4567"
+            />
+          </FormField>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <ImageUpload

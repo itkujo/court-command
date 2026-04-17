@@ -1,6 +1,6 @@
 -- name: CreateOrganization :one
-INSERT INTO organizations (name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+INSERT INTO organizations (name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, postal_code, address_line_1, address_line_2, latitude, longitude, bio, founded_year, social_links, created_by_user_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 RETURNING *;
 
 -- name: GetOrgByID :one
@@ -23,6 +23,11 @@ UPDATE organizations SET
     city = COALESCE(sqlc.narg('city'), city),
     state_province = COALESCE(sqlc.narg('state_province'), state_province),
     country = COALESCE(sqlc.narg('country'), country),
+    postal_code = COALESCE(sqlc.narg('postal_code'), postal_code),
+    address_line_1 = COALESCE(sqlc.narg('address_line_1'), address_line_1),
+    address_line_2 = COALESCE(sqlc.narg('address_line_2'), address_line_2),
+    latitude = COALESCE(sqlc.narg('latitude'), latitude),
+    longitude = COALESCE(sqlc.narg('longitude'), longitude),
     bio = COALESCE(sqlc.narg('bio'), bio),
     founded_year = COALESCE(sqlc.narg('founded_year'), founded_year),
     social_links = COALESCE(sqlc.narg('social_links'), social_links),

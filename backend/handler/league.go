@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/service"
@@ -63,6 +64,11 @@ func (h *LeagueHandler) CreateLeague(w http.ResponseWriter, r *http.Request) {
 		City             *string         `json:"city"`
 		StateProvince    *string         `json:"state_province"`
 		Country          *string         `json:"country"`
+		PostalCode       *string         `json:"postal_code"`
+		AddressLine1     *string         `json:"address_line_1"`
+		AddressLine2     *string         `json:"address_line_2"`
+		Latitude         *float64        `json:"latitude"`
+		Longitude        *float64        `json:"longitude"`
 		RulesDocumentURL *string         `json:"rules_document_url"`
 		Notes            *string         `json:"notes"`
 		SocialLinks      json.RawMessage `json:"social_links"`
@@ -85,11 +91,21 @@ func (h *LeagueHandler) CreateLeague(w http.ResponseWriter, r *http.Request) {
 		City:             body.City,
 		StateProvince:    body.StateProvince,
 		Country:          body.Country,
+		PostalCode:       body.PostalCode,
+		AddressLine1:     body.AddressLine1,
+		AddressLine2:     body.AddressLine2,
 		RulesDocumentUrl: body.RulesDocumentURL,
 		Notes:            body.Notes,
 		SocialLinks:      body.SocialLinks,
 		SponsorInfo:      body.SponsorInfo,
 		CreatedByUserID:  sess.UserID,
+	}
+
+	if body.Latitude != nil {
+		params.Latitude = pgtype.Float8{Float64: *body.Latitude, Valid: true}
+	}
+	if body.Longitude != nil {
+		params.Longitude = pgtype.Float8{Float64: *body.Longitude, Valid: true}
 	}
 
 	league, err := h.leagueSvc.Create(r.Context(), params)
@@ -169,6 +185,11 @@ func (h *LeagueHandler) UpdateLeague(w http.ResponseWriter, r *http.Request) {
 		City             *string         `json:"city"`
 		StateProvince    *string         `json:"state_province"`
 		Country          *string         `json:"country"`
+		PostalCode       *string         `json:"postal_code"`
+		AddressLine1     *string         `json:"address_line_1"`
+		AddressLine2     *string         `json:"address_line_2"`
+		Latitude         *float64        `json:"latitude"`
+		Longitude        *float64        `json:"longitude"`
 		RulesDocumentURL *string         `json:"rules_document_url"`
 		Notes            *string         `json:"notes"`
 		SocialLinks      json.RawMessage `json:"social_links"`
@@ -191,10 +212,20 @@ func (h *LeagueHandler) UpdateLeague(w http.ResponseWriter, r *http.Request) {
 		City:             body.City,
 		StateProvince:    body.StateProvince,
 		Country:          body.Country,
+		PostalCode:       body.PostalCode,
+		AddressLine1:     body.AddressLine1,
+		AddressLine2:     body.AddressLine2,
 		RulesDocumentUrl: body.RulesDocumentURL,
 		Notes:            body.Notes,
 		SocialLinks:      body.SocialLinks,
 		SponsorInfo:      body.SponsorInfo,
+	}
+
+	if body.Latitude != nil {
+		params.Latitude = pgtype.Float8{Float64: *body.Latitude, Valid: true}
+	}
+	if body.Longitude != nil {
+		params.Longitude = pgtype.Float8{Float64: *body.Longitude, Valid: true}
 	}
 
 	league, err := h.leagueSvc.Update(r.Context(), leagueID, params)

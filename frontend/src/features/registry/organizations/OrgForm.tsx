@@ -4,11 +4,10 @@ import { useCreateOrg, useUpdateOrg, type Organization } from './hooks'
 import { useToast } from '../../../components/Toast'
 import { Button } from '../../../components/Button'
 import { Input } from '../../../components/Input'
-import { Select } from '../../../components/Select'
-import { US_STATES } from '../../../lib/constants'
 import { Textarea } from '../../../components/Textarea'
 import { FormField } from '../../../components/FormField'
 import { ImageUpload } from '../../../components/ImageUpload'
+import { AddressInput, type AddressData } from '../../../components/AddressInput'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
@@ -27,9 +26,16 @@ export function OrgForm({ org }: OrgFormProps) {
   const [name, setName] = useState(org?.name ?? '')
   const [contactEmail, setContactEmail] = useState(org?.contact_email ?? '')
   const [websiteUrl, setWebsiteUrl] = useState(org?.website_url ?? '')
-  const [city, setCity] = useState(org?.city ?? '')
-  const [stateProvince, setStateProvince] = useState(org?.state_province ?? '')
-  const [country, setCountry] = useState(org?.country ?? '')
+  const [address, setAddress] = useState<Partial<AddressData>>({
+    address_line_1: org?.address_line_1 ?? '',
+    address_line_2: org?.address_line_2 ?? '',
+    city: org?.city ?? '',
+    state_province: org?.state_province ?? '',
+    country: org?.country ?? 'US',
+    postal_code: org?.postal_code ?? '',
+    latitude: org?.latitude ?? undefined,
+    longitude: org?.longitude ?? undefined,
+  })
   const [foundedYear, setFoundedYear] = useState(
     org?.founded_year ? String(org.founded_year) : '',
   )
@@ -56,9 +62,14 @@ export function OrgForm({ org }: OrgFormProps) {
       name: name.trim(),
       contact_email: contactEmail.trim() || null,
       website_url: websiteUrl.trim() || null,
-      city: city.trim() || null,
-      state_province: stateProvince.trim() || null,
-      country: country.trim() || null,
+      city: address.city?.trim() || null,
+      state_province: address.state_province?.trim() || null,
+      country: address.country?.trim() || null,
+      postal_code: address.postal_code?.trim() || null,
+      address_line_1: address.address_line_1?.trim() || null,
+      address_line_2: address.address_line_2?.trim() || null,
+      latitude: address.latitude ?? null,
+      longitude: address.longitude ?? null,
       founded_year: foundedYear ? Number(foundedYear) : null,
       bio: bio.trim() || null,
       logo_url: logoUrl,
@@ -120,38 +131,11 @@ export function OrgForm({ org }: OrgFormProps) {
           />
         </FormField>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FormField label="City" htmlFor="city">
-            <Input
-              id="city"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="City"
-            />
-          </FormField>
-
-          <FormField label="State / Province" htmlFor="state_province">
-            <Select
-              id="state_province"
-              value={stateProvince}
-              onChange={(e) => setStateProvince(e.target.value)}
-            >
-              <option value="">Select state...</option>
-              {US_STATES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </Select>
-          </FormField>
-
-          <FormField label="Country" htmlFor="country">
-            <Input
-              id="country"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              placeholder="US"
-            />
-          </FormField>
-        </div>
+        <AddressInput
+          value={address}
+          onChange={setAddress}
+          label="HQ Address"
+        />
 
         <FormField label="Founded Year" htmlFor="founded_year" error={errors.founded_year}>
           <Input

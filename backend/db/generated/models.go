@@ -180,6 +180,11 @@ type League struct {
 	CreatedAt        time.Time          `json:"created_at"`
 	UpdatedAt        time.Time          `json:"updated_at"`
 	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	AddressLine1     *string            `json:"address_line_1"`
+	AddressLine2     *string            `json:"address_line_2"`
+	PostalCode       *string            `json:"postal_code"`
+	Latitude         pgtype.Float8      `json:"latitude"`
+	Longitude        pgtype.Float8      `json:"longitude"`
 }
 
 type LeagueRegistration struct {
@@ -332,6 +337,11 @@ type Organization struct {
 	CreatedAt       time.Time          `json:"created_at"`
 	UpdatedAt       time.Time          `json:"updated_at"`
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	AddressLine1    *string            `json:"address_line_1"`
+	AddressLine2    *string            `json:"address_line_2"`
+	PostalCode      *string            `json:"postal_code"`
+	Latitude        pgtype.Float8      `json:"latitude"`
+	Longitude       pgtype.Float8      `json:"longitude"`
 }
 
 type Pod struct {
@@ -558,6 +568,11 @@ type User struct {
 	MedicalNotes          *string            `json:"medical_notes"`
 	WaiverAcceptedAt      pgtype.Timestamptz `json:"waiver_accepted_at"`
 	IsProfileHidden       bool               `json:"is_profile_hidden"`
+	AddressLine1          *string            `json:"address_line_1"`
+	AddressLine2          *string            `json:"address_line_2"`
+	PostalCode            *string            `json:"postal_code"`
+	Latitude              pgtype.Float8      `json:"latitude"`
+	Longitude             pgtype.Float8      `json:"longitude"`
 }
 
 type Venue struct {

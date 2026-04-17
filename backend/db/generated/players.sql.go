@@ -16,7 +16,7 @@ UPDATE users SET
     waiver_accepted_at = now(),
     updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude
 `
 
 func (q *Queries) AcceptWaiver(ctx context.Context, id int64) (User, error) {
@@ -54,6 +54,11 @@ func (q *Queries) AcceptWaiver(ctx context.Context, id int64) (User, error) {
 		&i.MedicalNotes,
 		&i.WaiverAcceptedAt,
 		&i.IsProfileHidden,
+		&i.AddressLine1,
+		&i.AddressLine2,
+		&i.PostalCode,
+		&i.Latitude,
+		&i.Longitude,
 	)
 	return i, err
 }
@@ -94,7 +99,7 @@ func (q *Queries) CountSearchPlayers(ctx context.Context, arg CountSearchPlayers
 }
 
 const getPlayerByDuprID = `-- name: GetPlayerByDuprID :one
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude FROM users
 WHERE dupr_id = $1 AND deleted_at IS NULL
 `
 
@@ -133,12 +138,17 @@ func (q *Queries) GetPlayerByDuprID(ctx context.Context, duprID *string) (User, 
 		&i.MedicalNotes,
 		&i.WaiverAcceptedAt,
 		&i.IsProfileHidden,
+		&i.AddressLine1,
+		&i.AddressLine2,
+		&i.PostalCode,
+		&i.Latitude,
+		&i.Longitude,
 	)
 	return i, err
 }
 
 const getPlayerByPublicID = `-- name: GetPlayerByPublicID :one
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude FROM users
 WHERE public_id = $1 AND deleted_at IS NULL
 `
 
@@ -177,12 +187,17 @@ func (q *Queries) GetPlayerByPublicID(ctx context.Context, publicID string) (Use
 		&i.MedicalNotes,
 		&i.WaiverAcceptedAt,
 		&i.IsProfileHidden,
+		&i.AddressLine1,
+		&i.AddressLine2,
+		&i.PostalCode,
+		&i.Latitude,
+		&i.Longitude,
 	)
 	return i, err
 }
 
 const getPlayerByVairID = `-- name: GetPlayerByVairID :one
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude FROM users
 WHERE vair_id = $1 AND deleted_at IS NULL
 `
 
@@ -221,13 +236,18 @@ func (q *Queries) GetPlayerByVairID(ctx context.Context, vairID *string) (User, 
 		&i.MedicalNotes,
 		&i.WaiverAcceptedAt,
 		&i.IsProfileHidden,
+		&i.AddressLine1,
+		&i.AddressLine2,
+		&i.PostalCode,
+		&i.Latitude,
+		&i.Longitude,
 	)
 	return i, err
 }
 
 const getPlayerProfile = `-- name: GetPlayerProfile :one
 
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude FROM users
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -267,12 +287,17 @@ func (q *Queries) GetPlayerProfile(ctx context.Context, id int64) (User, error) 
 		&i.MedicalNotes,
 		&i.WaiverAcceptedAt,
 		&i.IsProfileHidden,
+		&i.AddressLine1,
+		&i.AddressLine2,
+		&i.PostalCode,
+		&i.Latitude,
+		&i.Longitude,
 	)
 	return i, err
 }
 
 const searchPlayers = `-- name: SearchPlayers :many
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude FROM users
 WHERE deleted_at IS NULL
   AND status != 'merged'
   AND (
@@ -346,6 +371,11 @@ func (q *Queries) SearchPlayers(ctx context.Context, arg SearchPlayersParams) ([
 			&i.MedicalNotes,
 			&i.WaiverAcceptedAt,
 			&i.IsProfileHidden,
+			&i.AddressLine1,
+			&i.AddressLine2,
+			&i.PostalCode,
+			&i.Latitude,
+			&i.Longitude,
 		); err != nil {
 			return nil, err
 		}
@@ -367,39 +397,49 @@ UPDATE users SET
     city = COALESCE($6, city),
     state_province = COALESCE($7, state_province),
     country = COALESCE($8, country),
-    phone = COALESCE($9, phone),
-    paddle_brand = COALESCE($10, paddle_brand),
-    paddle_model = COALESCE($11, paddle_model),
-    dupr_id = COALESCE($12, dupr_id),
-    vair_id = COALESCE($13, vair_id),
-    emergency_contact_name = COALESCE($14, emergency_contact_name),
-    emergency_contact_phone = COALESCE($15, emergency_contact_phone),
-    medical_notes = COALESCE($16, medical_notes),
-    is_profile_hidden = COALESCE($17, is_profile_hidden),
+    postal_code = COALESCE($9, postal_code),
+    address_line_1 = COALESCE($10, address_line_1),
+    address_line_2 = COALESCE($11, address_line_2),
+    latitude = COALESCE($12, latitude),
+    longitude = COALESCE($13, longitude),
+    phone = COALESCE($14, phone),
+    paddle_brand = COALESCE($15, paddle_brand),
+    paddle_model = COALESCE($16, paddle_model),
+    dupr_id = COALESCE($17, dupr_id),
+    vair_id = COALESCE($18, vair_id),
+    emergency_contact_name = COALESCE($19, emergency_contact_name),
+    emergency_contact_phone = COALESCE($20, emergency_contact_phone),
+    medical_notes = COALESCE($21, medical_notes),
+    is_profile_hidden = COALESCE($22, is_profile_hidden),
     updated_at = now()
-WHERE id = $18 AND deleted_at IS NULL
-RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden
+WHERE id = $23 AND deleted_at IS NULL
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude
 `
 
 type UpdatePlayerProfileParams struct {
-	DisplayName           *string     `json:"display_name"`
-	Gender                *string     `json:"gender"`
-	Handedness            *string     `json:"handedness"`
-	AvatarUrl             *string     `json:"avatar_url"`
-	Bio                   *string     `json:"bio"`
-	City                  *string     `json:"city"`
-	StateProvince         *string     `json:"state_province"`
-	Country               *string     `json:"country"`
-	Phone                 *string     `json:"phone"`
-	PaddleBrand           *string     `json:"paddle_brand"`
-	PaddleModel           *string     `json:"paddle_model"`
-	DuprID                *string     `json:"dupr_id"`
-	VairID                *string     `json:"vair_id"`
-	EmergencyContactName  *string     `json:"emergency_contact_name"`
-	EmergencyContactPhone *string     `json:"emergency_contact_phone"`
-	MedicalNotes          *string     `json:"medical_notes"`
-	IsProfileHidden       pgtype.Bool `json:"is_profile_hidden"`
-	UserID                int64       `json:"user_id"`
+	DisplayName           *string       `json:"display_name"`
+	Gender                *string       `json:"gender"`
+	Handedness            *string       `json:"handedness"`
+	AvatarUrl             *string       `json:"avatar_url"`
+	Bio                   *string       `json:"bio"`
+	City                  *string       `json:"city"`
+	StateProvince         *string       `json:"state_province"`
+	Country               *string       `json:"country"`
+	PostalCode            *string       `json:"postal_code"`
+	AddressLine1          *string       `json:"address_line_1"`
+	AddressLine2          *string       `json:"address_line_2"`
+	Latitude              pgtype.Float8 `json:"latitude"`
+	Longitude             pgtype.Float8 `json:"longitude"`
+	Phone                 *string       `json:"phone"`
+	PaddleBrand           *string       `json:"paddle_brand"`
+	PaddleModel           *string       `json:"paddle_model"`
+	DuprID                *string       `json:"dupr_id"`
+	VairID                *string       `json:"vair_id"`
+	EmergencyContactName  *string       `json:"emergency_contact_name"`
+	EmergencyContactPhone *string       `json:"emergency_contact_phone"`
+	MedicalNotes          *string       `json:"medical_notes"`
+	IsProfileHidden       pgtype.Bool   `json:"is_profile_hidden"`
+	UserID                int64         `json:"user_id"`
 }
 
 func (q *Queries) UpdatePlayerProfile(ctx context.Context, arg UpdatePlayerProfileParams) (User, error) {
@@ -412,6 +452,11 @@ func (q *Queries) UpdatePlayerProfile(ctx context.Context, arg UpdatePlayerProfi
 		arg.City,
 		arg.StateProvince,
 		arg.Country,
+		arg.PostalCode,
+		arg.AddressLine1,
+		arg.AddressLine2,
+		arg.Latitude,
+		arg.Longitude,
 		arg.Phone,
 		arg.PaddleBrand,
 		arg.PaddleModel,
@@ -456,6 +501,11 @@ func (q *Queries) UpdatePlayerProfile(ctx context.Context, arg UpdatePlayerProfi
 		&i.MedicalNotes,
 		&i.WaiverAcceptedAt,
 		&i.IsProfileHidden,
+		&i.AddressLine1,
+		&i.AddressLine2,
+		&i.PostalCode,
+		&i.Latitude,
+		&i.Longitude,
 	)
 	return i, err
 }
