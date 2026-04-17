@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useAdminUser, useUpdateUserRole, useUpdateUserStatus } from './hooks'
-import { ALL_ROLES, ROLE_LABELS, USER_STATUSES } from './types'
+import { ALL_ROLES, ROLE_LABELS } from './types'
 import type { UserRole } from './types'
 import { Card } from '../../components/Card'
 import { Badge } from '../../components/Badge'
