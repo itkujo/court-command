@@ -1,5 +1,5 @@
 # Makefile
-.PHONY: dev dev-frontend dev-all up down full full-down build migrate-up migrate-down migrate-create sqlc test backup
+.PHONY: dev dev-frontend dev-all up down full full-down build migrate-up migrate-down migrate-create sqlc test backup backup-full restore restore-db backup-list backup-before-deploy
 
 # Start Docker services (db + redis only)
 up:
@@ -53,11 +53,70 @@ sqlc:
 test: up
 	cd backend && go test ./... -v -count=1
 
-# Backup database to timestamped SQL file
+# ---- Backup & Restore ----
+
+# Backup database only (quick, for routine saves)
 backup:
 	@mkdir -p backups
-	docker exec courtcommand-db pg_dump -U courtcommand courtcommand > backups/backup-$$(date +%Y%m%d-%H%M%S).sql
-	@echo "Backup saved to backups/"
+	@TIMESTAMP=$$(date +%Y%m%d-%H%M%S); \
+	docker compose exec -T db pg_dump -U courtcommand courtcommand > backups/db-$$TIMESTAMP.sql && \
+	echo "Database backup: backups/db-$$TIMESTAMP.sql ($$(wc -c < backups/db-$$TIMESTAMP.sql | tr -d ' ') bytes)"
+
+# Full backup: database + uploaded files (for before deploys or major changes)
+backup-full:
+	@mkdir -p backups
+	@TIMESTAMP=$$(date +%Y%m%d-%H%M%S); \
+	docker compose exec -T db pg_dump -U courtcommand courtcommand > backups/db-$$TIMESTAMP.sql && \
+	echo "Database backup: backups/db-$$TIMESTAMP.sql"; \
+	if [ -d backend/uploads ] && [ "$$(ls -A backend/uploads 2>/dev/null)" ]; then \
+		tar czf backups/uploads-$$TIMESTAMP.tar.gz -C backend uploads && \
+		echo "Uploads backup: backups/uploads-$$TIMESTAMP.tar.gz"; \
+	else \
+		echo "No uploads to backup"; \
+	fi; \
+	echo "Full backup complete: $$TIMESTAMP"
+
+# Pre-deploy backup (alias — always run before deploying updates)
+backup-before-deploy: backup-full
+	@echo "Pre-deploy backup complete. Safe to deploy."
+
+# Restore database from a backup file (usage: make restore-db FILE=backups/db-20260417-123456.sql)
+restore-db:
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make restore-db FILE=backups/db-YYYYMMDD-HHMMSS.sql"; \
+		echo "Available backups:"; \
+		ls -la backups/db-*.sql 2>/dev/null || echo "  No database backups found"; \
+		exit 1; \
+	fi
+	@echo "WARNING: This will replace ALL data in the database with the backup."
+	@echo "File: $(FILE)"
+	@read -p "Type YES to confirm: " confirm; \
+	if [ "$$confirm" = "YES" ]; then \
+		docker compose exec -T db psql -U courtcommand -d courtcommand -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" && \
+		docker compose exec -T db psql -U courtcommand courtcommand < $(FILE) && \
+		echo "Database restored from $(FILE)"; \
+	else \
+		echo "Restore cancelled."; \
+	fi
+
+# Restore uploads from a backup file (usage: make restore-uploads FILE=backups/uploads-20260417-123456.tar.gz)
+restore-uploads:
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make restore-uploads FILE=backups/uploads-YYYYMMDD-HHMMSS.tar.gz"; \
+		echo "Available backups:"; \
+		ls -la backups/uploads-*.tar.gz 2>/dev/null || echo "  No upload backups found"; \
+		exit 1; \
+	fi
+	@echo "Restoring uploads from $(FILE)..."
+	@tar xzf $(FILE) -C backend/ && echo "Uploads restored."
+
+# List all available backups
+backup-list:
+	@echo "=== Database Backups ==="
+	@ls -lh backups/db-*.sql 2>/dev/null || echo "  None"
+	@echo ""
+	@echo "=== Upload Backups ==="
+	@ls -lh backups/uploads-*.tar.gz 2>/dev/null || echo "  None"
 
 # Include .env if it exists
 -include .env
