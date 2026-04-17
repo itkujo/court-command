@@ -22,9 +22,9 @@ export function PublicHero() {
         Organize tournaments, manage leagues, and broadcast live scores — all in
         one platform.
       </p>
-      <div className="h-12">
+      <div className="min-h-12 flex items-center justify-center">
         {isLoading ? (
-          <div className="h-10 w-36 mx-auto rounded-lg bg-(--color-bg-hover) animate-pulse" />
+          <div className="h-10 w-36 rounded-lg bg-(--color-bg-hover) animate-pulse" />
         ) : isAuthenticated ? (
           <Button
             size="lg"
@@ -35,9 +35,10 @@ export function PublicHero() {
         ) : (
           <Button
             size="lg"
+            variant="primary"
             onClick={() => navigate({ to: '/login', search: { redirect: '/' } })}
           >
-            Sign In
+            Sign In to Get Started
           </Button>
         )}
       </div>
