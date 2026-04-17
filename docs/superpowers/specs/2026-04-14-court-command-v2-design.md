@@ -1416,6 +1416,20 @@ GitHub Actions:
 - **Anonymous users** see reduced "Browse" nav: Home, Leagues, Tournaments, Venues (linking to /public/* routes)
 - **Public layout** renders sidebar immediately during auth loading (no flash)
 
+### Google Places Address Standardization (Added Post-Phase 7)
+- **AddressInput component** (`frontend/src/components/AddressInput.tsx`) — shared address input with Google Places Autocomplete integration
+- **Google Places API (New)** + **Maps JavaScript API** used for address auto-complete
+- API key configured via `VITE_GOOGLE_MAPS_API_KEY` environment variable
+- **Auto-fill behavior**: user starts typing street address → Google suggests matches → selecting a suggestion auto-fills all fields (street, city, state, country, postal code, lat/lng)
+- **Fallback**: if Google API unavailable, falls back to manual text inputs with US state dropdown
+- **`compact` prop** hides street address + postal code for entities needing only city/state/country
+- **Entities with full address support**: Venues (all 8 fields), Organizations (migration 00033), Leagues (migration 00033), Players/Users (migration 00033, private)
+- **All address fields**: address_line_1, address_line_2, city, state_province, country, postal_code, latitude (DOUBLE PRECISION), longitude (DOUBLE PRECISION)
+- **Backend handlers updated**: org Create/Update, league Create/Update, player UpdateProfile — all accept and pass the 5 new fields (postal_code, address_line_1, address_line_2, latitude, longitude)
+- **Forms using AddressInput**: VenueForm, OrgForm, LeagueCreate
+- **PlayerForm**: still a stub; backend ready, form needs building
+- Tournaments inherit venue address (no separate address fields)
+
 ---
 
 ## 30. Competitive Differentiation
@@ -1434,3 +1448,4 @@ GitHub Actions:
 12. **Community theme presets** — popular palettes (Catppuccin, Dracula, Nord, etc.) ship out of the box for app UI and overlay color customization
 13. **Multi-manager venues** — venue_managers RBAC allows multiple operators per venue with admin/manager roles, unlike competitors with single-owner models
 14. **Operator hub** — dedicated /manage page shows all assets a user controls (venues, tournaments, leagues, orgs) in one view
+15. **Google Places address standardization** — all entities use the same AddressInput with autocomplete, structured address components, and lat/lng for future proximity search
