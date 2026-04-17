@@ -115,7 +115,8 @@ func (h *PublicHandler) ListTournaments(w http.ResponseWriter, r *http.Request) 
 		tournaments = []generated.Tournament{}
 	}
 
-	Success(w, tournaments)
+	total, _ := h.queries.CountTournaments(r.Context())
+	Paginated(w, tournaments, total, int(limit), int(offset))
 }
 
 // GetTournamentBySlug handles GET /api/v1/public/tournaments/{slug}
@@ -154,7 +155,8 @@ func (h *PublicHandler) ListLeagues(w http.ResponseWriter, r *http.Request) {
 		leagues = []generated.League{}
 	}
 
-	Success(w, leagues)
+	total, _ := h.queries.CountLeagues(r.Context())
+	Paginated(w, leagues, total, int(limit), int(offset))
 }
 
 // GetLeagueBySlug handles GET /api/v1/public/leagues/{slug}
@@ -195,7 +197,8 @@ func (h *PublicHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 		venues = []generated.Venue{}
 	}
 
-	Success(w, venues)
+	total, _ := h.queries.CountVenues(r.Context(), &published)
+	Paginated(w, venues, total, int(limit), int(offset))
 }
 
 // GetVenueBySlug handles GET /api/v1/public/venues/{slug}
