@@ -1416,6 +1416,19 @@ GitHub Actions:
 - **Anonymous users** see reduced "Browse" nav: Home, Leagues, Tournaments, Venues (linking to /public/* routes)
 - **Public layout** renders sidebar immediately during auth loading (no flash)
 
+### Admin User Impersonation (Added Post-Phase 7)
+- **"View as User"** button on admin UserDetail page — allows Platform Admins to see Court Command exactly as another user sees it
+- **Backend**: Extended `session.Data` with `ImpersonatorID`, `ImpersonatorPublicID`, `ImpersonatorToken` fields
+- **`POST /api/v1/admin/impersonate/{userID}`** — creates a temporary impersonation session (4-hour TTL) as the target user, storing the admin's original session token for restoration
+- **`POST /api/v1/admin/stop-impersonation`** — deletes the impersonation session and restores the admin's original session cookie
+- **`GET /api/v1/auth/me`** — now includes `impersonation: { active: true, impersonator_id: "CC-XXXXX" }` when session is impersonated
+- **Safety**: prevents nested impersonation (must stop first), prevents self-impersonation, 4-hour TTL vs 30-day normal sessions
+- **Audit trail**: activity log records `start_impersonation` and `stop_impersonation` events with target user details
+- **Frontend**: `ImpersonationBanner` component — fixed amber banner at top of screen showing "Viewing as [Name] (CC-XXXXX) - Role: [role]" with "Stop Impersonating" button
+- Banner appears in both authenticated and public layouts
+- `useAuth()` returns `isImpersonating` flag for conditional rendering
+- Stop impersonation triggers full page reload to reset all cached state
+
 ### Google Places Address Standardization (Added Post-Phase 7)
 - **AddressInput component** (`frontend/src/components/AddressInput.tsx`) — shared address input with Google Places Autocomplete integration
 - **Google Places API (New)** + **Maps JavaScript API** used for address auto-complete
@@ -1449,3 +1462,4 @@ GitHub Actions:
 13. **Multi-manager venues** — venue_managers RBAC allows multiple operators per venue with admin/manager roles, unlike competitors with single-owner models
 14. **Operator hub** — dedicated /manage page shows all assets a user controls (venues, tournaments, leagues, orgs) in one view
 15. **Google Places address standardization** — all entities use the same AddressInput with autocomplete, structured address components, and lat/lng for future proximity search
+16. **Admin user impersonation** — platform admins can "view as" any user for troubleshooting and support, with full audit trail and safety guardrails
