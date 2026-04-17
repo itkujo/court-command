@@ -59,11 +59,40 @@ const adminNavGroup: NavGroup = {
   ],
 }
 
+// Roles that can see Scoring nav
+const SCORING_ROLES = new Set([
+  'platform_admin', 'tournament_director', 'head_referee', 'referee', 'scorekeeper',
+])
+
+// Roles that can see Broadcast nav
+const BROADCAST_ROLES = new Set([
+  'platform_admin', 'tournament_director', 'broadcast_operator',
+])
+
 function getAuthNavGroups(role?: string): NavGroup[] {
-  if (role === 'platform_admin') {
-    return [...baseAuthNavGroups, adminNavGroup]
+  const groups: NavGroup[] = []
+
+  // Core nav (Home, Dashboard, My Assets) — all authenticated users
+  groups.push(baseAuthNavGroups[0]) // Home/Dashboard/My Assets
+  groups.push(baseAuthNavGroups[1]) // Events (Leagues, Tournaments)
+  groups.push(baseAuthNavGroups[2]) // Manage (Venues, Players, Teams, Orgs)
+
+  // Scoring — only scoring-eligible roles
+  if (role && SCORING_ROLES.has(role)) {
+    groups.push(baseAuthNavGroups[3]) // Scoring
   }
-  return baseAuthNavGroups
+
+  // Broadcast — only broadcast-eligible roles
+  if (role && BROADCAST_ROLES.has(role)) {
+    groups.push(baseAuthNavGroups[4]) // Broadcast
+  }
+
+  // Admin — platform_admin only
+  if (role === 'platform_admin') {
+    groups.push(adminNavGroup)
+  }
+
+  return groups
 }
 
 // Reduced nav for logged-out users
