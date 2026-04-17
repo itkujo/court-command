@@ -6,7 +6,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { Avatar } from './Avatar'
 import {
   LayoutDashboard, Trophy, Medal, MapPin, Users, UsersRound, Building2, Tv, Menu, ChevronLeft, LogOut,
-  Gavel, ClipboardList, Zap, Search, LogIn,
+  Gavel, ClipboardList, Zap, Search, LogIn, Shield,
 } from 'lucide-react'
 import { useSearchModal } from '../features/search/SearchContext'
 
@@ -15,6 +15,7 @@ interface SidebarUser {
   last_name: string
   public_id: string
   display_name?: string | null
+  role?: string
 }
 
 interface SidebarProps {
@@ -28,7 +29,7 @@ interface NavItem { label: string; icon: typeof LayoutDashboard; path: string }
 interface NavGroup { label?: string; items: NavItem[] }
 
 // Full nav for authenticated users
-const authNavGroups: NavGroup[] = [
+const baseAuthNavGroups: NavGroup[] = [
   { items: [{ label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' }] },
   { label: 'Events', items: [
     { label: 'Tournaments', icon: Trophy, path: '/tournaments' },
@@ -48,6 +49,19 @@ const authNavGroups: NavGroup[] = [
   { label: 'Broadcast', items: [{ label: 'Overlay', icon: Tv, path: '/overlay' }] },
 ]
 
+const adminNavGroup: NavGroup = {
+  label: 'Admin', items: [
+    { label: 'Admin', icon: Shield, path: '/admin' },
+  ],
+}
+
+function getAuthNavGroups(role?: string): NavGroup[] {
+  if (role === 'platform_admin') {
+    return [...baseAuthNavGroups, adminNavGroup]
+  }
+  return baseAuthNavGroups
+}
+
 // Reduced nav for logged-out users
 const publicNavGroups: NavGroup[] = [
   { label: 'Browse', items: [
@@ -62,7 +76,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
   const matchRoute = useMatchRoute()
   const location = useLocation()
   const isAuthenticated = !!user
-  const navGroups = isAuthenticated ? authNavGroups : publicNavGroups
+  const navGroups = isAuthenticated ? getAuthNavGroups(user?.role) : publicNavGroups
 
   const [expanded, setExpanded] = useState(() => {
     if (typeof window === 'undefined') return false
