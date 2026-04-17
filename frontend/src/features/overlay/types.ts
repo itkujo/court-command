@@ -71,6 +71,43 @@ export interface NextMatchData {
   round_label: string
 }
 
+export interface BracketMatch {
+  match_number: number
+  team_1_name: string
+  team_2_name: string
+  team_1_score: number
+  team_2_score: number
+  /** 0 = not decided, 1 or 2 */
+  winner: 0 | 1 | 2
+  status: string
+}
+
+export interface BracketRound {
+  round_num: number
+  round_name: string
+  matches: BracketMatch[]
+}
+
+export interface BracketData {
+  division_name: string
+  bracket_format: string
+  rounds: BracketRound[]
+}
+
+export interface PoolTeamEntry {
+  rank: number
+  team_name: string
+  wins: number
+  losses: number
+  point_differential: number
+}
+
+export interface PoolData {
+  division_name: string
+  pool_name: string
+  standings: PoolTeamEntry[]
+}
+
 export interface OverlayData {
   match_status: MatchStatus | string
   team_1: OverlayTeamData
@@ -97,6 +134,10 @@ export interface OverlayData {
   /** From court queue; omitempty on the wire. */
   next_match?: NextMatchData | null
   court_name: string
+  /** Division bracket snapshot; omitempty on the wire. */
+  bracket?: BracketData | null
+  /** Pool standings snapshot; omitempty on the wire. */
+  pool?: PoolData | null
 }
 
 // ---------------------------------------------------------------------------

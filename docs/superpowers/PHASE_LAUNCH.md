@@ -34,11 +34,11 @@ Read this first, then the linked spec and plans for the phase being executed.
 | Backend 1–8 | COMPLETE | `plans/2026-04-14-phase-{1..8}-*.md` |
 | Frontend Phase 1 (Foundation) | COMPLETE | `specs/2026-04-15-frontend-phase-1-design.md`, `plans/2026-04-15-frontend-phase-1.md` |
 | Frontend Phase 2 (Tournaments) | COMPLETE | `specs/2026-04-15-frontend-phase-2-design.md` |
-| Frontend Phase 3 (Scoring) | COMPLETE with deferred defects | `specs/2026-04-15-frontend-phase-3-design.md`, `plans/2026-04-15-frontend-phase-3{a..e}-*.md`, `lessons/2026-04-16-phase-3-review-defects.md` |
-| **Frontend Phase 4 (Broadcast Overlay)** | **READY — next up** | `specs/2026-04-16-frontend-phase-4-design.md`, `plans/2026-04-16-frontend-phase-4{a..e}-*.md` |
-| Frontend Phase 5 (Public Directory + Player Dashboard) | not started | spec + plans TBD |
-| Frontend Phase 6 (Admin) | not started | spec + plans TBD |
-| Frontend Phase 7 (Polish + PWA + a11y) | not started | spec + plans TBD |
+| Frontend Phase 3 (Scoring) | COMPLETE | `specs/2026-04-15-frontend-phase-3-design.md`, `plans/2026-04-15-frontend-phase-3{a..e}-*.md`, `lessons/2026-04-16-phase-3-review-defects.md` |
+| Frontend Phase 4 (Broadcast Overlay) | COMPLETE | `specs/2026-04-16-frontend-phase-4-design.md`, `plans/2026-04-16-frontend-phase-4{a..e}-*.md` |
+| Frontend Phase 5 (Public Directory + Player Dashboard) | COMPLETE | `specs/2026-04-16-frontend-phase-5-design.md` |
+| Frontend Phase 6 (Admin) | COMPLETE | `specs/2026-04-16-frontend-phase-6-design.md` |
+| Frontend Phase 7 (Polish + PWA + a11y) | **COMPLETE — FINAL PHASE** | Accessibility audit+fixes, performance+PWA, D1 bracket/pool data |
 
 ---
 

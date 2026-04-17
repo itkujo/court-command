@@ -174,6 +174,8 @@ type OverlayData struct {
 	SeriesScore        *SeriesScoreData `json:"series_score,omitempty"` // Only set for series matches
 	NextMatch          *NextMatchData   `json:"next_match,omitempty"`   // From court queue
 	CourtName          string           `json:"court_name"`
+	Bracket            *BracketData     `json:"bracket,omitempty"` // Division bracket snapshot
+	Pool               *PoolData        `json:"pool,omitempty"`    // Pool standings snapshot
 }
 
 // OverlayTeamData represents one team's data for overlay rendering.
@@ -221,6 +223,47 @@ type NextMatchData struct {
 	Team2Name    string `json:"team_2_name"`
 	DivisionName string `json:"division_name"`
 	RoundLabel   string `json:"round_label"`
+}
+
+// BracketData represents a division bracket for overlay rendering.
+type BracketData struct {
+	DivisionName  string         `json:"division_name"`
+	BracketFormat string         `json:"bracket_format"` // single_elimination, double_elimination, etc.
+	Rounds        []BracketRound `json:"rounds"`
+}
+
+// BracketRound groups matches into a named round.
+type BracketRound struct {
+	RoundNum  int            `json:"round_num"`
+	RoundName string         `json:"round_name"`
+	Matches   []BracketMatch `json:"matches"`
+}
+
+// BracketMatch represents a single match slot in the bracket.
+type BracketMatch struct {
+	MatchNumber int    `json:"match_number"`
+	Team1Name   string `json:"team_1_name"`
+	Team2Name   string `json:"team_2_name"`
+	Team1Score  int    `json:"team_1_score"`
+	Team2Score  int    `json:"team_2_score"`
+	Winner      int    `json:"winner"` // 0 = not decided, 1, 2
+	Status      string `json:"status"` // scheduled, in_progress, completed
+}
+
+// PoolData represents pool-play standings for overlay rendering.
+type PoolData struct {
+	DivisionName string          `json:"division_name"`
+	PoolName     string          `json:"pool_name"`
+	Standings    []PoolTeamEntry `json:"standings"`
+}
+
+// PoolTeamEntry is one team's standings row in a pool.
+type PoolTeamEntry struct {
+	Rank              int    `json:"rank"`
+	TeamName          string `json:"team_name"`
+	Wins              int    `json:"wins"`
+	Losses            int    `json:"losses"`
+	PointDifferential int    `json:"point_differential"`
 }
 
 // DemoData returns a hardcoded sample OverlayData for preview rendering
@@ -283,6 +326,47 @@ func DemoData() OverlayData {
 			Team2Name:    "Lob City",
 			DivisionName: "Open Doubles",
 			RoundLabel:   "Final",
+		},
+		Bracket: &BracketData{
+			DivisionName:  "Open Doubles",
+			BracketFormat: "single_elimination",
+			Rounds: []BracketRound{
+				{
+					RoundNum:  1,
+					RoundName: "Quarterfinals",
+					Matches: []BracketMatch{
+						{MatchNumber: 1, Team1Name: "FIRE", Team2Name: "THDR", Team1Score: 11, Team2Score: 9, Winner: 1, Status: "completed"},
+						{MatchNumber: 2, Team1Name: "DINK", Team2Name: "SMSH", Team1Score: 11, Team2Score: 7, Winner: 1, Status: "completed"},
+						{MatchNumber: 3, Team1Name: "SPIN", Team2Name: "DROP", Team1Score: 8, Team2Score: 11, Winner: 2, Status: "completed"},
+						{MatchNumber: 4, Team1Name: "LOBZ", Team2Name: "ACES", Team1Score: 11, Team2Score: 5, Winner: 1, Status: "completed"},
+					},
+				},
+				{
+					RoundNum:  2,
+					RoundName: "Semifinals",
+					Matches: []BracketMatch{
+						{MatchNumber: 5, Team1Name: "FIRE", Team2Name: "DINK", Team1Score: 7, Team2Score: 5, Winner: 0, Status: "in_progress"},
+						{MatchNumber: 6, Team1Name: "DROP", Team2Name: "LOBZ", Team1Score: 0, Team2Score: 0, Winner: 0, Status: "scheduled"},
+					},
+				},
+				{
+					RoundNum:  3,
+					RoundName: "Final",
+					Matches: []BracketMatch{
+						{MatchNumber: 7, Team1Name: "TBD", Team2Name: "TBD", Team1Score: 0, Team2Score: 0, Winner: 0, Status: "scheduled"},
+					},
+				},
+			},
+		},
+		Pool: &PoolData{
+			DivisionName: "Open Doubles",
+			PoolName:     "Pool A",
+			Standings: []PoolTeamEntry{
+				{Rank: 1, TeamName: "Fire Aces", Wins: 3, Losses: 0, PointDifferential: 18},
+				{Rank: 2, TeamName: "Dink Dynasty", Wins: 2, Losses: 1, PointDifferential: 9},
+				{Rank: 3, TeamName: "Thunder Smash", Wins: 1, Losses: 2, PointDifferential: -4},
+				{Rank: 4, TeamName: "Lob City", Wins: 0, Losses: 3, PointDifferential: -23},
+			},
 		},
 	}
 }

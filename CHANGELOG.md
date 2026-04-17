@@ -376,6 +376,48 @@ Platform admin surface behind role-gated `/admin/*` routes. All pages require `p
 
 Commits: `681518f`..`87a7c8c` (11 commits). 12 new files, 3 modified. Zero type errors, zero spec deviations.
 
+### Frontend Phase 7: Polish, PWA, Accessibility
+
+**Phase 7A — Accessibility Audit + Fixes**
+
+Comprehensive accessibility audit across all frontend components and pages, with fixes for WCAG 2.2 AA compliance.
+
+- Clickable non-button elements fixed: `Card.tsx`, `Table.tsx`, `ImageUpload.tsx`, `ActivityLog.tsx` — added `role="button"`, `tabIndex={0}`, `onKeyDown` (Enter/Space) handlers
+- Modal focus management: `aria-labelledby` with `useId()`, focus return to trigger element on close via `triggerRef`
+- Form label association: `aria-label` on `SearchInput`, `SearchModal`, `VenuePicker`, `SponsorEditor` (6 inputs/selects); `htmlFor`/`id` pair on `ApiKeyManager`
+- Error announcements: `role="alert"` added to error messages in 7 files (`ImageUpload`, `ThemeTab`, `RefMatchConsole`, `QuickMatchList`, `PublicLanding`, `MatchDetail`, `PlayerDashboard`)
+- Image alt text: meaningful `alt` on `TVKioskBracket` tournament logo, fallback `alt="Sponsor logo"` on `SponsorBug`, `role="img"` on `Avatar` fallback div
+- Color-only indicators: `StatusDot` in `TVKioskBracket` gained `role="img"` + `aria-label` for all 4 states; serving indicator in `CourtMonitorCard` gained `sr-only` text
+- Color contrast: `--color-text-muted` adjusted from `#94a3b8` (~2.9:1) to `#6b7a8d` (~4.5:1) in light mode
+- Landmarks: `Sidebar` `<nav>` elements gained `aria-label="Main navigation"`; 404 page uses `<main>` instead of `<div>`
+- Skeleton a11y: `aria-hidden="true"` on base `Skeleton`, `role="status"` + `aria-busy="true"` + `sr-only` loading text on `SkeletonRow`/`SkeletonTable`
+
+**Phase 7B — Performance + PWA**
+
+Performance optimizations and Progressive Web App support.
+
+- Bundle analysis: main bundle 251.15 kB / 76.50 kB gzip (under 250 kB gzip target)
+- Route-level code splitting via TanStack Router `autoCodeSplitting: true` (already configured)
+- Image optimization: `decoding="async"` added to all 11 `<img>` tags; above-the-fold logos kept eager
+- `React.memo` on 7 leaf components: `InfoRow`, `Badge`, `StatusBadge`, `Avatar`, `Skeleton`, `SkeletonRow`, `SkeletonTable`
+- Query cache tuning: explicit `staleTime` on 41 queries (0 for live/WebSocket, 5min for lists, 2min for details)
+- PWA manifest (`manifest.json`) with standalone display, theme color, SVG icon
+- Service Worker via `vite-plugin-pwa`: network-first for API, cache-first for static assets and uploads
+- Offline banner (`OfflineBanner`) with `WifiOff` icon and `role="alert"`
+- Update prompt (`UpdatePrompt`) with "Update now" / "Later" controls (checks every 60 min)
+- Install prompt (`InstallBanner`) capturing `beforeinstallprompt` for Add-to-Home-Screen
+
+**Phase 7C — D1 Bracket/Pool Data + Integration**
+
+Backend bracket and pool data resolution for overlay rendering, completing the D1 deferral from Phase 4B.
+
+- Backend: `BracketData`, `BracketRound`, `BracketMatch`, `PoolData`, `PoolTeamEntry` structs in `overlay/contract.go`
+- Backend: `resolveBracket` + `resolvePool` in `overlay/resolver.go` — queries division matches/standings, resolves team names, groups by round
+- Backend: demo bracket (3 rounds, 7 matches) + demo pool (4 teams) in `DemoData()`
+- Frontend: matching TypeScript interfaces in `overlay/types.ts`
+- Frontend: `BracketSnapshot` component — horizontal round columns with match cards, winner highlighting, accent borders on in-progress
+- Frontend: `PoolStandings` component — semantic HTML table with rank/team/W/L/+- columns, differential coloring
+
 ### Known Deferred Defects (Phase 3)
 
 Resolved in Phase 4A Task 1 remediation batch (commit `6848d23`). Items that remain deferred to later phases:
