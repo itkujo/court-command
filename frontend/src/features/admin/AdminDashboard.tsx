@@ -1,0 +1,134 @@
+import {
+  Users,
+  Swords,
+  Trophy,
+  Medal,
+  MapPin,
+  AlertCircle,
+  LayoutGrid,
+  Zap,
+} from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { Card } from '../../components/Card'
+import { Skeleton } from '../../components/Skeleton'
+import { useAdminStats } from './hooks'
+import type { AdminStats } from './types'
+
+interface StatCardProps {
+  label: string
+  value: number
+  icon: typeof Users
+  highlight?: boolean
+  to?: string
+}
+
+function StatCard({ label, value, icon: Icon, highlight, to }: StatCardProps) {
+  const content = (
+    <Card
+      className={
+        highlight
+          ? 'border-amber-500/50 bg-amber-500/5'
+          : undefined
+      }
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-(--color-bg-primary)">
+          <Icon className="h-5 w-5 text-(--color-text-muted)" />
+        </div>
+        <div>
+          <p className="text-sm text-(--color-text-muted)">{label}</p>
+          <p className="text-2xl font-semibold text-(--color-text-primary)">
+            {value.toLocaleString()}
+          </p>
+        </div>
+      </div>
+    </Card>
+  )
+
+  if (to) {
+    return (
+      <Link to={to} className="block">
+        {content}
+      </Link>
+    )
+  }
+
+  return content
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function getStatCards(stats: AdminStats) {
+  return [
+    { label: 'Total Users', value: stats.total_users, icon: Users, to: '/admin/users' },
+    { label: 'Total Matches', value: stats.total_matches, icon: Swords },
+    { label: 'Active Tournaments', value: stats.total_tournaments, icon: Trophy },
+    { label: 'Total Leagues', value: stats.total_leagues, icon: Medal },
+    { label: 'Total Venues', value: stats.total_venues, icon: MapPin },
+    {
+      label: 'Pending Venues',
+      value: stats.pending_venues,
+      icon: AlertCircle,
+      highlight: stats.pending_venues > 0,
+      to: '/admin/venues',
+    },
+    { label: 'Total Courts', value: stats.total_courts, icon: LayoutGrid },
+    { label: 'Active Matches', value: stats.active_matches, icon: Zap },
+  ]
+}
+
+export function AdminDashboard() {
+  const { data: stats, isLoading, error, refetch } = useAdminStats()
+
+  if (isLoading) return <LoadingSkeleton />
+
+  if (error || !stats) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-(--color-text-primary)">
+          Admin Dashboard
+        </h1>
+        <Card>
+          <div className="flex flex-col items-center gap-3 py-8">
+            <AlertCircle className="h-8 w-8 text-(--color-error)" />
+            <p className="text-(--color-text-secondary)">
+              Failed to load admin stats
+            </p>
+            <button
+              onClick={() => refetch()}
+              className="text-sm font-medium text-(--color-accent) hover:underline"
+            >
+              Retry
+            </button>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  const cards = getStatCards(stats)
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-(--color-text-primary)">
+        Admin Dashboard
+      </h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {cards.map((card) => (
+          <StatCard key={card.label} {...card} />
+        ))}
+      </div>
+    </div>
+  )
+}
