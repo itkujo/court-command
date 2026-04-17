@@ -159,20 +159,35 @@ func (h *AdminHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
 	Paginated(w, result, total, int(limit), int(offset))
 }
 
-// GetUser handles GET /api/v1/admin/users/{userID}
-func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	userID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
-	if err != nil {
-		BadRequest(w, "invalid user ID")
-		return
+// resolveUserParam resolves a URL parameter to a user — accepts numeric ID or public_id (e.g. "CC-10295").
+func (h *AdminHandler) resolveUserParam(w http.ResponseWriter, r *http.Request) (generated.User, bool) {
+	param := chi.URLParam(r, "userID")
+
+	// Try numeric ID first
+	if userID, err := strconv.ParseInt(param, 10, 64); err == nil {
+		user, err := h.queries.GetUserByID(r.Context(), userID)
+		if err != nil {
+			NotFound(w, "user not found")
+			return generated.User{}, false
+		}
+		return user, true
 	}
 
-	user, err := h.queries.GetUserByID(r.Context(), userID)
+	// Fall back to public_id lookup
+	user, err := h.queries.GetUserByPublicID(r.Context(), param)
 	if err != nil {
 		NotFound(w, "user not found")
+		return generated.User{}, false
+	}
+	return user, true
+}
+
+// GetUser handles GET /api/v1/admin/users/{userID}
+func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
+	user, ok := h.resolveUserParam(w, r)
+	if !ok {
 		return
 	}
-
 	Success(w, toAdminUserResponse(user))
 }
 
@@ -184,9 +199,8 @@ func (h *AdminHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
-	if err != nil {
-		BadRequest(w, "invalid user ID")
+	target, ok := h.resolveUserParam(w, r)
+	if !ok {
 		return
 	}
 
@@ -198,14 +212,19 @@ func (h *AdminHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validRoles := map[string]bool{"player": true, "platform_admin": true}
+	validRoles := map[string]bool{
+		"player": true, "platform_admin": true, "tournament_director": true,
+		"head_referee": true, "referee": true, "scorekeeper": true,
+		"broadcast_operator": true, "league_admin": true, "org_admin": true,
+		"team_coach": true, "api_readonly": true,
+	}
 	if !validRoles[body.Role] {
-		BadRequest(w, "invalid role; must be 'player' or 'platform_admin'")
+		BadRequest(w, "invalid role")
 		return
 	}
 
 	user, err := h.queries.UpdateUserRole(r.Context(), generated.UpdateUserRoleParams{
-		ID:   userID,
+		ID:   target.ID,
 		Role: body.Role,
 	})
 	if err != nil {
@@ -213,7 +232,7 @@ func (h *AdminHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_user_role", "user", &userID, map[string]string{"new_role": body.Role}, r.RemoteAddr)
+	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_user_role", "user", &target.ID, map[string]string{"new_role": body.Role}, r.RemoteAddr)
 
 	Success(w, toAdminUserResponse(user))
 }
@@ -226,9 +245,8 @@ func (h *AdminHandler) UpdateUserStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	userID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
-	if err != nil {
-		BadRequest(w, "invalid user ID")
+	target, ok := h.resolveUserParam(w, r)
+	if !ok {
 		return
 	}
 
@@ -247,7 +265,7 @@ func (h *AdminHandler) UpdateUserStatus(w http.ResponseWriter, r *http.Request) 
 	}
 
 	user, err := h.queries.UpdateUserStatus(r.Context(), generated.UpdateUserStatusParams{
-		ID:     userID,
+		ID:     target.ID,
 		Status: body.Status,
 	})
 	if err != nil {
@@ -257,10 +275,10 @@ func (h *AdminHandler) UpdateUserStatus(w http.ResponseWriter, r *http.Request) 
 
 	// If suspending or banning, revoke all sessions
 	if body.Status == "suspended" || body.Status == "banned" {
-		_ = h.sessionStore.DeleteAllForUser(r.Context(), userID)
+		_ = h.sessionStore.DeleteAllForUser(r.Context(), target.ID)
 	}
 
-	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_user_status", "user", &userID, map[string]string{"new_status": body.Status}, r.RemoteAddr)
+	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_user_status", "user", &target.ID, map[string]string{"new_status": body.Status}, r.RemoteAddr)
 
 	Success(w, toAdminUserResponse(user))
 }
@@ -594,23 +612,14 @@ func (h *AdminHandler) StartImpersonation(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	userIDStr := chi.URLParam(r, "userID")
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, "INVALID_ID", "invalid user ID")
+	targetUser, ok := h.resolveUserParam(w, r)
+	if !ok {
 		return
 	}
 
 	// Don't impersonate yourself
-	if userID == sess.UserID {
+	if targetUser.ID == sess.UserID {
 		WriteError(w, http.StatusBadRequest, "SELF_IMPERSONATION", "cannot impersonate yourself")
-		return
-	}
-
-	// Look up the target user
-	targetUser, err := h.queries.GetUserByID(r.Context(), userID)
-	if err != nil {
-		WriteError(w, http.StatusNotFound, "USER_NOT_FOUND", "user not found")
 		return
 	}
 
@@ -643,7 +652,7 @@ func (h *AdminHandler) StartImpersonation(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "start_impersonation", "user", &userID, map[string]interface{}{
+	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "start_impersonation", "user", &targetUser.ID, map[string]interface{}{
 		"target_user_public_id": targetUser.PublicID,
 	}, r.RemoteAddr)
 
