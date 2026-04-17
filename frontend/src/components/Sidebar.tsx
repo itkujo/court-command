@@ -35,8 +35,8 @@ const baseAuthNavGroups: NavGroup[] = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   ]},
   { label: 'Events', items: [
-    { label: 'Tournaments', icon: Trophy, path: '/tournaments' },
     { label: 'Leagues', icon: Medal, path: '/leagues' },
+    { label: 'Tournaments', icon: Trophy, path: '/tournaments' },
   ]},
   { label: 'Manage', items: [
     { label: 'Venues & Courts', icon: MapPin, path: '/venues' },
@@ -69,8 +69,8 @@ function getAuthNavGroups(role?: string): NavGroup[] {
 const publicNavGroups: NavGroup[] = [
   { items: [{ label: 'Home', icon: Home, path: '/' }] },
   { label: 'Browse', items: [
-    { label: 'Tournaments', icon: Trophy, path: '/public/tournaments' },
     { label: 'Leagues', icon: Medal, path: '/public/leagues' },
+    { label: 'Tournaments', icon: Trophy, path: '/public/tournaments' },
     { label: 'Venues', icon: MapPin, path: '/public/venues' },
   ]},
 ]
