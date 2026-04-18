@@ -33,12 +33,16 @@ export interface Organization {
 }
 
 export interface OrgMember {
-  user_id: number
+  player_id: number
+  public_id: string
   first_name: string
   last_name: string
-  email: string
+  display_name?: string
+  avatar_url?: string
+  email?: string
   role: string
   joined_at: string
+  status: string
 }
 
 export function useOrgSearch(query: string, limit: number, offset: number) {
@@ -146,6 +150,24 @@ export function useLeaveOrg(orgId: string) {
   })
 }
 
+export function useOrgBlockStatus(orgId: string) {
+  return useQuery<{ blocked: boolean }>({
+    queryKey: ['organizations', orgId, 'block-status'],
+    queryFn: () => apiGet<{ blocked: boolean }>(`/api/v1/organizations/${orgId}/block`),
+    enabled: !!orgId,
+    staleTime: 2 * 60 * 1000,
+  })
+}
+
+export function useMyOrgRole(orgId: string) {
+  return useQuery<{ role: string }>({
+    queryKey: ['organizations', orgId, 'my-role'],
+    queryFn: () => apiGet<{ role: string }>(`/api/v1/organizations/${orgId}/my-role`),
+    enabled: !!orgId,
+    staleTime: 2 * 60 * 1000,
+  })
+}
+
 export function useBlockOrg(orgId: string) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -165,3 +187,4 @@ export function useUnblockOrg(orgId: string) {
     },
   })
 }
+

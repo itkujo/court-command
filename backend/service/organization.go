@@ -405,6 +405,30 @@ func (s *OrganizationService) UnblockOrg(ctx context.Context, playerID, orgID in
 	})
 }
 
+// IsBlockedByUser checks if a player has blocked the given organization.
+func (s *OrganizationService) IsBlockedByUser(ctx context.Context, playerID, orgID int64) (bool, error) {
+	count, err := s.queries.IsOrgBlocked(ctx, generated.IsOrgBlockedParams{
+		PlayerID: playerID,
+		OrgID:    orgID,
+	})
+	if err != nil {
+		return false, fmt.Errorf("checking block status: %w", err)
+	}
+	return count > 0, nil
+}
+
+// GetMyRole returns the membership role of a player in an organization.
+func (s *OrganizationService) GetMyRole(ctx context.Context, orgID, playerID int64) (string, error) {
+	role, err := s.queries.GetMemberRole(ctx, generated.GetMemberRoleParams{
+		OrgID:    orgID,
+		PlayerID: playerID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("getting member role: %w", err)
+	}
+	return role, nil
+}
+
 // requireOrgAdmin checks if the requester is an admin of the org or a platform admin.
 func (s *OrganizationService) requireOrgAdmin(ctx context.Context, orgID, requesterID int64, requesterRole string) error {
 	if requesterRole == "platform_admin" {

@@ -45,8 +45,10 @@ func (h *OrgHandler) Routes() chi.Router {
 
 	// Player self-service
 	r.Post("/{orgID}/leave", h.LeaveSelf)
+	r.Get("/{orgID}/block", h.GetBlockStatus)
 	r.Post("/{orgID}/block", h.BlockOrg)
 	r.Delete("/{orgID}/block", h.UnblockOrg)
+	r.Get("/{orgID}/my-role", h.GetMyRole)
 
 	return r
 }
@@ -504,6 +506,53 @@ func (h *OrgHandler) UnblockOrg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	Success(w, map[string]string{"message": "organization unblocked"})
+}
+
+// GetBlockStatus checks if the current user has blocked an organization.
+func (h *OrgHandler) GetBlockStatus(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	orgID, err := strconv.ParseInt(chi.URLParam(r, "orgID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid organization ID")
+		return
+	}
+
+	blocked, err := h.orgService.IsBlockedByUser(r.Context(), sess.UserID, orgID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, map[string]bool{"blocked": blocked})
+}
+
+// GetMyRole returns the current user's membership role in an organization.
+func (h *OrgHandler) GetMyRole(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	orgID, err := strconv.ParseInt(chi.URLParam(r, "orgID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid organization ID")
+		return
+	}
+
+	role, err := h.orgService.GetMyRole(r.Context(), orgID, sess.UserID)
+	if err != nil {
+		// Not a member — return empty role, not an error
+		Success(w, map[string]string{"role": ""})
+		return
+	}
+
+	Success(w, map[string]string{"role": role})
 }
 
 // ListMyOrgs lists organizations the authenticated user is a member of.

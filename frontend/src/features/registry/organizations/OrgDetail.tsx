@@ -1,11 +1,15 @@
-import { useOrg } from './hooks'
+import { useState } from 'react'
+import { useOrg, useDeleteOrg, useBlockOrg, useUnblockOrg, useOrgBlockStatus, useMyOrgRole } from './hooks'
+import { useAuth } from '../../auth/hooks'
 import { MembersPanel } from './MembersPanel'
 import { InfoRow } from '../../../components/InfoRow'
 import { Skeleton } from '../../../components/Skeleton'
 import { EmptyState } from '../../../components/EmptyState'
 import { Button } from '../../../components/Button'
-import { ArrowLeft, Pencil } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { ConfirmDialog } from '../../../components/ConfirmDialog'
+import { useToast } from '../../../components/Toast'
+import { ArrowLeft, Pencil, Trash2, ShieldBan, ShieldCheck } from 'lucide-react'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { formatDate } from '../../../lib/formatters'
 import { AdSlot } from '../../../components/AdSlot'
 
@@ -15,6 +19,23 @@ interface OrgDetailProps {
 
 export function OrgDetail({ orgId }: OrgDetailProps) {
   const { data: org, isLoading, error } = useOrg(orgId)
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const navigate = useNavigate()
+  const deleteOrg = useDeleteOrg(orgId)
+  const blockOrg = useBlockOrg(orgId)
+  const unblockOrg = useUnblockOrg(orgId)
+  const { data: blockStatus } = useOrgBlockStatus(orgId)
+  const { data: myRoleData } = useMyOrgRole(orgId)
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false)
+
+  const isPlatformAdmin = user?.role === 'platform_admin'
+  const myRole = myRoleData?.role ?? ''
+  const isOrgAdmin = myRole === 'admin'
+  const canManage = isPlatformAdmin || isOrgAdmin
+  const isBlocked = blockStatus?.blocked ?? false
 
   if (isLoading) {
     return (
@@ -53,12 +74,45 @@ export function OrgDetail({ orgId }: OrgDetailProps) {
           <h1 className="text-2xl font-bold text-(--color-text-primary)">{org.name}</h1>
           <p className="text-sm text-(--color-text-secondary)">{org.slug}</p>
         </div>
-        <Link to="/organizations/$orgId/edit" params={{ orgId: String(org.id) }}>
-          <Button variant="secondary" size="sm">
-            <Pencil className="h-4 w-4 mr-1" />
-            Edit
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          {canManage && (
+            <Link to="/organizations/$orgId/edit" params={{ orgId: String(org.id) }}>
+              <Button variant="secondary" size="sm">
+                <Pencil className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+            </Link>
+          )}
+          {canManage && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+          )}
+          {!canManage && user && (
+            <Button
+              variant={isBlocked ? 'secondary' : 'danger'}
+              size="sm"
+              onClick={() => setShowBlockConfirm(true)}
+            >
+              {isBlocked ? (
+                <>
+                  <ShieldCheck className="h-4 w-4 mr-1" />
+                  Unblock
+                </>
+              ) : (
+                <>
+                  <ShieldBan className="h-4 w-4 mr-1" />
+                  Block
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -97,10 +151,62 @@ export function OrgDetail({ orgId }: OrgDetailProps) {
           </dl>
         </div>
 
-        <MembersPanel orgId={orgId} />
+        <MembersPanel orgId={orgId} canManage={canManage} />
       </div>
 
       <AdSlot size="medium-rectangle" slot="org-detail-bottom" className="mt-6" />
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={() => {
+          deleteOrg.mutate(undefined, {
+            onSuccess: () => {
+              toast('success', 'Organization deleted')
+              navigate({ to: '/organizations' })
+            },
+            onError: (err) => toast('error', (err as Error).message),
+          })
+        }}
+        title="Delete Organization"
+        message={`Are you sure you want to delete "${org.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+        loading={deleteOrg.isPending}
+      />
+
+      <ConfirmDialog
+        open={showBlockConfirm}
+        onClose={() => setShowBlockConfirm(false)}
+        onConfirm={() => {
+          if (isBlocked) {
+            unblockOrg.mutate(undefined, {
+              onSuccess: () => {
+                toast('success', 'Organization unblocked')
+                setShowBlockConfirm(false)
+              },
+              onError: (err) => toast('error', (err as Error).message),
+            })
+          } else {
+            blockOrg.mutate(undefined, {
+              onSuccess: () => {
+                toast('success', 'Organization blocked')
+                setShowBlockConfirm(false)
+              },
+              onError: (err) => toast('error', (err as Error).message),
+            })
+          }
+        }}
+        title={isBlocked ? 'Unblock Organization' : 'Block Organization'}
+        message={
+          isBlocked
+            ? `Unblock "${org.name}"? You will be able to receive invitations from them again.`
+            : `Block "${org.name}"? You will leave any membership and won't receive future invitations.`
+        }
+        confirmText={isBlocked ? 'Unblock' : 'Block'}
+        variant={isBlocked ? 'primary' : 'danger'}
+        loading={blockOrg.isPending || unblockOrg.isPending}
+      />
     </div>
   )
 }

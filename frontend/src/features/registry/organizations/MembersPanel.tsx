@@ -22,6 +22,7 @@ import { formatDate } from '../../../lib/formatters'
 
 interface MembersPanelProps {
   orgId: string
+  canManage?: boolean
 }
 
 const ROLE_VARIANTS: Record<string, 'success' | 'info' | 'warning' | 'default'> = {
@@ -30,7 +31,7 @@ const ROLE_VARIANTS: Record<string, 'success' | 'info' | 'warning' | 'default'> 
   member: 'default',
 }
 
-export function MembersPanel({ orgId }: MembersPanelProps) {
+export function MembersPanel({ orgId, canManage = false }: MembersPanelProps) {
   const { data: members, isLoading } = useOrgMembers(orgId)
   const addMember = useAddMember(orgId)
   const removeMember = useRemoveMember(orgId)
@@ -106,15 +107,16 @@ export function MembersPanel({ orgId }: MembersPanelProps) {
       render: (m: NonNullable<typeof members>[0]) => (
         <div className="flex items-center gap-2">
           <Badge variant={ROLE_VARIANTS[m.role] ?? 'default'}>{m.role}</Badge>
-          <Select
-            value={m.role}
-            onChange={(e) => handleRoleChange(m.user_id, e.target.value)}
-            className="w-24 text-xs !py-1"
-          >
-            <option value="owner">owner</option>
-            <option value="admin">admin</option>
-            <option value="member">member</option>
-          </Select>
+          {canManage && (
+            <Select
+              value={m.role}
+              onChange={(e) => handleRoleChange(m.player_id, e.target.value)}
+              className="w-24 text-xs !py-1"
+            >
+              <option value="admin">admin</option>
+              <option value="member">member</option>
+            </Select>
+          )}
         </div>
       ),
     },
@@ -126,33 +128,39 @@ export function MembersPanel({ orgId }: MembersPanelProps) {
       ),
       className: 'hidden lg:table-cell',
     },
-    {
-      key: 'actions',
-      header: '',
-      render: (m: NonNullable<typeof members>[0]) => (
-        <button
-          onClick={() =>
-            setRemoveTarget({
-              userId: m.user_id,
-              name: `${m.first_name} ${m.last_name}`,
-            })
-          }
-          className="text-(--color-text-secondary) hover:text-red-500 transition-colors p-1"
-          aria-label={`Remove ${m.first_name}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      ),
-    },
+    ...(canManage
+      ? [
+          {
+            key: 'actions',
+            header: '',
+            render: (m: NonNullable<typeof members>[0]) => (
+              <button
+                onClick={() =>
+                  setRemoveTarget({
+                    userId: m.player_id,
+                    name: `${m.first_name} ${m.last_name}`,
+                  })
+                }
+                className="text-(--color-text-secondary) hover:text-red-500 transition-colors p-1"
+                aria-label={`Remove ${m.first_name}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            ),
+          },
+        ]
+      : []),
   ]
 
   return (
     <div className="rounded-xl border border-(--color-border) bg-(--color-bg-secondary) p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-(--color-text-primary)">Members</h2>
-        <Button size="sm" variant="secondary" onClick={() => setIsAddOpen(true)}>
-          <Plus className="h-4 w-4" /> Add Member
-        </Button>
+        {canManage && (
+          <Button size="sm" variant="secondary" onClick={() => setIsAddOpen(true)}>
+            <Plus className="h-4 w-4" /> Add Member
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -164,7 +172,7 @@ export function MembersPanel({ orgId }: MembersPanelProps) {
           description="Add members to this organization."
         />
       ) : (
-        <Table columns={columns} data={members} keyExtractor={(m) => m.user_id} />
+        <Table columns={columns} data={members} keyExtractor={(m) => m.player_id} />
       )}
 
       <Modal open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add Member">
