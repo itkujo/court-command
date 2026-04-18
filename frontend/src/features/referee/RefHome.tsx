@@ -5,7 +5,12 @@ import { Search, MapPin } from 'lucide-react'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { Skeleton } from '../../components/Skeleton'
-import { useAllCourts } from '../scoring/hooks'
+import { useAuth } from '../../features/auth/hooks'
+import {
+  useAllCourts,
+  useCourtsForTournament,
+  useMyTournamentAssignment,
+} from '../scoring/hooks'
 import type { CourtSummary } from '../scoring/types'
 import { CourtGrid } from './CourtGrid'
 
@@ -33,12 +38,22 @@ function groupCourtsByVenue(courts: CourtSummary[]) {
 
 export function RefHome() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isStaff = user?.role === 'referee' || user?.role === 'scorekeeper'
+
   const courts = useAllCourts()
+  const assignment = useMyTournamentAssignment()
+  const tournamentCourts = useCourtsForTournament(
+    isStaff ? assignment.data?.tournament_id : undefined,
+  )
+
+  const activeCourts = isStaff && assignment.data ? tournamentCourts : courts
+
   const [jumpId, setJumpId] = useState('')
 
   const venueGroups = useMemo(
-    () => groupCourtsByVenue(courts.data ?? []),
-    [courts.data],
+    () => groupCourtsByVenue(activeCourts.data ?? []),
+    [activeCourts.data],
   )
 
   function handleJump(e: React.FormEvent<HTMLFormElement>) {
@@ -55,7 +70,7 @@ export function RefHome() {
     <div className="p-4 max-w-6xl mx-auto">
       <div className="flex items-center justify-between gap-4 mb-4">
         <h1 className="text-2xl font-bold text-(--color-text-primary)">
-          Referee Console
+          Referee Console{assignment.data ? ` — ${assignment.data.tournament_name}` : ''}
         </h1>
         <form
           onSubmit={handleJump}
@@ -78,13 +93,13 @@ export function RefHome() {
         Tap a court to view its matches. Active matches show a live score.
       </p>
 
-      {courts.isLoading ? (
+      {activeCourts.isLoading || (isStaff && assignment.isLoading) ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-28" />
           ))}
         </div>
-      ) : courts.isError ? (
+      ) : activeCourts.isError ? (
         <div className="text-center py-8 text-(--color-text-secondary)">
           Could not load courts. Use the Match public ID input above to open a
           specific match.
