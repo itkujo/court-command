@@ -622,6 +622,17 @@ RAISE NOTICE '  broadcast@courtcommand.com (broadcast_operator)';
 RAISE NOTICE '  daniel.f.velez@gmail.com (platform_admin) — password: PASSword123!';
 RAISE NOTICE '  alex.j@demo.com through olivia.s@demo.com (16 players)';
 RAISE NOTICE '';
+-- ==========================================
+-- 17. AD CONFIGS (RelentNet default ads)
+-- ==========================================
+INSERT INTO ad_configs (slot_name, ad_type, image_url, link_url, alt_text, is_active, sort_order, sizes, name, created_by_user_id)
+VALUES
+  ('all', 'image', '/ads/relentnet-banner.svg', 'https://relentnet.com', 'RelentNet - Empower Your Digital Presence', true, 1, ARRAY['leaderboard','responsive-banner'], 'RelentNet - Leaderboard', admin_id),
+  ('all', 'image', '/ads/relentnet-mobile.svg', 'https://relentnet.com', 'RelentNet - Empower Your Digital Presence', true, 1, ARRAY['mobile-banner'], 'RelentNet - Mobile', admin_id),
+  ('all', 'image', '/ads/relentnet-rectangle.svg', 'https://relentnet.com', 'RelentNet - Empower Your Digital Presence', true, 1, ARRAY['medium-rectangle'], 'RelentNet - Rectangle', admin_id);
+
+RAISE NOTICE '  3 ad configs (RelentNet)';
+
 RAISE NOTICE 'Entities created:';
 RAISE NOTICE '  24 users, 3 orgs, 8 teams, 2 venues, 8 courts';
 RAISE NOTICE '  2 leagues, 3 seasons, 2 division templates';
@@ -630,6 +641,6 @@ RAISE NOTICE '  12 registrations, 6 bracket matches + 2 quick matches';
 RAISE NOTICE '  18 match events, 2 match series, 4 standings entries';
 RAISE NOTICE '  2 overlay configs, 2 source profiles, 2 API keys';
 RAISE NOTICE '  8 activity logs, 5 announcements';
-RAISE NOTICE '  3 league registrations, 3 season confirmations';
+RAISE NOTICE '  3 league registrations, 3 season confirmations, 3 ads';
 
 END $$;
