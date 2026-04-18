@@ -22,20 +22,21 @@ type ActivityLog struct {
 }
 
 type AdConfig struct {
-	ID              int64       `json:"id"`
-	SlotName        string      `json:"slot_name"`
-	AdType          string      `json:"ad_type"`
-	ImageUrl        *string     `json:"image_url"`
-	LinkUrl         *string     `json:"link_url"`
-	AltText         *string     `json:"alt_text"`
-	EmbedCode       *string     `json:"embed_code"`
-	IsActive        bool        `json:"is_active"`
-	SortOrder       int32       `json:"sort_order"`
-	Sizes           []string    `json:"sizes"`
-	Name            string      `json:"name"`
-	CreatedByUserID pgtype.Int8 `json:"created_by_user_id"`
-	CreatedAt       time.Time   `json:"created_at"`
-	UpdatedAt       time.Time   `json:"updated_at"`
+	ID                 int64       `json:"id"`
+	SlotName           string      `json:"slot_name"`
+	AdType             string      `json:"ad_type"`
+	ImageUrl           *string     `json:"image_url"`
+	LinkUrl            *string     `json:"link_url"`
+	AltText            *string     `json:"alt_text"`
+	EmbedCode          *string     `json:"embed_code"`
+	IsActive           bool        `json:"is_active"`
+	SortOrder          int32       `json:"sort_order"`
+	Sizes              []string    `json:"sizes"`
+	Name               string      `json:"name"`
+	CreatedByUserID    pgtype.Int8 `json:"created_by_user_id"`
+	CreatedAt          time.Time   `json:"created_at"`
+	UpdatedAt          time.Time   `json:"updated_at"`
+	DisplayDurationSec int32       `json:"display_duration_sec"`
 }
 
 type Announcement struct {

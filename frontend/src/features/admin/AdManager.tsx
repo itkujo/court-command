@@ -295,6 +295,7 @@ function AdFormModal({ open, onClose, title, ad }: AdFormModalProps) {
   const [isActive, setIsActive] = useState(ad?.is_active ?? true)
   const [sortOrder, setSortOrder] = useState(String(ad?.sort_order ?? 0))
   const [selectedSizes, setSelectedSizes] = useState<string[]>(ad?.sizes ?? [])
+  const [displayDuration, setDisplayDuration] = useState(String(ad?.display_duration_sec ?? 8))
 
   function handleSizeToggle(size: string) {
     setSelectedSizes(prev =>
@@ -321,6 +322,7 @@ function AdFormModal({ open, onClose, title, ad }: AdFormModalProps) {
       is_active: isActive,
       sort_order: Number(sortOrder) || 0,
       sizes: selectedSizes,
+      display_duration_sec: Number(displayDuration) || 8,
     }
 
     try {
@@ -440,7 +442,7 @@ function AdFormModal({ open, onClose, title, ad }: AdFormModalProps) {
           </div>
         </FormField>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <FormField label="Slot Name">
             <Select value={slotName} onChange={e => setSlotName(e.target.value)}>
               <option value="all">All Slots</option>
@@ -456,6 +458,16 @@ function AdFormModal({ open, onClose, title, ad }: AdFormModalProps) {
               value={sortOrder}
               onChange={e => setSortOrder(e.target.value)}
               placeholder="0"
+            />
+          </FormField>
+          <FormField label="Display Time (sec)">
+            <Input
+              type="number"
+              value={displayDuration}
+              onChange={e => setDisplayDuration(e.target.value)}
+              placeholder="8"
+              min={1}
+              max={120}
             />
           </FormField>
         </div>

@@ -16,36 +16,38 @@ func NewAdService(queries *generated.Queries) *AdService {
 }
 
 type AdResponse struct {
-	ID        int64    `json:"id"`
-	SlotName  string   `json:"slot_name"`
-	AdType    string   `json:"ad_type"`
-	ImageURL  *string  `json:"image_url,omitempty"`
-	LinkURL   *string  `json:"link_url,omitempty"`
-	AltText   *string  `json:"alt_text,omitempty"`
-	EmbedCode *string  `json:"embed_code,omitempty"`
-	IsActive  bool     `json:"is_active"`
-	SortOrder int32    `json:"sort_order"`
-	Sizes     []string `json:"sizes"`
-	Name      string   `json:"name"`
-	CreatedAt string   `json:"created_at"`
-	UpdatedAt string   `json:"updated_at"`
+	ID                 int64    `json:"id"`
+	SlotName           string   `json:"slot_name"`
+	AdType             string   `json:"ad_type"`
+	ImageURL           *string  `json:"image_url,omitempty"`
+	LinkURL            *string  `json:"link_url,omitempty"`
+	AltText            *string  `json:"alt_text,omitempty"`
+	EmbedCode          *string  `json:"embed_code,omitempty"`
+	IsActive           bool     `json:"is_active"`
+	SortOrder          int32    `json:"sort_order"`
+	Sizes              []string `json:"sizes"`
+	Name               string   `json:"name"`
+	DisplayDurationSec int32    `json:"display_duration_sec"`
+	CreatedAt          string   `json:"created_at"`
+	UpdatedAt          string   `json:"updated_at"`
 }
 
 func toAdResponse(a generated.AdConfig) AdResponse {
 	return AdResponse{
-		ID:        a.ID,
-		SlotName:  a.SlotName,
-		AdType:    a.AdType,
-		ImageURL:  a.ImageUrl,
-		LinkURL:   a.LinkUrl,
-		AltText:   a.AltText,
-		EmbedCode: a.EmbedCode,
-		IsActive:  a.IsActive,
-		SortOrder: a.SortOrder,
-		Sizes:     a.Sizes,
-		Name:      a.Name,
-		CreatedAt: a.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: a.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:                 a.ID,
+		SlotName:           a.SlotName,
+		AdType:             a.AdType,
+		ImageURL:           a.ImageUrl,
+		LinkURL:            a.LinkUrl,
+		AltText:            a.AltText,
+		EmbedCode:          a.EmbedCode,
+		IsActive:           a.IsActive,
+		SortOrder:          a.SortOrder,
+		Sizes:              a.Sizes,
+		Name:               a.Name,
+		DisplayDurationSec: a.DisplayDurationSec,
+		CreatedAt:          a.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:          a.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 }
 

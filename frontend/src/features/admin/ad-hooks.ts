@@ -13,6 +13,7 @@ export interface AdConfig {
   sort_order: number
   sizes: string[]
   name: string
+  display_duration_sec: number
   created_at: string
   updated_at: string
 }

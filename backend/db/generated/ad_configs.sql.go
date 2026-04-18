@@ -25,24 +25,25 @@ func (q *Queries) CountAds(ctx context.Context) (int64, error) {
 const createAd = `-- name: CreateAd :one
 INSERT INTO ad_configs (
     slot_name, ad_type, image_url, link_url, alt_text,
-    embed_code, is_active, sort_order, sizes, name, created_by_user_id
+    embed_code, is_active, sort_order, sizes, name, created_by_user_id, display_duration_sec
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-) RETURNING id, slot_name, ad_type, image_url, link_url, alt_text, embed_code, is_active, sort_order, sizes, name, created_by_user_id, created_at, updated_at
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+) RETURNING id, slot_name, ad_type, image_url, link_url, alt_text, embed_code, is_active, sort_order, sizes, name, created_by_user_id, created_at, updated_at, display_duration_sec
 `
 
 type CreateAdParams struct {
-	SlotName        string      `json:"slot_name"`
-	AdType          string      `json:"ad_type"`
-	ImageUrl        *string     `json:"image_url"`
-	LinkUrl         *string     `json:"link_url"`
-	AltText         *string     `json:"alt_text"`
-	EmbedCode       *string     `json:"embed_code"`
-	IsActive        bool        `json:"is_active"`
-	SortOrder       int32       `json:"sort_order"`
-	Sizes           []string    `json:"sizes"`
-	Name            string      `json:"name"`
-	CreatedByUserID pgtype.Int8 `json:"created_by_user_id"`
+	SlotName           string      `json:"slot_name"`
+	AdType             string      `json:"ad_type"`
+	ImageUrl           *string     `json:"image_url"`
+	LinkUrl            *string     `json:"link_url"`
+	AltText            *string     `json:"alt_text"`
+	EmbedCode          *string     `json:"embed_code"`
+	IsActive           bool        `json:"is_active"`
+	SortOrder          int32       `json:"sort_order"`
+	Sizes              []string    `json:"sizes"`
+	Name               string      `json:"name"`
+	CreatedByUserID    pgtype.Int8 `json:"created_by_user_id"`
+	DisplayDurationSec int32       `json:"display_duration_sec"`
 }
 
 func (q *Queries) CreateAd(ctx context.Context, arg CreateAdParams) (AdConfig, error) {
@@ -58,6 +59,7 @@ func (q *Queries) CreateAd(ctx context.Context, arg CreateAdParams) (AdConfig, e
 		arg.Sizes,
 		arg.Name,
 		arg.CreatedByUserID,
+		arg.DisplayDurationSec,
 	)
 	var i AdConfig
 	err := row.Scan(
@@ -75,6 +77,7 @@ func (q *Queries) CreateAd(ctx context.Context, arg CreateAdParams) (AdConfig, e
 		&i.CreatedByUserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DisplayDurationSec,
 	)
 	return i, err
 }
@@ -89,7 +92,7 @@ func (q *Queries) DeleteAd(ctx context.Context, id int64) error {
 }
 
 const getAdByID = `-- name: GetAdByID :one
-SELECT id, slot_name, ad_type, image_url, link_url, alt_text, embed_code, is_active, sort_order, sizes, name, created_by_user_id, created_at, updated_at FROM ad_configs WHERE id = $1
+SELECT id, slot_name, ad_type, image_url, link_url, alt_text, embed_code, is_active, sort_order, sizes, name, created_by_user_id, created_at, updated_at, display_duration_sec FROM ad_configs WHERE id = $1
 `
 
 func (q *Queries) GetAdByID(ctx context.Context, id int64) (AdConfig, error) {
@@ -110,12 +113,13 @@ func (q *Queries) GetAdByID(ctx context.Context, id int64) (AdConfig, error) {
 		&i.CreatedByUserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DisplayDurationSec,
 	)
 	return i, err
 }
 
 const listActiveAds = `-- name: ListActiveAds :many
-SELECT id, slot_name, ad_type, image_url, link_url, alt_text, embed_code, is_active, sort_order, sizes, name, created_by_user_id, created_at, updated_at FROM ad_configs
+SELECT id, slot_name, ad_type, image_url, link_url, alt_text, embed_code, is_active, sort_order, sizes, name, created_by_user_id, created_at, updated_at, display_duration_sec FROM ad_configs
 WHERE is_active = true
 ORDER BY sort_order ASC, created_at DESC
 `
@@ -144,6 +148,7 @@ func (q *Queries) ListActiveAds(ctx context.Context) ([]AdConfig, error) {
 			&i.CreatedByUserID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DisplayDurationSec,
 		); err != nil {
 			return nil, err
 		}
@@ -156,7 +161,7 @@ func (q *Queries) ListActiveAds(ctx context.Context) ([]AdConfig, error) {
 }
 
 const listAllAds = `-- name: ListAllAds :many
-SELECT id, slot_name, ad_type, image_url, link_url, alt_text, embed_code, is_active, sort_order, sizes, name, created_by_user_id, created_at, updated_at FROM ad_configs
+SELECT id, slot_name, ad_type, image_url, link_url, alt_text, embed_code, is_active, sort_order, sizes, name, created_by_user_id, created_at, updated_at, display_duration_sec FROM ad_configs
 ORDER BY sort_order ASC, created_at DESC
 `
 
@@ -184,6 +189,7 @@ func (q *Queries) ListAllAds(ctx context.Context) ([]AdConfig, error) {
 			&i.CreatedByUserID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DisplayDurationSec,
 		); err != nil {
 			return nil, err
 		}
@@ -207,23 +213,25 @@ UPDATE ad_configs SET
     sort_order = COALESCE($9, sort_order),
     sizes = COALESCE($10, sizes),
     name = COALESCE($11, name),
+    display_duration_sec = COALESCE($12, display_duration_sec),
     updated_at = now()
 WHERE id = $1
-RETURNING id, slot_name, ad_type, image_url, link_url, alt_text, embed_code, is_active, sort_order, sizes, name, created_by_user_id, created_at, updated_at
+RETURNING id, slot_name, ad_type, image_url, link_url, alt_text, embed_code, is_active, sort_order, sizes, name, created_by_user_id, created_at, updated_at, display_duration_sec
 `
 
 type UpdateAdParams struct {
-	ID        int64       `json:"id"`
-	SlotName  *string     `json:"slot_name"`
-	AdType    *string     `json:"ad_type"`
-	ImageUrl  *string     `json:"image_url"`
-	LinkUrl   *string     `json:"link_url"`
-	AltText   *string     `json:"alt_text"`
-	EmbedCode *string     `json:"embed_code"`
-	IsActive  pgtype.Bool `json:"is_active"`
-	SortOrder pgtype.Int4 `json:"sort_order"`
-	Sizes     []string    `json:"sizes"`
-	Name      *string     `json:"name"`
+	ID                 int64       `json:"id"`
+	SlotName           *string     `json:"slot_name"`
+	AdType             *string     `json:"ad_type"`
+	ImageUrl           *string     `json:"image_url"`
+	LinkUrl            *string     `json:"link_url"`
+	AltText            *string     `json:"alt_text"`
+	EmbedCode          *string     `json:"embed_code"`
+	IsActive           pgtype.Bool `json:"is_active"`
+	SortOrder          pgtype.Int4 `json:"sort_order"`
+	Sizes              []string    `json:"sizes"`
+	Name               *string     `json:"name"`
+	DisplayDurationSec pgtype.Int4 `json:"display_duration_sec"`
 }
 
 func (q *Queries) UpdateAd(ctx context.Context, arg UpdateAdParams) (AdConfig, error) {
@@ -239,6 +247,7 @@ func (q *Queries) UpdateAd(ctx context.Context, arg UpdateAdParams) (AdConfig, e
 		arg.SortOrder,
 		arg.Sizes,
 		arg.Name,
+		arg.DisplayDurationSec,
 	)
 	var i AdConfig
 	err := row.Scan(
@@ -256,6 +265,7 @@ func (q *Queries) UpdateAd(ctx context.Context, arg UpdateAdParams) (AdConfig, e
 		&i.CreatedByUserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DisplayDurationSec,
 	)
 	return i, err
 }

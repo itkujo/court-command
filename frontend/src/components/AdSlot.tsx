@@ -103,17 +103,24 @@ interface AdCarouselProps {
 
 function AdCarousel({ ads, width, height, slot }: AdCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (ads.length <= 1) return
-    timerRef.current = setInterval(() => {
-      setCurrentIndex(prev => (prev + 1) % ads.length)
-    }, 8000) // Rotate every 8 seconds
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+
+    function scheduleNext() {
+      const currentAd = ads[currentIndex % ads.length]
+      const durationMs = (currentAd?.display_duration_sec || 8) * 1000
+      timerRef.current = setTimeout(() => {
+        setCurrentIndex(prev => (prev + 1) % ads.length)
+      }, durationMs)
     }
-  }, [ads.length])
+
+    scheduleNext()
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [ads, currentIndex])
 
   const ad = ads[currentIndex % ads.length]
   if (!ad) return null

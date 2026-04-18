@@ -13,9 +13,9 @@ SELECT * FROM ad_configs WHERE id = $1;
 -- name: CreateAd :one
 INSERT INTO ad_configs (
     slot_name, ad_type, image_url, link_url, alt_text,
-    embed_code, is_active, sort_order, sizes, name, created_by_user_id
+    embed_code, is_active, sort_order, sizes, name, created_by_user_id, display_duration_sec
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 ) RETURNING *;
 
 -- name: UpdateAd :one
@@ -30,6 +30,7 @@ UPDATE ad_configs SET
     sort_order = COALESCE(sqlc.narg('sort_order'), sort_order),
     sizes = COALESCE(sqlc.narg('sizes'), sizes),
     name = COALESCE(sqlc.narg('name'), name),
+    display_duration_sec = COALESCE(sqlc.narg('display_duration_sec'), display_duration_sec),
     updated_at = now()
 WHERE id = $1
 RETURNING *;

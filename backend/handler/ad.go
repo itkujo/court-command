@@ -79,16 +79,17 @@ func (h *AdHandler) CreateAd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Name      string   `json:"name"`
-		SlotName  string   `json:"slot_name"`
-		AdType    string   `json:"ad_type"`
-		ImageURL  *string  `json:"image_url"`
-		LinkURL   *string  `json:"link_url"`
-		AltText   *string  `json:"alt_text"`
-		EmbedCode *string  `json:"embed_code"`
-		IsActive  bool     `json:"is_active"`
-		SortOrder int32    `json:"sort_order"`
-		Sizes     []string `json:"sizes"`
+		Name               string   `json:"name"`
+		SlotName           string   `json:"slot_name"`
+		AdType             string   `json:"ad_type"`
+		ImageURL           *string  `json:"image_url"`
+		LinkURL            *string  `json:"link_url"`
+		AltText            *string  `json:"alt_text"`
+		EmbedCode          *string  `json:"embed_code"`
+		IsActive           bool     `json:"is_active"`
+		SortOrder          int32    `json:"sort_order"`
+		Sizes              []string `json:"sizes"`
+		DisplayDurationSec int32    `json:"display_duration_sec"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_BODY", "Invalid request body")
@@ -98,19 +99,23 @@ func (h *AdHandler) CreateAd(w http.ResponseWriter, r *http.Request) {
 	if body.Sizes == nil {
 		body.Sizes = []string{}
 	}
+	if body.DisplayDurationSec <= 0 {
+		body.DisplayDurationSec = 8
+	}
 
 	params := generated.CreateAdParams{
-		Name:            body.Name,
-		SlotName:        body.SlotName,
-		AdType:          body.AdType,
-		ImageUrl:        body.ImageURL,
-		LinkUrl:         body.LinkURL,
-		AltText:         body.AltText,
-		EmbedCode:       body.EmbedCode,
-		IsActive:        body.IsActive,
-		SortOrder:       body.SortOrder,
-		Sizes:           body.Sizes,
-		CreatedByUserID: pgtype.Int8{Int64: sess.UserID, Valid: true},
+		Name:               body.Name,
+		SlotName:           body.SlotName,
+		AdType:             body.AdType,
+		ImageUrl:           body.ImageURL,
+		LinkUrl:            body.LinkURL,
+		AltText:            body.AltText,
+		EmbedCode:          body.EmbedCode,
+		IsActive:           body.IsActive,
+		SortOrder:          body.SortOrder,
+		Sizes:              body.Sizes,
+		DisplayDurationSec: body.DisplayDurationSec,
+		CreatedByUserID:    pgtype.Int8{Int64: sess.UserID, Valid: true},
 	}
 
 	ad, err := h.service.Create(r.Context(), params)
@@ -129,16 +134,17 @@ func (h *AdHandler) UpdateAd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Name      *string  `json:"name"`
-		SlotName  *string  `json:"slot_name"`
-		AdType    *string  `json:"ad_type"`
-		ImageURL  *string  `json:"image_url"`
-		LinkURL   *string  `json:"link_url"`
-		AltText   *string  `json:"alt_text"`
-		EmbedCode *string  `json:"embed_code"`
-		IsActive  *bool    `json:"is_active"`
-		SortOrder *int32   `json:"sort_order"`
-		Sizes     []string `json:"sizes"`
+		Name               *string  `json:"name"`
+		SlotName           *string  `json:"slot_name"`
+		AdType             *string  `json:"ad_type"`
+		ImageURL           *string  `json:"image_url"`
+		LinkURL            *string  `json:"link_url"`
+		AltText            *string  `json:"alt_text"`
+		EmbedCode          *string  `json:"embed_code"`
+		IsActive           *bool    `json:"is_active"`
+		SortOrder          *int32   `json:"sort_order"`
+		Sizes              []string `json:"sizes"`
+		DisplayDurationSec *int32   `json:"display_duration_sec"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_BODY", "Invalid request body")
@@ -172,6 +178,9 @@ func (h *AdHandler) UpdateAd(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Sizes != nil {
 		params.Sizes = body.Sizes
+	}
+	if body.DisplayDurationSec != nil {
+		params.DisplayDurationSec = pgtype.Int4{Int32: *body.DisplayDurationSec, Valid: true}
 	}
 	if body.Name != nil {
 		params.Name = body.Name
