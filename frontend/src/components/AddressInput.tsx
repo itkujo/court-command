@@ -113,6 +113,12 @@ function parsePlace(place: any): Partial<AddressData> {
     result.longitude = place.geometry.location.lng()
   }
 
+  // For business/establishment results, if no street address was parsed
+  // but a business name exists, use the formatted address from Google
+  if (!result.address_line_1 && place.name) {
+    result.address_line_1 = place.name
+  }
+
   return result
 }
 
@@ -150,8 +156,8 @@ export function AddressInput({
     if (!mapsLoaded || !inputRef.current || autocompleteRef.current) return
 
     const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-      types: ['address'],
-      fields: ['address_components', 'geometry'],
+      types: ['establishment', 'geocode'],
+      fields: ['address_components', 'geometry', 'name'],
     })
 
     autocomplete.addListener('place_changed', () => {
