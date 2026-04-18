@@ -7,6 +7,76 @@
 -- Bcrypt hash for "TestPass123!"
 -- Generated via: htpasswd -bnBC 10 "" TestPass123! | tr -d ':\n' | sed 's/$2y/$2a/'
 
+-- Wipe all existing data for a clean seed (CASCADE handles FK ordering)
+TRUNCATE TABLE
+  activity_logs,
+  ad_configs,
+  announcements,
+  api_keys,
+  court_overlay_configs,
+  source_profiles,
+  standings_entries,
+  match_events,
+  match_series,
+  matches,
+  registrations,
+  pods,
+  divisions,
+  division_templates,
+  tournament_courts,
+  tournament_staff,
+  season_confirmations,
+  seasons,
+  league_registrations,
+  tournaments,
+  leagues,
+  venue_managers,
+  courts,
+  venues,
+  uploads,
+  org_blocks,
+  org_memberships,
+  team_rosters,
+  teams,
+  organizations,
+  users
+CASCADE;
+
+-- Reset sequences so IDs start fresh
+ALTER SEQUENCE users_id_seq RESTART WITH 1;
+ALTER SEQUENCE user_public_id_seq RESTART WITH 10000;
+ALTER SEQUENCE teams_id_seq RESTART WITH 1;
+ALTER SEQUENCE organizations_id_seq RESTART WITH 1;
+ALTER SEQUENCE venues_id_seq RESTART WITH 1;
+ALTER SEQUENCE courts_id_seq RESTART WITH 1;
+ALTER SEQUENCE leagues_id_seq RESTART WITH 1;
+ALTER SEQUENCE seasons_id_seq RESTART WITH 1;
+ALTER SEQUENCE tournaments_id_seq RESTART WITH 1;
+ALTER SEQUENCE divisions_id_seq RESTART WITH 1;
+ALTER SEQUENCE pods_id_seq RESTART WITH 1;
+ALTER SEQUENCE registrations_id_seq RESTART WITH 1;
+ALTER SEQUENCE matches_id_seq RESTART WITH 1;
+ALTER SEQUENCE match_events_id_seq RESTART WITH 1;
+ALTER SEQUENCE match_series_id_seq RESTART WITH 1;
+ALTER SEQUENCE announcements_id_seq RESTART WITH 1;
+ALTER SEQUENCE standings_entries_id_seq RESTART WITH 1;
+-- scoring_presets_id_seq NOT reset — system presets are seeded by migration 00017
+ALTER SEQUENCE activity_logs_id_seq RESTART WITH 1;
+ALTER SEQUENCE api_keys_id_seq RESTART WITH 1;
+ALTER SEQUENCE uploads_id_seq RESTART WITH 1;
+ALTER SEQUENCE ad_configs_id_seq RESTART WITH 1;
+ALTER SEQUENCE court_overlay_configs_id_seq RESTART WITH 1;
+ALTER SEQUENCE source_profiles_id_seq RESTART WITH 1;
+ALTER SEQUENCE division_templates_id_seq RESTART WITH 1;
+ALTER SEQUENCE league_registrations_id_seq RESTART WITH 1;
+ALTER SEQUENCE season_confirmations_id_seq RESTART WITH 1;
+ALTER SEQUENCE tournament_courts_id_seq RESTART WITH 1;
+ALTER SEQUENCE tournament_staff_id_seq RESTART WITH 1;
+ALTER SEQUENCE org_memberships_id_seq RESTART WITH 1;
+ALTER SEQUENCE org_blocks_id_seq RESTART WITH 1;
+ALTER SEQUENCE team_rosters_id_seq RESTART WITH 1;
+ALTER SEQUENCE venue_managers_id_seq RESTART WITH 1;
+
 DO $$
 DECLARE
   -- Admin / staff accounts
