@@ -311,3 +311,22 @@ export function useOverrideScore() {
     onSuccess: (data, vars) => applyResult(qc, vars.publicId, data),
   })
 }
+
+// ---------------------------------------------------------------------------
+// Tournament Assignment (for staff users)
+// ---------------------------------------------------------------------------
+
+export interface MyTournamentAssignment {
+  tournament_id: number
+  tournament_name: string
+  role: string
+}
+
+export function useMyTournamentAssignment() {
+  return useQuery<MyTournamentAssignment>({
+    queryKey: ['auth', 'tournament-staff'],
+    queryFn: () => apiGet<MyTournamentAssignment>('/api/v1/auth/me/tournament-staff'),
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  })
+}

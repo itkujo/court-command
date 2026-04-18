@@ -700,3 +700,40 @@ export function useUnassignCourtFromTournament(tournamentId: number) {
     },
   })
 }
+
+// ---------------------------------------------------------------------------
+// Tournament Staff
+// ---------------------------------------------------------------------------
+
+export interface TournamentStaffMember {
+  id: number
+  tournament_id: number
+  user_id: number
+  role: string
+  raw_password: string
+  email: string | null
+  first_name: string
+  last_name: string
+  public_id: string
+  created_at: string
+}
+
+export function useTournamentStaff(tournamentId: number) {
+  return useQuery<TournamentStaffMember[]>({
+    queryKey: ['tournaments', tournamentId, 'staff'],
+    queryFn: () => apiGet<TournamentStaffMember[]>(`/api/v1/tournaments/${tournamentId}/staff`),
+    enabled: !!tournamentId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useRegenerateStaffPassword(tournamentId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (role: string) =>
+      apiPost<TournamentStaffMember>(`/api/v1/tournaments/${tournamentId}/staff/regenerate/${role}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tournaments', tournamentId, 'staff'] })
+    },
+  })
+}
