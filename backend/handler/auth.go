@@ -141,6 +141,23 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	Success(w, resp)
 }
 
+// MyTournamentStaff handles GET /api/v1/auth/me/tournament-staff.
+func (h *AuthHandler) MyTournamentStaff(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		Unauthorized(w, "authentication required")
+		return
+	}
+
+	assignment, err := h.authService.GetMyTournamentStaff(r.Context(), sess.UserID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, assignment)
+}
+
 // setSessionCookie writes the session token as an HTTP-only cookie.
 func (h *AuthHandler) setSessionCookie(w http.ResponseWriter, token string) {
 	http.SetCookie(w, &http.Cookie{

@@ -201,6 +201,26 @@ func (s *AuthService) GetCurrentUser(ctx context.Context, sessionData *session.D
 	return userToResponse(&user), nil
 }
 
+// TournamentStaffAssignment is the response for a user's current tournament staff role.
+type TournamentStaffAssignment struct {
+	TournamentID   int64  `json:"tournament_id"`
+	TournamentName string `json:"tournament_name"`
+	Role           string `json:"role"`
+}
+
+// GetMyTournamentStaff returns the tournament staff assignment for the given user.
+func (s *AuthService) GetMyTournamentStaff(ctx context.Context, userID int64) (*TournamentStaffAssignment, error) {
+	row, err := s.queries.GetTournamentStaffByUserID(ctx, userID)
+	if err != nil {
+		return nil, NewNotFound("no tournament assignment found")
+	}
+	return &TournamentStaffAssignment{
+		TournamentID:   row.TournamentID,
+		TournamentName: row.TournamentName,
+		Role:           row.Role,
+	}, nil
+}
+
 // userToResponse maps a generated.User to a safe API response.
 // IMPORTANT: Never serialize generated.User directly — it contains password_hash
 // with a json tag that would leak the hash. Always use this mapping function.

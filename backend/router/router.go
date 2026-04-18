@@ -112,6 +112,7 @@ func New(cfg *Config) chi.Router {
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireAuth(cfg.SessionStore))
 				r.Get("/me", cfg.AuthHandler.Me)
+				r.Get("/me/tournament-staff", cfg.AuthHandler.MyTournamentStaff)
 			})
 		})
 
