@@ -42,7 +42,9 @@ DECLARE
   match1_id BIGINT;
   match2_id BIGINT;
   match3_id BIGINT;
+  daniel_id BIGINT;
   pw_hash TEXT := '$2a$10$rQZ8K8YxHi3VBhDBqMCJh.JZwJ3rYPnSn6X5B4r3G5P5oQv0e5tIi';
+  daniel_pw TEXT := '$2a$10$PWhdJ2i9ZwvfYY8qlrjBBeADmp2y0Q2N8xE0dDT0gbuAc32.3TnWK';
 BEGIN
 
 -- ============================================================
@@ -60,6 +62,11 @@ RETURNING id INTO td_id;
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status)
 VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'ref@courtcommand.com', pw_hash, 'Head', 'Referee', '1988-03-10', 'head_referee', 'active')
 RETURNING id INTO ref_id;
+
+-- Daniel Velez — global admin (always seeded)
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'daniel.f.velez@gmail.com', daniel_pw, 'Daniel', 'Velez', '1990-01-01', 'platform_admin', 'active')
+RETURNING id INTO daniel_id;
 
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
 VALUES
@@ -340,6 +347,7 @@ RAISE NOTICE 'Test accounts (password: TestPass123!):';
 RAISE NOTICE '  admin@courtcommand.com (platform_admin)';
 RAISE NOTICE '  td@courtcommand.com (tournament_director)';
 RAISE NOTICE '  ref@courtcommand.com (head_referee)';
+RAISE NOTICE '  daniel.f.velez@gmail.com (platform_admin) — password: PASSword123!';
 RAISE NOTICE '  alex.j@demo.com through emma.d@demo.com (8 players)';
 
 END $$;
