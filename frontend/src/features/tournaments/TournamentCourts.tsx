@@ -112,7 +112,7 @@ export function TournamentCourts({ tournamentId, venueId }: TournamentCourtsProp
       {/* Assigned courts (with active matches) */}
       {assignedList.length > 0 ? (
         <div className="space-y-3">
-          <CourtGrid courts={assignedList} mode="ref" />
+          <CourtGrid courts={assignedList} mode="public" />
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {assignedList.map((court) => (
               <div

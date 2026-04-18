@@ -17,6 +17,7 @@ import { EmptyState } from '../../../components/EmptyState'
 import { SkeletonTable } from '../../../components/Skeleton'
 import { useToast } from '../../../components/Toast'
 import { Plus, Trash2, LayoutGrid } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import type { FormEvent } from 'react'
 
 interface CourtListPanelProps {
@@ -45,11 +46,15 @@ export function CourtListPanel({ venueId }: CourtListPanelProps) {
   const [courtName, setCourtName] = useState('')
   const [surfaceType, setSurfaceType] = useState('')
   const [isShowCourt, setIsShowCourt] = useState(false)
+  const [streamType, setStreamType] = useState('')
+  const [streamUrl, setStreamUrl] = useState('')
 
   const resetForm = () => {
     setCourtName('')
     setSurfaceType('')
     setIsShowCourt(false)
+    setStreamType('')
+    setStreamUrl('')
   }
 
   const handleCreateCourt = (e: FormEvent) => {
@@ -64,6 +69,8 @@ export function CourtListPanel({ venueId }: CourtListPanelProps) {
         is_active: true,
         is_temporary: false,
         sort_order: (courts?.length ?? 0) + 1,
+        stream_type: streamType || null,
+        stream_url: streamUrl.trim() || null,
       },
       {
         onSuccess: () => {
@@ -81,7 +88,13 @@ export function CourtListPanel({ venueId }: CourtListPanelProps) {
       key: 'name',
       header: 'Court Name',
       render: (c: Court) => (
-        <span className="font-medium text-(--color-text-primary)">{c.name}</span>
+        <Link
+          to="/courts/$courtId"
+          params={{ courtId: String(c.id) }}
+          className="font-medium text-(--color-accent) hover:underline"
+        >
+          {c.name}
+        </Link>
       ),
     },
     {
@@ -201,8 +214,40 @@ export function CourtListPanel({ venueId }: CourtListPanelProps) {
               onChange={(e) => setIsShowCourt(e.target.checked)}
               className="rounded border-(--color-border)"
             />
-            Show Court
+            Show Court (broadcast/streaming)
           </label>
+
+          <FormField label="Stream Platform" htmlFor="stream_type">
+            <Select
+              id="stream_type"
+              value={streamType}
+              onChange={(e) => setStreamType(e.target.value)}
+            >
+              <option value="">None</option>
+              <option value="youtube">YouTube</option>
+              <option value="twitch">Twitch</option>
+              <option value="vimeo">Vimeo</option>
+              <option value="hls">HLS / M3U8</option>
+              <option value="other">Other (iframe)</option>
+            </Select>
+          </FormField>
+
+          {streamType && (
+            <FormField label="Stream URL" htmlFor="stream_url">
+              <Input
+                id="stream_url"
+                value={streamUrl}
+                onChange={(e) => setStreamUrl(e.target.value)}
+                placeholder={
+                  streamType === 'youtube' ? 'https://youtube.com/watch?v=...' :
+                  streamType === 'twitch' ? 'https://twitch.tv/channel' :
+                  streamType === 'vimeo' ? 'https://vimeo.com/123456' :
+                  streamType === 'hls' ? 'https://stream.example.com/live.m3u8' :
+                  'https://example.com/embed'
+                }
+              />
+            </FormField>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setIsAddOpen(false)}>

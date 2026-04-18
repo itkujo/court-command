@@ -48,9 +48,12 @@ export interface Court {
   sort_order: number
   stream_url: string | null
   stream_type: string | null
+  stream_is_live: boolean
   stream_title: string | null
   notes: string | null
+  created_by_user_id: number | null
   created_at: string
+  updated_at: string
 }
 
 export function useVenueSearch(query: string, limit: number, offset: number) {

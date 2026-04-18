@@ -7,7 +7,7 @@ import type { CourtSummary } from '../scoring/types'
 
 export interface CourtGridProps {
   courts: CourtSummary[]
-  mode: 'ref' | 'scorekeeper'
+  mode: 'ref' | 'scorekeeper' | 'public'
   emptyMessage?: string
 }
 
@@ -34,24 +34,30 @@ function CourtCard({
   mode,
 }: {
   court: CourtSummary
-  mode: 'ref' | 'scorekeeper'
+  mode: 'ref' | 'scorekeeper' | 'public'
 }) {
   const live = court.active_match?.status === 'in_progress'
 
-  const linkProps = court.active_match
-    ? mode === 'ref'
+  const linkProps =
+    mode === 'public'
       ? ({
-          to: '/ref/matches/$publicId',
-          params: { publicId: court.active_match.public_id },
+          to: '/courts/$courtId',
+          params: { courtId: String(court.id) },
         } as const)
-      : ({
-          to: '/scorekeeper/matches/$publicId',
-          params: { publicId: court.active_match.public_id },
-        } as const)
-    : ({
-        to: '/ref/courts/$courtId',
-        params: { courtId: String(court.id) },
-      } as const)
+      : court.active_match
+        ? mode === 'ref'
+          ? ({
+              to: '/ref/matches/$publicId',
+              params: { publicId: court.active_match.public_id },
+            } as const)
+          : ({
+              to: '/scorekeeper/matches/$publicId',
+              params: { publicId: court.active_match.public_id },
+            } as const)
+        : ({
+            to: '/ref/courts/$courtId',
+            params: { courtId: String(court.id) },
+          } as const)
 
   return (
     <Link

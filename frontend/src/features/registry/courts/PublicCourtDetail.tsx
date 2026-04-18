@@ -1,23 +1,19 @@
-import { useState } from 'react'
 import { useCourt } from './hooks'
 import { useCourtMatches } from '../../scoring/hooks'
-import { useAuth } from '../../auth/hooks'
 import { Badge } from '../../../components/Badge'
 import { InfoRow } from '../../../components/InfoRow'
 import { Skeleton } from '../../../components/Skeleton'
 import { EmptyState } from '../../../components/EmptyState'
 import { Button } from '../../../components/Button'
 import { Card } from '../../../components/Card'
-import { Modal } from '../../../components/Modal'
 import { StreamEmbed } from '../../../components/StreamEmbed'
 import { AdSlot } from '../../../components/AdSlot'
-import { CourtEditForm } from './CourtEditForm'
-import { ArrowLeft, Pencil, Tv, Radio, Calendar, Clock } from 'lucide-react'
+import { ArrowLeft, Tv, Radio, Calendar, Clock } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { formatDate } from '../../../lib/formatters'
+// formatDate available if needed for future use
 import type { Match } from '../../scoring/types'
 
-interface CourtDetailProps {
+interface PublicCourtDetailProps {
   courtId: string
 }
 
@@ -28,13 +24,9 @@ const STREAM_VARIANTS: Record<string, 'error' | 'info' | 'success' | 'default'> 
   hls: 'success',
 }
 
-export function CourtDetail({ courtId }: CourtDetailProps) {
-  const { data: court, isLoading, error, refetch } = useCourt(courtId)
+export function PublicCourtDetail({ courtId }: PublicCourtDetailProps) {
+  const { data: court, isLoading, error } = useCourt(courtId)
   const matches = useCourtMatches(court?.id)
-  const { user } = useAuth()
-  const [showEdit, setShowEdit] = useState(false)
-
-  const isAdmin = user?.role === 'platform_admin'
 
   if (isLoading) {
     return (
@@ -67,6 +59,7 @@ export function CourtDetail({ courtId }: CourtDetailProps) {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Back nav */}
       <Link
         to="/courts"
         className="inline-flex items-center gap-1 text-sm text-(--color-text-secondary) hover:text-(--color-text-primary) mb-4"
@@ -82,7 +75,7 @@ export function CourtDetail({ courtId }: CourtDetailProps) {
             {court.surface_type?.replace(/_/g, ' ') ?? 'Court'}
           </p>
         </div>
-        <div className="flex gap-2 items-center flex-shrink-0">
+        <div className="flex gap-2 flex-shrink-0">
           {court.stream_is_live && (
             <Badge variant="error">
               <Radio size={12} className="mr-1" /> Live
@@ -98,16 +91,11 @@ export function CourtDetail({ courtId }: CourtDetailProps) {
           ) : (
             <Badge variant="default">Inactive</Badge>
           )}
-          {isAdmin && (
-            <Button variant="secondary" size="sm" onClick={() => setShowEdit(true)}>
-              <Pencil size={14} className="mr-1" /> Edit
-            </Button>
-          )}
         </div>
       </div>
 
       <div className="space-y-6">
-        {/* Stream embed */}
+        {/* Stream embed (if URL set) */}
         {court.stream_url && (
           <StreamEmbed
             url={court.stream_url}
@@ -137,15 +125,14 @@ export function CourtDetail({ courtId }: CourtDetailProps) {
           </Card>
         )}
 
+        {/* No active match + no stream */}
         {!activeMatch && !court.stream_url && (
           <Card className="p-8 text-center">
-            <p className="text-(--color-text-secondary)">
-              No match currently in progress on this court.
-            </p>
+            <p className="text-(--color-text-secondary)">No match currently in progress on this court.</p>
           </Card>
         )}
 
-        {/* Upcoming Matches */}
+        {/* Upcoming matches */}
         {scheduledMatches.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold text-(--color-text-primary) mb-3 flex items-center gap-2">
@@ -169,7 +156,7 @@ export function CourtDetail({ courtId }: CourtDetailProps) {
           </div>
         )}
 
-        {/* Recent Results */}
+        {/* Recent results */}
         {completedMatches.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold text-(--color-text-primary) mb-3 flex items-center gap-2">
@@ -213,35 +200,16 @@ export function CourtDetail({ courtId }: CourtDetailProps) {
             )}
             {court.stream_title && <InfoRow label="Stream Title" value={court.stream_title} />}
             {court.notes && <InfoRow label="Notes" value={court.notes} />}
-            <InfoRow label="Created" value={formatDate(court.created_at)} />
           </dl>
         </Card>
       </div>
 
       <AdSlot size="medium-rectangle" slot="court-detail-bottom" className="mt-6" />
-
-      {/* Edit Modal */}
-      {court && (
-        <Modal
-          open={showEdit}
-          onClose={() => setShowEdit(false)}
-          title={`Edit ${court.name}`}
-          className="max-w-2xl"
-        >
-          <CourtEditForm
-            court={court}
-            onSuccess={() => {
-              setShowEdit(false)
-              refetch()
-            }}
-            onCancel={() => setShowEdit(false)}
-          />
-        </Modal>
-      )}
     </div>
   )
 }
 
+/* Match card sub-component */
 function MatchCard({ match, compact }: { match: Match; compact?: boolean }) {
   const team1 = match.team_1?.name ?? 'Team 1'
   const team2 = match.team_2?.name ?? 'Team 2'
@@ -253,20 +221,12 @@ function MatchCard({ match, compact }: { match: Match; compact?: boolean }) {
       <div className={compact ? 'flex items-center gap-4 flex-1 min-w-0' : 'space-y-2'}>
         <div className={compact ? 'flex items-center gap-2 text-sm' : 'flex items-center justify-between'}>
           <span className="font-medium text-(--color-text-primary) truncate">{team1}</span>
-          {!compact && (
-            <span className="text-2xl font-bold tabular-nums text-(--color-text-primary)">
-              {match.team_1_score}
-            </span>
-          )}
+          {!compact && <span className="text-2xl font-bold tabular-nums text-(--color-text-primary)">{match.team_1_score}</span>}
         </div>
         {compact && <span className="text-(--color-text-muted)">vs</span>}
         <div className={compact ? 'flex items-center gap-2 text-sm' : 'flex items-center justify-between'}>
           <span className="font-medium text-(--color-text-primary) truncate">{team2}</span>
-          {!compact && (
-            <span className="text-2xl font-bold tabular-nums text-(--color-text-primary)">
-              {match.team_2_score}
-            </span>
-          )}
+          {!compact && <span className="text-2xl font-bold tabular-nums text-(--color-text-primary)">{match.team_2_score}</span>}
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -281,9 +241,7 @@ function MatchCard({ match, compact }: { match: Match; compact?: boolean }) {
           </Badge>
         )}
         {!compact && match.division_name && (
-          <p className="text-xs text-(--color-text-secondary) mt-1">
-            {match.division_name}
-          </p>
+          <p className="text-xs text-(--color-text-secondary) mt-1">{match.division_name}</p>
         )}
       </div>
     </div>
