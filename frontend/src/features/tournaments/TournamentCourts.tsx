@@ -10,8 +10,13 @@ import { Modal } from '../../components/Modal'
 import { useToast } from '../../components/Toast'
 import { CourtGrid } from '../referee/CourtGrid'
 import { useCourtsForTournament } from '../scoring/hooks'
-import { useVenueCourts, useCreateVenueCourt } from '../registry/venues/hooks'
-import { Plus, MapPin } from 'lucide-react'
+import { useVenueCourts } from '../registry/venues/hooks'
+import {
+  useAssignCourtToTournament,
+  useCreateTempTournamentCourt,
+  useUnassignCourtFromTournament,
+} from './hooks'
+import { Plus, MapPin, X } from 'lucide-react'
 
 export interface TournamentCourtsProps {
   tournamentId: number
@@ -22,7 +27,9 @@ export function TournamentCourts({ tournamentId, venueId }: TournamentCourtsProp
   const { toast } = useToast()
   const courts = useCourtsForTournament(tournamentId)
   const venueCourts = useVenueCourts(venueId ? String(venueId) : '')
-  const createCourt = useCreateVenueCourt(venueId ? String(venueId) : '')
+  const assignCourt = useAssignCourtToTournament(tournamentId)
+  const createTemp = useCreateTempTournamentCourt(tournamentId)
+  const unassignCourt = useUnassignCourtFromTournament(tournamentId)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [courtName, setCourtName] = useState('')
   const [surfaceType, setSurfaceType] = useState('')
@@ -37,23 +44,35 @@ export function TournamentCourts({ tournamentId, venueId }: TournamentCourtsProp
   function handleCreateCourt(e: FormEvent) {
     e.preventDefault()
     if (!courtName.trim()) return
-    createCourt.mutate(
+    createTemp.mutate(
       {
         name: courtName.trim(),
         surface_type: surfaceType || undefined,
-        is_temporary: true,
-      } as Record<string, unknown>,
+      },
       {
         onSuccess: () => {
           toast('success', 'Temporary court created')
           setShowCreateModal(false)
           setCourtName('')
           setSurfaceType('')
-          courts.refetch()
         },
         onError: () => toast('error', 'Failed to create court'),
       },
     )
+  }
+
+  function handleAssignCourt(courtId: number) {
+    assignCourt.mutate(courtId, {
+      onSuccess: () => toast('success', 'Court assigned to tournament'),
+      onError: () => toast('error', 'Failed to assign court'),
+    })
+  }
+
+  function handleUnassignCourt(courtId: number) {
+    unassignCourt.mutate(courtId, {
+      onSuccess: () => toast('success', 'Court removed from tournament'),
+      onError: () => toast('error', 'Failed to remove court'),
+    })
   }
 
   if (courts.isLoading) {
@@ -71,18 +90,16 @@ export function TournamentCourts({ tournamentId, venueId }: TournamentCourtsProp
       {/* Header with actions */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-(--color-text-secondary)">
-          {assignedList.length} court{assignedList.length === 1 ? '' : 's'} in use
+          {assignedList.length} court{assignedList.length === 1 ? '' : 's'} assigned
         </p>
         <div className="flex gap-2">
-          {venueId && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <Plus size={16} className="mr-1" /> Create Temporary Court
-            </Button>
-          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus size={16} className="mr-1" /> Create Temporary Court
+          </Button>
           <Link
             to="/ref"
             className="text-sm text-(--color-accent) hover:underline self-center"
@@ -94,7 +111,27 @@ export function TournamentCourts({ tournamentId, venueId }: TournamentCourtsProp
 
       {/* Assigned courts (with active matches) */}
       {assignedList.length > 0 ? (
-        <CourtGrid courts={assignedList} mode="ref" />
+        <div className="space-y-3">
+          <CourtGrid courts={assignedList} mode="ref" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {assignedList.map((court) => (
+              <div
+                key={court.id}
+                className="flex items-center justify-between text-xs rounded border border-(--color-border) px-2 py-1"
+              >
+                <span className="text-(--color-text-secondary)">{court.name}</span>
+                <button
+                  type="button"
+                  className="text-(--color-text-muted) hover:text-red-400 ml-2"
+                  title="Remove from tournament"
+                  onClick={() => handleUnassignCourt(court.id)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : (
         <EmptyState
           title="No courts assigned yet"
@@ -113,29 +150,34 @@ export function TournamentCourts({ tournamentId, venueId }: TournamentCourtsProp
             {availableVenueCourts.map((court) => (
               <div
                 key={court.id}
-                className="rounded-lg border border-(--color-border) p-3 bg-(--color-bg-secondary)"
+                className="rounded-lg border border-(--color-border) p-3 bg-(--color-bg-secondary) flex flex-col gap-2"
               >
                 <p className="font-medium text-sm text-(--color-text-primary)">
                   {court.name}
                 </p>
                 {court.surface_type && (
-                  <p className="text-xs text-(--color-text-muted) mt-1">
+                  <p className="text-xs text-(--color-text-muted)">
                     {court.surface_type.replace(/_/g, ' ')}
                   </p>
                 )}
-                <p className="text-xs text-(--color-text-secondary) mt-1">
-                  Available for match assignment
-                </p>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={assignCourt.isPending}
+                  onClick={() => handleAssignCourt(court.id)}
+                >
+                  <Plus size={14} className="mr-1" /> Assign
+                </Button>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* No venue warning */}
+      {/* No venue hint */}
       {!venueId && assignedList.length === 0 && (
         <p className="text-sm text-(--color-text-muted)">
-          This tournament has no venue assigned. Set a venue in Settings to manage courts.
+          No venue assigned. You can still create temporary courts for this tournament.
         </p>
       )}
 
@@ -178,7 +220,7 @@ export function TournamentCourts({ tournamentId, venueId }: TournamentCourtsProp
             >
               Cancel
             </Button>
-            <Button type="submit" loading={createCourt.isPending}>
+            <Button type="submit" loading={createTemp.isPending}>
               Create Court
             </Button>
           </div>

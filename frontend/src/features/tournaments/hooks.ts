@@ -644,3 +644,40 @@ export function useLeagueSeasons(leagueId: number | null) {
     staleTime: 5 * 60 * 1000,
   })
 }
+
+// ---------------------------------------------------------------------------
+// Tournament Court management
+// ---------------------------------------------------------------------------
+
+export function useAssignCourtToTournament(tournamentId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (courtId: number) =>
+      apiPost(`/api/v1/tournaments/${tournamentId}/courts`, { court_id: courtId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tournaments', tournamentId, 'courts'] })
+    },
+  })
+}
+
+export function useCreateTempTournamentCourt(tournamentId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { name: string; surface_type?: string }) =>
+      apiPost(`/api/v1/tournaments/${tournamentId}/courts/temp`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tournaments', tournamentId, 'courts'] })
+    },
+  })
+}
+
+export function useUnassignCourtFromTournament(tournamentId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (courtId: number) =>
+      apiDelete(`/api/v1/tournaments/${tournamentId}/courts/${courtId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tournaments', tournamentId, 'courts'] })
+    },
+  })
+}

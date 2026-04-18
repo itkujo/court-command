@@ -1,4 +1,4 @@
-import { useVenue, useSubmitForReview, useUpdateVenueStatus } from './hooks'
+import { useVenue, useSubmitForReview, useUpdateVenueStatus, useCanManageVenue } from './hooks'
 import { useAuth } from '../../auth/hooks'
 import { useToast } from '../../../components/Toast'
 import { CourtListPanel } from './CourtListPanel'
@@ -31,6 +31,8 @@ export function VenueDetail({ venueId }: VenueDetailProps) {
   const submitForReview = useSubmitForReview(venueId)
   const updateStatus = useUpdateVenueStatus(venueId)
   const isAdmin = user?.role === 'platform_admin'
+  const canManageQuery = useCanManageVenue(venueId)
+  const canManage = canManageQuery.data?.can_manage ?? false
 
   if (isLoading) {
     return (
@@ -74,12 +76,14 @@ export function VenueDetail({ venueId }: VenueDetailProps) {
           <p className="text-sm text-(--color-text-secondary)">{venue.slug}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/venues/$venueId/edit" params={{ venueId: String(venue.id) }}>
-            <Button variant="secondary" size="sm">
-              <Pencil className="h-4 w-4 mr-1" />
-              Edit
-            </Button>
-          </Link>
+          {canManage && (
+            <Link to="/venues/$venueId/edit" params={{ venueId: String(venue.id) }}>
+              <Button variant="secondary" size="sm">
+                <Pencil className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+            </Link>
+          )}
           <Badge variant={STATUS_VARIANT[venue.status] ?? 'default'}>
             {venue.status.replace(/_/g, ' ')}
           </Badge>
@@ -87,7 +91,7 @@ export function VenueDetail({ venueId }: VenueDetailProps) {
       </div>
 
       {/* Status transition actions */}
-      {venue.status === 'draft' && (
+      {venue.status === 'draft' && canManage && (
         <div className="mb-6 p-4 rounded-lg border border-(--color-border) bg-(--color-bg-secondary) flex items-center gap-3">
           <span className="text-sm text-(--color-text-secondary)">This venue is in draft.</span>
           <Button

@@ -167,6 +167,17 @@ export function useDeleteVenueCourt(venueId: string, courtId: number) {
   })
 }
 
+// --- Permission checks ---
+
+export function useCanManageVenue(venueId: string) {
+  return useQuery<{ can_manage: boolean }>({
+    queryKey: ['venues', venueId, 'can-manage'],
+    queryFn: () => apiGet<{ can_manage: boolean }>(`/api/v1/venues/${venueId}/can-manage`),
+    enabled: !!venueId,
+    staleTime: 30 * 1000,
+  })
+}
+
 // --- Venue Managers ---
 
 export interface VenueManager {

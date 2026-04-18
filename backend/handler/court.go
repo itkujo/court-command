@@ -163,6 +163,105 @@ func (h *CourtHandler) ListCourtsByTournament(w http.ResponseWriter, r *http.Req
 	Success(w, courts)
 }
 
+// AssignCourtToTournament links an existing court to a tournament.
+func (h *CourtHandler) AssignCourtToTournament(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	tournamentID, err := strconv.ParseInt(chi.URLParam(r, "tournamentID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid tournament ID")
+		return
+	}
+
+	var body struct {
+		CourtID int64 `json:"court_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", "Invalid request body")
+		return
+	}
+	if body.CourtID == 0 {
+		WriteError(w, http.StatusBadRequest, "MISSING_COURT_ID", "court_id is required")
+		return
+	}
+
+	tc, err := h.venueService.AssignCourtToTournament(r.Context(), tournamentID, body.CourtID, false)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	Success(w, tc)
+}
+
+// CreateTempCourtForTournament creates a new temporary court and assigns it to the tournament.
+func (h *CourtHandler) CreateTempCourtForTournament(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	tournamentID, err := strconv.ParseInt(chi.URLParam(r, "tournamentID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid tournament ID")
+		return
+	}
+
+	var body struct {
+		Name        string  `json:"name"`
+		SurfaceType *string `json:"surface_type"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", "Invalid request body")
+		return
+	}
+	if body.Name == "" {
+		WriteError(w, http.StatusBadRequest, "MISSING_NAME", "name is required")
+		return
+	}
+
+	court, err := h.venueService.CreateTempCourtForTournament(r.Context(), tournamentID, body.Name, body.SurfaceType, sess.UserID)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	Success(w, court)
+}
+
+// UnassignCourtFromTournament removes a court from a tournament.
+func (h *CourtHandler) UnassignCourtFromTournament(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	tournamentID, err := strconv.ParseInt(chi.URLParam(r, "tournamentID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid tournament ID")
+		return
+	}
+
+	courtID, err := strconv.ParseInt(chi.URLParam(r, "courtID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid court ID")
+		return
+	}
+
+	if err := h.venueService.UnassignCourtFromTournament(r.Context(), tournamentID, courtID); err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	Success(w, map[string]string{"message": "court unassigned"})
+}
+
 // GetCourt retrieves a court by ID.
 func (h *CourtHandler) GetCourt(w http.ResponseWriter, r *http.Request) {
 	courtID, err := strconv.ParseInt(chi.URLParam(r, "courtID"), 10, 64)

@@ -559,6 +559,73 @@ func (s *VenueService) DeleteCourt(ctx context.Context, courtID int64) error {
 	return s.queries.SoftDeleteCourt(ctx, courtID)
 }
 
+// TournamentCourtResponse is the API response for a tournament court link.
+type TournamentCourtResponse struct {
+	ID           int64  `json:"id"`
+	TournamentID int64  `json:"tournament_id"`
+	CourtID      int64  `json:"court_id"`
+	IsTemporary  bool   `json:"is_temporary"`
+	CreatedAt    string `json:"created_at"`
+}
+
+// AssignCourtToTournament links an existing court to a tournament.
+func (s *VenueService) AssignCourtToTournament(ctx context.Context, tournamentID, courtID int64, isTemp bool) (TournamentCourtResponse, error) {
+	tc, err := s.queries.AssignCourtToTournament(ctx, generated.AssignCourtToTournamentParams{
+		TournamentID: tournamentID,
+		CourtID:      courtID,
+		IsTemporary:  isTemp,
+	})
+	if err != nil {
+		return TournamentCourtResponse{}, fmt.Errorf("assigning court to tournament: %w", err)
+	}
+	return TournamentCourtResponse{
+		ID:           tc.ID,
+		TournamentID: tc.TournamentID,
+		CourtID:      tc.CourtID,
+		IsTemporary:  tc.IsTemporary,
+		CreatedAt:    tc.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}, nil
+}
+
+// UnassignCourtFromTournament removes a court from a tournament.
+func (s *VenueService) UnassignCourtFromTournament(ctx context.Context, tournamentID, courtID int64) error {
+	return s.queries.UnassignCourtFromTournament(ctx, generated.UnassignCourtFromTournamentParams{
+		TournamentID: tournamentID,
+		CourtID:      courtID,
+	})
+}
+
+// CreateTempCourtForTournament creates a floating temporary court
+// and assigns it to the tournament.
+func (s *VenueService) CreateTempCourtForTournament(ctx context.Context, tournamentID int64, name string, surfaceType *string, createdBy int64) (CourtResponse, error) {
+	params := generated.CreateCourtParams{
+		Name:            name,
+		IsTemporary:     true,
+		IsActive:        true,
+		CreatedByUserID: pgtype.Int8{Int64: createdBy, Valid: true},
+	}
+	if surfaceType != nil {
+		params.SurfaceType = surfaceType
+	}
+
+	court, err := s.CreateCourt(ctx, params)
+	if err != nil {
+		return CourtResponse{}, err
+	}
+
+	// Link the court to the tournament
+	_, err = s.queries.AssignCourtToTournament(ctx, generated.AssignCourtToTournamentParams{
+		TournamentID: tournamentID,
+		CourtID:      court.ID,
+		IsTemporary:  true,
+	})
+	if err != nil {
+		return CourtResponse{}, fmt.Errorf("linking temp court to tournament: %w", err)
+	}
+
+	return court, nil
+}
+
 // ListCourtsByTournament returns every court that has at least one match
 // scheduled in the given tournament, each enriched with its currently-
 // active match (warmup, in_progress, or paused) and its next on-deck

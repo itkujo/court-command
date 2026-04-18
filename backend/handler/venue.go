@@ -45,6 +45,9 @@ func (h *VenueHandler) Routes() chi.Router {
 	r.Get("/{venueID}/courts", h.ListCourts)
 	r.Post("/{venueID}/courts", h.CreateCourtForVenue)
 
+	// Permission check endpoint
+	r.Get("/{venueID}/can-manage", h.CanManage)
+
 	// Manager sub-routes
 	r.Get("/{venueID}/managers", h.ListManagers)
 	r.Post("/{venueID}/managers", h.AddManager)
@@ -559,6 +562,30 @@ func (h *VenueHandler) CreateCourtForVenue(w http.ResponseWriter, r *http.Reques
 // handleServiceError is a local alias for HandleServiceError for backward compatibility.
 func handleServiceError(w http.ResponseWriter, err error) {
 	HandleServiceError(w, err)
+}
+
+// CanManage checks whether the current user can manage (edit) the given venue.
+func (h *VenueHandler) CanManage(w http.ResponseWriter, r *http.Request) {
+	sess := session.SessionData(r.Context())
+	if sess == nil {
+		// Not logged in → cannot manage
+		Success(w, map[string]bool{"can_manage": false})
+		return
+	}
+
+	venueID, err := strconv.ParseInt(chi.URLParam(r, "venueID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid venue ID")
+		return
+	}
+
+	ok, err := h.venueService.CanManageVenue(r.Context(), venueID, sess.UserID, sess.Role)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, map[string]bool{"can_manage": ok})
 }
 
 // --- Venue Manager Handlers ---

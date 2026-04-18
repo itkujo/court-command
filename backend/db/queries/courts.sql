@@ -93,9 +93,11 @@ WHERE deleted_at IS NULL
   AND (sqlc.narg('is_active')::bool IS NULL OR is_active = sqlc.narg('is_active'));
 
 -- name: ListCourtsByTournament :many
--- Returns every court referenced by a match in the given tournament,
+-- Returns every court assigned to or referenced by a match in the given tournament,
 -- ordered by sort_order then name. Soft-deleted courts are excluded.
 SELECT DISTINCT c.* FROM courts c
-INNER JOIN matches m ON m.court_id = c.id
-WHERE m.tournament_id = $1 AND c.deleted_at IS NULL
+LEFT JOIN matches m ON m.court_id = c.id AND m.tournament_id = @tournament_id
+LEFT JOIN tournament_courts tc ON tc.court_id = c.id AND tc.tournament_id = @tournament_id
+WHERE (m.tournament_id = @tournament_id OR tc.tournament_id = @tournament_id)
+  AND c.deleted_at IS NULL
 ORDER BY c.sort_order, c.name;

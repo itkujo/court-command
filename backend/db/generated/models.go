@@ -524,6 +524,14 @@ type Tournament struct {
 	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type TournamentCourt struct {
+	ID           int64     `json:"id"`
+	TournamentID int64     `json:"tournament_id"`
+	CourtID      int64     `json:"court_id"`
+	IsTemporary  bool      `json:"is_temporary"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 type Upload struct {
 	ID           int64       `json:"id"`
 	UserID       int64       `json:"user_id"`

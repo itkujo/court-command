@@ -326,12 +326,14 @@ func (q *Queries) ListCourts(ctx context.Context, arg ListCourtsParams) ([]Court
 
 const listCourtsByTournament = `-- name: ListCourtsByTournament :many
 SELECT DISTINCT c.id, c.name, c.slug, c.venue_id, c.surface_type, c.is_show_court, c.is_active, c.is_temporary, c.sort_order, c.notes, c.stream_url, c.stream_type, c.stream_is_live, c.stream_title, c.created_by_user_id, c.created_at, c.updated_at, c.deleted_at FROM courts c
-INNER JOIN matches m ON m.court_id = c.id
-WHERE m.tournament_id = $1 AND c.deleted_at IS NULL
+LEFT JOIN matches m ON m.court_id = c.id AND m.tournament_id = $1
+LEFT JOIN tournament_courts tc ON tc.court_id = c.id AND tc.tournament_id = $1
+WHERE (m.tournament_id = $1 OR tc.tournament_id = $1)
+  AND c.deleted_at IS NULL
 ORDER BY c.sort_order, c.name
 `
 
-// Returns every court referenced by a match in the given tournament,
+// Returns every court assigned to or referenced by a match in the given tournament,
 // ordered by sort_order then name. Soft-deleted courts are excluded.
 func (q *Queries) ListCourtsByTournament(ctx context.Context, tournamentID pgtype.Int8) ([]Court, error) {
 	rows, err := q.db.Query(ctx, listCourtsByTournament, tournamentID)
