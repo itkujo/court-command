@@ -149,8 +149,10 @@ func main() {
 	activityLogService := service.NewActivityLogService(queries)
 	apiKeyService := service.NewApiKeyService(queries)
 	uploadService := service.NewUploadService(queries, "uploads")
+	adService := service.NewAdService(queries)
 	adminHandler := handler.NewAdminHandler(queries, activityLogService, apiKeyService, sessionStore)
 	uploadHandler := handler.NewUploadHandler(uploadService)
+	adHandler := handler.NewAdHandler(adService)
 
 	// Phase 4C: WebSocket handler
 	wsHandler := ws.NewHandler(ps, logger)
@@ -211,6 +213,7 @@ func main() {
 		AdminHandler:  adminHandler,
 		UploadHandler: uploadHandler,
 		ApiKeySvc:     apiKeyService,
+		AdHandler:     adHandler,
 
 		// Phase 4C
 		WSHandler: wsHandler.Routes(),

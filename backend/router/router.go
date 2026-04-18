@@ -74,6 +74,9 @@ type Config struct {
 	// Phase 8: External API support
 	ApiKeySvc *service.ApiKeyService
 
+	// Ads
+	AdHandler *handler.AdHandler
+
 	// Phase 4C: WebSocket
 	WSHandler chi.Router
 }
@@ -335,7 +338,15 @@ func New(cfg *Config) chi.Router {
 			r.Use(middleware.RequireAuth(cfg.SessionStore))
 			r.Use(middleware.RequirePlatformAdmin)
 			r.Mount("/", cfg.AdminHandler.Routes())
+			if cfg.AdHandler != nil {
+				r.Mount("/ads", cfg.AdHandler.AdminRoutes())
+			}
 		})
+
+		// Public ads endpoint (active ads only, no auth)
+		if cfg.AdHandler != nil {
+			r.Mount("/ads", cfg.AdHandler.PublicRoutes())
+		}
 
 		// Upload routes (authenticated)
 		r.Route("/uploads", func(r chi.Router) {

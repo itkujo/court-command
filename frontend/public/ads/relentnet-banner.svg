@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 728 90" width="728" height="90">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="728" height="90" rx="8" fill="url(#bg)"/>
+  <rect x="0" y="0" width="4" height="90" rx="2" fill="url(#accent)"/>
+  <!-- Logo mark -->
+  <circle cx="52" cy="45" r="18" fill="none" stroke="url(#accent)" stroke-width="2.5"/>
+  <path d="M44 38 L56 45 L44 52Z" fill="#06b6d4" opacity="0.9"/>
+  <!-- Brand -->
+  <text x="82" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="700" fill="#f8fafc" letter-spacing="0.5">RelentNet</text>
+  <text x="82" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="12" fill="#94a3b8" letter-spacing="0.3">Empower Your Digital Presence</text>
+  <!-- CTA -->
+  <rect x="580" y="25" width="130" height="40" rx="6" fill="url(#accent)"/>
+  <text x="645" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#ffffff" text-anchor="middle">Visit Site</text>
+</svg>

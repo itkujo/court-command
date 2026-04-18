@@ -7,6 +7,7 @@ import {
   AlertCircle,
   LayoutGrid,
   Zap,
+  Megaphone,
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { Card } from '../../components/Card'
@@ -37,7 +38,7 @@ function StatCard({ label, value, icon: Icon, highlight, to }: StatCardProps) {
         <div>
           <p className="text-sm text-(--color-text-muted)">{label}</p>
           <p className="text-2xl font-semibold text-(--color-text-primary)">
-            {value.toLocaleString()}
+            {value >= 0 ? value.toLocaleString() : 'Manage'}
           </p>
         </div>
       </div>
@@ -84,6 +85,7 @@ function getStatCards(stats: AdminStats) {
     },
     { label: 'Total Courts', value: stats.total_courts, icon: LayoutGrid, to: '/courts' },
     { label: 'Active Matches', value: stats.active_matches, icon: Zap, to: '/ref' },
+    { label: 'Ad Manager', value: -1, icon: Megaphone, to: '/admin/ads' },
   ]
 }
 
