@@ -25,11 +25,10 @@ interface StatCardProps {
 function StatCard({ label, value, icon: Icon, highlight, to }: StatCardProps) {
   const content = (
     <Card
-      className={
-        highlight
-          ? 'border-amber-500/50 bg-amber-500/5'
-          : undefined
-      }
+      className={[
+        highlight ? 'border-amber-500/50 bg-amber-500/5' : '',
+        to ? 'cursor-pointer hover:border-(--color-accent) transition-colors' : '',
+      ].filter(Boolean).join(' ') || undefined}
     >
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-(--color-bg-primary)">
@@ -47,7 +46,7 @@ function StatCard({ label, value, icon: Icon, highlight, to }: StatCardProps) {
 
   if (to) {
     return (
-      <Link to={to} className="block">
+      <Link to={to as never} className="block">
         {content}
       </Link>
     )
@@ -72,10 +71,10 @@ function LoadingSkeleton() {
 function getStatCards(stats: AdminStats) {
   return [
     { label: 'Total Users', value: stats.total_users, icon: Users, to: '/admin/users' },
-    { label: 'Total Matches', value: stats.total_matches, icon: Swords },
-    { label: 'Active Tournaments', value: stats.total_tournaments, icon: Trophy },
-    { label: 'Total Leagues', value: stats.total_leagues, icon: Medal },
-    { label: 'Total Venues', value: stats.total_venues, icon: MapPin },
+    { label: 'Total Matches', value: stats.total_matches, icon: Swords, to: '/ref' },
+    { label: 'Active Tournaments', value: stats.total_tournaments, icon: Trophy, to: '/tournaments' },
+    { label: 'Total Leagues', value: stats.total_leagues, icon: Medal, to: '/leagues' },
+    { label: 'Total Venues', value: stats.total_venues, icon: MapPin, to: '/venues' },
     {
       label: 'Pending Venues',
       value: stats.pending_venues,
@@ -83,8 +82,8 @@ function getStatCards(stats: AdminStats) {
       highlight: stats.pending_venues > 0,
       to: '/admin/venues',
     },
-    { label: 'Total Courts', value: stats.total_courts, icon: LayoutGrid },
-    { label: 'Active Matches', value: stats.active_matches, icon: Zap },
+    { label: 'Total Courts', value: stats.total_courts, icon: LayoutGrid, to: '/courts' },
+    { label: 'Active Matches', value: stats.active_matches, icon: Zap, to: '/ref' },
   ]
 }
 
