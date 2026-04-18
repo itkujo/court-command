@@ -113,7 +113,7 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	activityLogService := service.NewActivityLogService(queries)
 	apiKeyService := service.NewApiKeyService(queries)
 	uploadService := service.NewUploadService(queries, t.TempDir())
-	adminHandler := handler.NewAdminHandler(queries, activityLogService, apiKeyService, store)
+	adminHandler := handler.NewAdminHandler(queries, activityLogService, apiKeyService, store, uploadService)
 	uploadHandler := handler.NewUploadHandler(uploadService)
 
 	r := router.New(&router.Config{

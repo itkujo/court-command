@@ -7,6 +7,7 @@ package generated
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -78,6 +79,15 @@ func (q *Queries) DeleteUpload(ctx context.Context, arg DeleteUploadParams) erro
 	return err
 }
 
+const deleteUploadByID = `-- name: DeleteUploadByID :exec
+DELETE FROM uploads WHERE id = $1
+`
+
+func (q *Queries) DeleteUploadByID(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteUploadByID, id)
+	return err
+}
+
 const getUploadByID = `-- name: GetUploadByID :one
 SELECT id, user_id, filename, original_name, content_type, size_bytes, entity_type, entity_id, created_at FROM uploads WHERE id = $1
 `
@@ -97,6 +107,49 @@ func (q *Queries) GetUploadByID(ctx context.Context, id int64) (Upload, error) {
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listOrphanedUploads = `-- name: ListOrphanedUploads :many
+SELECT u.id, u.user_id, u.filename, u.original_name, u.content_type, u.size_bytes, u.entity_type, u.entity_id, u.created_at FROM uploads u
+WHERE u.created_at < $1
+  AND NOT EXISTS (SELECT 1 FROM users p WHERE p.avatar_url = '/uploads/' || u.filename)
+  AND NOT EXISTS (SELECT 1 FROM teams t WHERE t.logo_url = '/uploads/' || u.filename)
+  AND NOT EXISTS (SELECT 1 FROM organizations o WHERE o.logo_url = '/uploads/' || u.filename)
+  AND NOT EXISTS (SELECT 1 FROM venues v WHERE v.logo_url = '/uploads/' || u.filename OR v.photo_url = '/uploads/' || u.filename OR v.venue_map_url = '/uploads/' || u.filename)
+  AND NOT EXISTS (SELECT 1 FROM leagues l WHERE l.logo_url = '/uploads/' || u.filename OR l.banner_url = '/uploads/' || u.filename)
+  AND NOT EXISTS (SELECT 1 FROM tournaments t WHERE t.logo_url = '/uploads/' || u.filename OR t.banner_url = '/uploads/' || u.filename)
+  AND NOT EXISTS (SELECT 1 FROM ad_configs a WHERE a.image_url = '/uploads/' || u.filename)
+ORDER BY u.created_at ASC
+`
+
+func (q *Queries) ListOrphanedUploads(ctx context.Context, createdAt time.Time) ([]Upload, error) {
+	rows, err := q.db.Query(ctx, listOrphanedUploads, createdAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Upload{}
+	for rows.Next() {
+		var i Upload
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Filename,
+			&i.OriginalName,
+			&i.ContentType,
+			&i.SizeBytes,
+			&i.EntityType,
+			&i.EntityID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listUploadsByEntity = `-- name: ListUploadsByEntity :many

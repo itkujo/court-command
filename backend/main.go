@@ -150,7 +150,7 @@ func main() {
 	apiKeyService := service.NewApiKeyService(queries)
 	uploadService := service.NewUploadService(queries, "uploads")
 	adService := service.NewAdService(queries)
-	adminHandler := handler.NewAdminHandler(queries, activityLogService, apiKeyService, sessionStore)
+	adminHandler := handler.NewAdminHandler(queries, activityLogService, apiKeyService, sessionStore, uploadService)
 	uploadHandler := handler.NewUploadHandler(uploadService)
 	adHandler := handler.NewAdHandler(adService)
 
@@ -159,6 +159,7 @@ func main() {
 
 	// Start background jobs
 	jobs.StartQuickMatchCleanup(ctx, matchService, logger)
+	jobs.StartUploadCleanup(ctx, uploadService, logger)
 
 	r := router.New(&router.Config{
 		DB:             pool,

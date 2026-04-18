@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Upload as UploadIcon, Trash2, FileText, Image } from 'lucide-react'
+import { Upload as UploadIcon, Trash2, FileText, Image, Sparkles } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMyUploads, useDeleteUpload } from './hooks'
 import type { Upload } from './types'
 import { Card } from '../../components/Card'
@@ -9,6 +10,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { Skeleton } from '../../components/Skeleton'
 import { useToast } from '../../components/Toast'
 import { formatDate } from '../../lib/formatters'
+import { apiPost } from '../../lib/api'
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -24,8 +26,18 @@ export function UploadBrowser() {
   const { data: uploads, isLoading, error, refetch } = useMyUploads()
   const deleteUpload = useDeleteUpload()
   const { toast } = useToast()
+  const qc = useQueryClient()
 
   const [deleteTarget, setDeleteTarget] = useState<Upload | null>(null)
+
+  const cleanOrphans = useMutation({
+    mutationFn: () => apiPost<{ deleted: number }>('/api/v1/admin/uploads/cleanup'),
+    onSuccess: (data) => {
+      toast('success', `Cleaned up ${data.deleted} orphaned file${data.deleted === 1 ? '' : 's'}`)
+      qc.invalidateQueries({ queryKey: ['uploads'] })
+    },
+    onError: () => toast('error', 'Failed to clean orphaned uploads'),
+  })
 
   function handleDelete() {
     if (!deleteTarget) return
@@ -40,11 +52,21 @@ export function UploadBrowser() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-(--color-text-primary)">Uploads</h1>
-        <p className="mt-1 text-sm text-(--color-text-secondary)">
-          Browse and manage uploaded files.
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-(--color-text-primary)">Uploads</h1>
+          <p className="mt-1 text-sm text-(--color-text-secondary)">
+            Browse and manage uploaded files.
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          onClick={() => cleanOrphans.mutate()}
+          disabled={cleanOrphans.isPending}
+        >
+          <Sparkles className="h-4 w-4 mr-1.5" />
+          {cleanOrphans.isPending ? 'Cleaning...' : 'Clean Orphans'}
+        </Button>
       </div>
 
       {/* Loading */}

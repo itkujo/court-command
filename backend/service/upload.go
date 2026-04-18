@@ -207,3 +207,32 @@ func extensionFromContentType(ct string) string {
 		return ""
 	}
 }
+
+// CleanOrphanedUploads finds and deletes upload files that are no longer
+// referenced by any entity. Only removes files older than the given age.
+// Returns the count of deleted files.
+func (s *UploadService) CleanOrphanedUploads(ctx context.Context, olderThan time.Duration) (int, error) {
+	threshold := time.Now().Add(-olderThan)
+	orphans, err := s.queries.ListOrphanedUploads(ctx, threshold)
+	if err != nil {
+		return 0, fmt.Errorf("listing orphaned uploads: %w", err)
+	}
+
+	deleted := 0
+	for _, upload := range orphans {
+		// Delete file from disk
+		filePath := filepath.Join(s.uploadDir, upload.Filename)
+		if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+			// Log but continue — the DB record should still be cleaned up
+			continue
+		}
+
+		// Delete DB record
+		if err := s.queries.DeleteUploadByID(ctx, upload.ID); err != nil {
+			continue
+		}
+		deleted++
+	}
+
+	return deleted, nil
+}

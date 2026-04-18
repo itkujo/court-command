@@ -20,6 +20,7 @@ type AdminHandler struct {
 	activityLogSvc *service.ActivityLogService
 	apiKeySvc      *service.ApiKeyService
 	sessionStore   *session.Store
+	uploadSvc      *service.UploadService
 }
 
 // NewAdminHandler creates a new AdminHandler.
@@ -28,12 +29,14 @@ func NewAdminHandler(
 	activityLogSvc *service.ActivityLogService,
 	apiKeySvc *service.ApiKeyService,
 	sessionStore *session.Store,
+	uploadSvc *service.UploadService,
 ) *AdminHandler {
 	return &AdminHandler{
 		queries:        queries,
 		activityLogSvc: activityLogSvc,
 		apiKeySvc:      apiKeySvc,
 		sessionStore:   sessionStore,
+		uploadSvc:      uploadSvc,
 	}
 }
 
@@ -65,6 +68,9 @@ func (h *AdminHandler) Routes() chi.Router {
 
 	// Impersonation (start only — stop is registered outside admin group in router.go)
 	r.Post("/impersonate/{userID}", h.StartImpersonation)
+
+	// Upload cleanup
+	r.Post("/uploads/cleanup", h.CleanOrphanedUploads)
 
 	return r
 }
@@ -709,6 +715,24 @@ func (h *AdminHandler) StopImpersonation(w http.ResponseWriter, r *http.Request)
 
 	Success(w, map[string]interface{}{
 		"restored": true,
+	})
+}
+
+// CleanOrphanedUploads deletes upload files not referenced by any entity.
+func (h *AdminHandler) CleanOrphanedUploads(w http.ResponseWriter, r *http.Request) {
+	if h.uploadSvc == nil {
+		WriteError(w, http.StatusInternalServerError, "SERVICE_UNAVAILABLE", "Upload service not configured")
+		return
+	}
+
+	count, err := h.uploadSvc.CleanOrphanedUploads(r.Context(), 0) // 0 = clean all orphans regardless of age
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "CLEANUP_FAILED", "Failed to clean orphaned uploads")
+		return
+	}
+
+	Success(w, map[string]interface{}{
+		"deleted": count,
 	})
 }
 
