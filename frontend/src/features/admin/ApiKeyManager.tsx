@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Key, Plus, Copy, Check } from 'lucide-react'
+import { Key, Plus, Copy, Check, Trash2 } from 'lucide-react'
 import { useApiKeys, useCreateApiKey, useRevokeApiKey } from './hooks'
 import type { ApiKey } from './types'
 import { Button } from '../../components/Button'
@@ -174,7 +174,7 @@ export function ApiKeyManager() {
                     </Badge>
                   </td>
                   <td className="px-3 py-2 text-right">
-                    {key.is_active && (
+                    {key.is_active ? (
                       <Button
                         variant="danger"
                         size="sm"
@@ -182,6 +182,15 @@ export function ApiKeyManager() {
                       >
                         Revoke
                       </Button>
+                    ) : (
+                      <button
+                        onClick={() => setRevokeTarget(key)}
+                        className="p-1.5 rounded-md text-(--color-text-muted) hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                        title="Remove key"
+                        aria-label={`Remove ${key.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -270,9 +279,13 @@ export function ApiKeyManager() {
         open={!!revokeTarget}
         onClose={() => setRevokeTarget(null)}
         onConfirm={handleRevoke}
-        title="Revoke API Key"
-        message={`Are you sure you want to revoke "${revokeTarget?.name}"? This action cannot be undone.`}
-        confirmText="Revoke"
+        title={revokeTarget?.is_active ? 'Revoke API Key' : 'Remove API Key'}
+        message={
+          revokeTarget?.is_active
+            ? `Are you sure you want to revoke "${revokeTarget?.name}"? This action cannot be undone.`
+            : `Remove "${revokeTarget?.name}" from the list? This key is already revoked.`
+        }
+        confirmText={revokeTarget?.is_active ? 'Revoke' : 'Remove'}
         variant="danger"
         loading={revokeKey.isPending}
       />

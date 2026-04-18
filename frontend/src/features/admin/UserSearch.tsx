@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useSearchUsers } from './hooks'
+import { useSearchUsers, useUpdateUserStatus } from './hooks'
 import { ALL_ROLES, ROLE_LABELS, USER_STATUSES } from './types'
 import type { AdminUser, UserRole } from './types'
 import { Table } from '../../components/Table'
@@ -12,7 +12,9 @@ import { StatusBadge } from '../../components/StatusBadge'
 import { EmptyState } from '../../components/EmptyState'
 import { SkeletonTable } from '../../components/Skeleton'
 import { Button } from '../../components/Button'
-import { Users } from 'lucide-react'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { useToast } from '../../components/Toast'
+import { Users, Trash2 } from 'lucide-react'
 import { formatDate } from '../../lib/formatters'
 
 const PAGE_SIZE = 20
@@ -33,10 +35,13 @@ const ROLE_VARIANT: Record<string, 'success' | 'warning' | 'error' | 'info' | 'd
 
 export function UserSearch() {
   const navigate = useNavigate()
+  const updateStatus = useUpdateUserStatus()
+  const { toast } = useToast()
   const [query, setQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [page, setPage] = useState(1)
+  const [suspendTarget, setSuspendTarget] = useState<AdminUser | null>(null)
 
   const offset = (page - 1) * PAGE_SIZE
   const { data, isLoading, error, refetch } = useSearchUsers(
@@ -95,6 +100,25 @@ export function UserSearch() {
       render: (user: AdminUser) => (
         <span className="text-sm text-(--color-text-secondary)">{formatDate(user.created_at)}</span>
       ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (user: AdminUser) =>
+        user.status === 'active' && user.role !== 'platform_admin' ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setSuspendTarget(user)
+            }}
+            className="p-1.5 rounded-md text-(--color-text-muted) hover:text-red-500 hover:bg-red-500/10 transition-colors"
+            title="Suspend user"
+            aria-label={`Suspend ${user.first_name} ${user.last_name}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        ) : null,
+      className: 'w-10',
     },
   ]
 
@@ -195,6 +219,30 @@ export function UserSearch() {
 
       {/* Pagination */}
       <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+
+      {/* Suspend Confirm */}
+      <ConfirmDialog
+        open={!!suspendTarget}
+        onClose={() => setSuspendTarget(null)}
+        onConfirm={() => {
+          if (!suspendTarget) return
+          updateStatus.mutate(
+            { userId: suspendTarget.public_id, status: 'suspended', reason: 'Suspended by admin' },
+            {
+              onSuccess: () => {
+                toast('success', `${suspendTarget.first_name} ${suspendTarget.last_name} suspended`)
+                setSuspendTarget(null)
+              },
+              onError: () => toast('error', 'Failed to suspend user'),
+            },
+          )
+        }}
+        title="Suspend User"
+        message={`Are you sure you want to suspend ${suspendTarget?.first_name} ${suspendTarget?.last_name}? They will lose access until reinstated.`}
+        confirmText="Suspend"
+        variant="danger"
+        loading={updateStatus.isPending}
+      />
     </div>
   )
 }

@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { MapPin, CheckCircle, XCircle } from 'lucide-react'
+import { MapPin, CheckCircle, XCircle, Trash2 } from 'lucide-react'
 import { usePendingVenues, useUpdateVenueStatus } from './hooks'
 import type { VenueApprovalItem } from './types'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { Modal } from '../../components/Modal'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { Textarea } from '../../components/Textarea'
 import { Pagination } from '../../components/Pagination'
 import { EmptyState } from '../../components/EmptyState'
@@ -24,6 +25,7 @@ export function VenueApproval() {
   const { toast } = useToast()
 
   const [rejectTarget, setRejectTarget] = useState<VenueApprovalItem | null>(null)
+  const [archiveTarget, setArchiveTarget] = useState<VenueApprovalItem | null>(null)
   const [feedback, setFeedback] = useState('')
 
   const venues = data?.items ?? []
@@ -54,6 +56,20 @@ export function VenueApproval() {
           setRejectTarget(null)
         },
         onError: () => toast('error', `Failed to reject ${rejectTarget.name}`),
+      },
+    )
+  }
+
+  function handleArchive() {
+    if (!archiveTarget) return
+    updateStatus.mutate(
+      { venueId: archiveTarget.public_id, status: 'archived' },
+      {
+        onSuccess: () => {
+          toast('success', `${archiveTarget.name} archived`)
+          setArchiveTarget(null)
+        },
+        onError: () => toast('error', `Failed to archive ${archiveTarget.name}`),
       },
     )
   }
@@ -107,6 +123,7 @@ export function VenueApproval() {
                 venue={venue}
                 onApprove={() => handleApprove(venue)}
                 onReject={() => openReject(venue)}
+                onArchive={() => setArchiveTarget(venue)}
                 loading={updateStatus.isPending}
               />
             ))}
@@ -150,6 +167,18 @@ export function VenueApproval() {
           </div>
         </div>
       </Modal>
+
+      {/* Archive Confirm */}
+      <ConfirmDialog
+        open={!!archiveTarget}
+        onClose={() => setArchiveTarget(null)}
+        onConfirm={handleArchive}
+        title="Archive Venue"
+        message={`Are you sure you want to archive "${archiveTarget?.name}"? It will be removed from public listings.`}
+        confirmText="Archive"
+        variant="danger"
+        loading={updateStatus.isPending}
+      />
     </div>
   )
 }
@@ -160,14 +189,25 @@ interface VenueCardProps {
   venue: VenueApprovalItem
   onApprove: () => void
   onReject: () => void
+  onArchive: () => void
   loading: boolean
 }
 
-function VenueCard({ venue, onApprove, onReject, loading }: VenueCardProps) {
+function VenueCard({ venue, onApprove, onReject, onArchive, loading }: VenueCardProps) {
   return (
     <Card className={cn('flex flex-col justify-between p-5')}>
       <div className="space-y-2">
-        <h3 className="font-semibold text-(--color-text-primary)">{venue.name}</h3>
+        <div className="flex items-start justify-between">
+          <h3 className="font-semibold text-(--color-text-primary)">{venue.name}</h3>
+          <button
+            onClick={onArchive}
+            className="p-1.5 rounded-md text-(--color-text-muted) hover:text-red-500 hover:bg-red-500/10 transition-colors"
+            title="Archive venue"
+            aria-label={`Archive ${venue.name}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
         <p className="text-sm text-(--color-text-secondary)">
           {venue.city}, {venue.state}
         </p>
