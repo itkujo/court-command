@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useVenueSearch } from './hooks'
 import { useDebounce } from '../../../hooks/useDebounce'
 import { usePagination } from '../../../hooks/usePagination'
@@ -10,7 +10,8 @@ import { EmptyState } from '../../../components/EmptyState'
 import { SkeletonTable } from '../../../components/Skeleton'
 import { Badge } from '../../../components/Badge'
 import { Button } from '../../../components/Button'
-import { MapPin, Plus } from 'lucide-react'
+import { MapView, type MapMarker } from '../../../components/MapView'
+import { MapPin, Plus, List, Map } from 'lucide-react'
 import { AdSlot } from '../../../components/AdSlot'
 
 const STATUS_VARIANT: Record<string, 'default' | 'success' | 'warning'> = {
@@ -20,19 +21,33 @@ const STATUS_VARIANT: Record<string, 'default' | 'success' | 'warning'> = {
   archived: 'default',
 }
 
+type ViewMode = 'list' | 'map'
+
 export function VenueList() {
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
   const debouncedSearch = useDebounce(search)
   const pagination = usePagination(20)
+  const navigate = useNavigate()
 
-  const { data, isLoading, error } = useVenueSearch(
-    debouncedSearch,
-    pagination.limit,
-    pagination.offset,
-  )
+  // For map view, fetch more results (up to 200)
+  const limit = viewMode === 'map' ? 200 : pagination.limit
+  const offset = viewMode === 'map' ? 0 : pagination.offset
+
+  const { data, isLoading, error } = useVenueSearch(debouncedSearch, limit, offset)
 
   const venues = data?.items ?? []
   const total = data?.total ?? 0
+
+  const mapMarkers: MapMarker[] = venues
+    .filter((v) => v.latitude && v.longitude)
+    .map((v) => ({
+      id: v.id,
+      lat: v.latitude!,
+      lng: v.longitude!,
+      label: v.name,
+      sublabel: [v.city, v.state_province].filter(Boolean).join(', '),
+    }))
 
   const columns = [
     {
@@ -78,11 +93,29 @@ export function VenueList() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-(--color-text-primary)">Venues</h1>
-        <Link to="/venues/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4" /> Create Venue
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-(--color-border) overflow-hidden">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 ${viewMode === 'list' ? 'bg-(--color-bg-hover) text-(--color-text-primary)' : 'text-(--color-text-muted) hover:bg-(--color-bg-hover)'}`}
+              aria-label="List view"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`p-2 ${viewMode === 'map' ? 'bg-(--color-bg-hover) text-(--color-text-primary)' : 'text-(--color-text-muted) hover:bg-(--color-bg-hover)'}`}
+              aria-label="Map view"
+            >
+              <Map className="h-4 w-4" />
+            </button>
+          </div>
+          <Link to="/venues/new">
+            <Button size="sm">
+              <Plus className="h-4 w-4" /> Create Venue
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <AdSlot size="responsive-banner" slot="venues-list-top" className="mb-4" />
@@ -98,7 +131,11 @@ export function VenueList() {
       />
 
       {isLoading ? (
-        <SkeletonTable rows={8} />
+        viewMode === 'map' ? (
+          <div className="h-[500px] rounded-lg bg-(--color-bg-secondary) animate-pulse" />
+        ) : (
+          <SkeletonTable rows={8} />
+        )
       ) : error ? (
         <EmptyState
           title="Failed to load venues"
@@ -118,6 +155,30 @@ export function VenueList() {
             ) : undefined
           }
         />
+      ) : viewMode === 'map' ? (
+        <div>
+          {mapMarkers.length === 0 ? (
+            <EmptyState
+              icon={<Map className="h-12 w-12" />}
+              title="No venues with coordinates"
+              description="Add addresses with Google Maps to see venues on the map."
+            />
+          ) : (
+            <MapView
+              markers={mapMarkers}
+              height="500px"
+              onMarkerClick={(marker) => {
+                navigate({
+                  to: '/venues/$venueId',
+                  params: { venueId: String(marker.id) },
+                })
+              }}
+            />
+          )}
+          <p className="mt-2 text-sm text-(--color-text-muted)">
+            {mapMarkers.length} of {venues.length} venues shown (with addresses)
+          </p>
+        </div>
       ) : (
         <>
           <div className="rounded-xl border border-(--color-border) bg-(--color-bg-secondary) overflow-hidden">

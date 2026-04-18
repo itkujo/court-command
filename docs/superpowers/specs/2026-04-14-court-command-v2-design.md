@@ -1442,6 +1442,15 @@ GitHub Actions:
 - **Forms using AddressInput**: VenueForm, OrgForm, LeagueCreate
 - **PlayerForm**: still a stub; backend ready, form needs building
 - Tournaments inherit venue address (no separate address fields)
+- **Business search in address bar** — AddressInput uses `types: ['establishment', 'geocode']` so users can search by business name (e.g., "All In Pickleball") and get the full address auto-filled from Google Maps
+- If no street number parsed from a business result, the business `name` field is used as address_line_1
+
+### Google Maps View on Venue + Org Lists (Added Post-Phase 7)
+- **MapView component** (`frontend/src/components/MapView.tsx`) — shared Google Maps renderer with pin markers, info windows, click-to-navigate
+- **Shared loader** (`frontend/src/lib/google-maps.ts`) — deduplicates Google Maps SDK loading across AddressInput and MapView
+- **Venue list** (`/venues`) — list/map toggle button in header. Map view shows all venues with lat/lng as pins. Clicking a pin navigates to venue detail. Fetches up to 200 results for map view.
+- **Org list** (`/organizations`) — same list/map toggle pattern. Shows orgs with addresses on the map.
+- Entities without coordinates are excluded from map view with a count label ("X of Y shown with addresses")
 
 ---
 
@@ -1463,3 +1472,4 @@ GitHub Actions:
 14. **Operator hub** — dedicated /manage page shows all assets a user controls (venues, tournaments, leagues, orgs) in one view
 15. **Google Places address standardization** — all entities use the same AddressInput with autocomplete, structured address components, and lat/lng for future proximity search
 16. **Admin user impersonation** — platform admins can "view as" any user for troubleshooting and support, with full audit trail and safety guardrails
+17. **Map view on venue/org directories** — Google Maps integration shows all venues and organizations with addresses as interactive pins, with list/map toggle
