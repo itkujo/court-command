@@ -138,6 +138,7 @@ export interface CourtSummary {
   name: string
   slug: string
   venue_id?: number | null
+  venue_name?: string | null
   is_show_court?: boolean
   stream_url?: string | null
   active_match?: Match | null

@@ -74,6 +74,7 @@ type CourtResponse struct {
 	Name            string         `json:"name"`
 	Slug            string         `json:"slug"`
 	VenueID         *int64         `json:"venue_id,omitempty"`
+	VenueName       *string        `json:"venue_name,omitempty"`
 	SurfaceType     *string        `json:"surface_type,omitempty"`
 	IsShowCourt     bool           `json:"is_show_court"`
 	IsActive        bool           `json:"is_active"`
@@ -528,11 +529,29 @@ func (s *VenueService) ListCourts(
 		return nil, 0, fmt.Errorf("failed to count courts: %w", err)
 	}
 
+	// Build venue name cache to avoid N+1
+	venueNameCache := make(map[int64]string)
+	for _, c := range courts {
+		if c.VenueID.Valid {
+			if _, ok := venueNameCache[c.VenueID.Int64]; !ok {
+				venue, err := s.queries.GetVenueByID(ctx, c.VenueID.Int64)
+				if err == nil {
+					venueNameCache[venue.ID] = venue.Name
+				}
+			}
+		}
+	}
+
 	result := make([]CourtResponse, len(courts))
 	for i, c := range courts {
 		resp := toCourtResponse(c)
 		resp.ActiveMatch = s.activeMatchForCourt(ctx, c.ID)
 		resp.OnDeckMatch = s.onDeckMatchForCourt(ctx, c.ID)
+		if c.VenueID.Valid {
+			if name, ok := venueNameCache[c.VenueID.Int64]; ok {
+				resp.VenueName = &name
+			}
+		}
 		result[i] = resp
 	}
 

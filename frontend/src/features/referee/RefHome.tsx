@@ -1,17 +1,45 @@
 // frontend/src/features/referee/RefHome.tsx
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Search } from 'lucide-react'
+import { Search, MapPin } from 'lucide-react'
 import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { Skeleton } from '../../components/Skeleton'
 import { useAllCourts } from '../scoring/hooks'
+import type { CourtSummary } from '../scoring/types'
 import { CourtGrid } from './CourtGrid'
+
+function groupCourtsByVenue(courts: CourtSummary[]) {
+  const map = new Map<string, CourtSummary[]>()
+
+  for (const c of courts) {
+    const key = c.venue_name ?? '__floating__'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(c)
+  }
+
+  // Named venues first (sorted), then floating courts last
+  const sortedKeys = [...map.keys()].sort((a, b) => {
+    if (a === '__floating__') return 1
+    if (b === '__floating__') return -1
+    return a.localeCompare(b)
+  })
+
+  return sortedKeys.map((key) => ({
+    venueName: key === '__floating__' ? 'Floating Courts' : key,
+    courts: map.get(key)!,
+  }))
+}
 
 export function RefHome() {
   const navigate = useNavigate()
   const courts = useAllCourts()
   const [jumpId, setJumpId] = useState('')
+
+  const venueGroups = useMemo(
+    () => groupCourtsByVenue(courts.data ?? []),
+    [courts.data],
+  )
 
   function handleJump(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -61,12 +89,35 @@ export function RefHome() {
           Could not load courts. Use the Match public ID input above to open a
           specific match.
         </div>
-      ) : (
+      ) : venueGroups.length === 0 ? (
+        <div className="text-center py-8 text-(--color-text-secondary)">
+          No courts available. Use the Match public ID input above to open a specific match.
+        </div>
+      ) : venueGroups.length === 1 ? (
+        /* Single venue — no grouping headers needed */
         <CourtGrid
-          courts={courts.data ?? []}
+          courts={venueGroups[0].courts}
           mode="ref"
-          emptyMessage="No courts available. Use the Match public ID input above to open a specific match."
+          emptyMessage="No courts available."
         />
+      ) : (
+        /* Multiple venues — group with section headers */
+        <div className="space-y-6">
+          {venueGroups.map((group) => (
+            <section key={group.venueName}>
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-(--color-text-secondary) uppercase tracking-wider mb-3">
+                <MapPin className="h-3.5 w-3.5" />
+                {group.venueName}
+                <span className="text-xs font-normal">({group.courts.length})</span>
+              </h2>
+              <CourtGrid
+                courts={group.courts}
+                mode="ref"
+                emptyMessage="No courts at this venue."
+              />
+            </section>
+          ))}
+        </div>
       )}
     </div>
   )
