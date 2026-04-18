@@ -443,6 +443,44 @@ See `docs/superpowers/lessons/2026-04-16-phase-3-review-defects.md` for preventi
 
 ---
 
+## Post-Phase Bug Testing & Feature Additions
+
+### Bug Fixes (2 rounds, 30+ bugs)
+- Side-out scoring sent undefined team — fixed ScoringButtons to pass `match.serving_team`
+- Quick match contract mismatch — rewrote payload to match backend `QuickMatchInput`
+- MembersPanel sent `user_id` instead of `player_id` — fixed field name
+- PublicHero sign-in button hidden during auth loading — added skeleton + logo dimensions
+- State/timezone free-text inputs — replaced with Select dropdowns
+- Admin stats response shape mismatch — fixed backend to return `total_*` prefixed keys
+- Tournament courts read-only — added Assign Venue Court + Create Temporary Court
+- Logout redirect, player detail, roster add, team delete, org member management, venue auth gating
+- Tournament search/divisions/clone/registration/seeding/announcements fixes
+- League search/templates/standings fixes
+- Bracket visual polish, public matches/courts view
+- Stop impersonation endpoint moved outside RequirePlatformAdmin
+
+### New Features
+- **Venue Managers RBAC**: `venue_managers` join table, multi-manager support, CanManageVenue/CanAdminVenue permission checks, VenueManagersPanel UI
+- **Operator Hub**: `/manage` route showing all venues, tournaments, leagues, orgs a user manages
+- **Registry Edit Routes**: `/teams/:id/edit`, `/organizations/:id/edit`, `/venues/:id/edit`
+- **Admin Impersonation**: View Court Command as any user — session-based, 4hr TTL, activity logged
+- **Admin User Detail**: Accept public_id (CC-XXXXX) in URL params, all 11 roles in role editor
+- **Google Places Address**: Single search bar with autocomplete, business search, silent metadata extraction for filtering
+- **Map View**: Google Maps with pins on Venue + Org list pages, list/map toggle
+- **Address Simplification**: `formatted_address` as primary display field, structured fields as hidden metadata
+- **Venue Status Transitions**: Draft → Published workflow with role-appropriate action buttons
+- **Seed Data System**: `make seed` populates all entity types for dev/testing
+- **Backup/Restore**: `make backup`, `make backup-full`, `make restore-db`, `make restore-uploads`
+
+### Migrations Added
+- 00031: Admin impersonation session fields
+- 00032: `venue_managers` join table with backfill
+- 00033: Address standardization (address_line_1/2, postal_code, lat/lng on orgs, leagues, users)
+- 00034: Admin create unclaimed player support
+- 00035: `formatted_address` column on all 4 entity tables with backfill
+
+---
+
 ## [v1] - Legacy (Reference Only)
 
 The v1 codebase (`old-cc/`) was a single-match live scoring app with:
