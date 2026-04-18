@@ -552,6 +552,15 @@ type TournamentCourt struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+type TournamentStaff struct {
+	ID           int64     `json:"id"`
+	TournamentID int64     `json:"tournament_id"`
+	UserID       int64     `json:"user_id"`
+	Role         string    `json:"role"`
+	RawPassword  string    `json:"raw_password"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 type Upload struct {
 	ID           int64       `json:"id"`
 	UserID       int64       `json:"user_id"`
