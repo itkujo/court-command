@@ -2,53 +2,83 @@
 -- Run with: make seed
 -- Requires: migrations already applied, empty or safe-to-overwrite database
 -- Password for all test users: TestPass123! (bcrypt hash below)
+-- Daniel Velez password: PASSword123!
 
 -- Bcrypt hash for "TestPass123!"
 -- Generated via: htpasswd -bnBC 10 "" TestPass123! | tr -d ':\n' | sed 's/$2y/$2a/'
 
 DO $$
 DECLARE
+  -- Admin / staff accounts
   admin_id BIGINT;
-  td_id BIGINT;
-  ref_id BIGINT;
-  player1_id BIGINT;
-  player2_id BIGINT;
-  player3_id BIGINT;
-  player4_id BIGINT;
-  player5_id BIGINT;
-  player6_id BIGINT;
-  player7_id BIGINT;
-  player8_id BIGINT;
-  org1_id BIGINT;
-  org2_id BIGINT;
-  team1_id BIGINT;
-  team2_id BIGINT;
-  team3_id BIGINT;
-  team4_id BIGINT;
-  venue_id BIGINT;
-  court1_id BIGINT;
-  court2_id BIGINT;
-  court3_id BIGINT;
-  court4_id BIGINT;
-  league_id BIGINT;
-  season_id BIGINT;
-  tournament_id BIGINT;
-  div1_id BIGINT;
-  div2_id BIGINT;
-  reg1_id BIGINT;
-  reg2_id BIGINT;
-  reg3_id BIGINT;
-  reg4_id BIGINT;
-  match1_id BIGINT;
-  match2_id BIGINT;
-  match3_id BIGINT;
+  td1_id BIGINT;
+  td2_id BIGINT;
+  ref1_id BIGINT;
+  ref2_id BIGINT;
+  scorekeeper_id BIGINT;
+  broadcast_id BIGINT;
   daniel_id BIGINT;
+
+  -- Players (16)
+  p1_id BIGINT; p2_id BIGINT; p3_id BIGINT; p4_id BIGINT;
+  p5_id BIGINT; p6_id BIGINT; p7_id BIGINT; p8_id BIGINT;
+  p9_id BIGINT; p10_id BIGINT; p11_id BIGINT; p12_id BIGINT;
+  p13_id BIGINT; p14_id BIGINT; p15_id BIGINT; p16_id BIGINT;
+
+  -- Organizations (3)
+  org1_id BIGINT; org2_id BIGINT; org3_id BIGINT;
+
+  -- Teams (8)
+  t1_id BIGINT; t2_id BIGINT; t3_id BIGINT; t4_id BIGINT;
+  t5_id BIGINT; t6_id BIGINT; t7_id BIGINT; t8_id BIGINT;
+
+  -- Venues (2)
+  v1_id BIGINT; v2_id BIGINT;
+
+  -- Courts (8 total: 4 per venue)
+  c1_id BIGINT; c2_id BIGINT; c3_id BIGINT; c4_id BIGINT;
+  c5_id BIGINT; c6_id BIGINT; c7_id BIGINT; c8_id BIGINT;
+
+  -- Leagues (2)
+  lg1_id BIGINT; lg2_id BIGINT;
+
+  -- Seasons (3: 2 for league 1, 1 for league 2)
+  s1_id BIGINT; s2_id BIGINT; s3_id BIGINT;
+
+  -- Tournaments (3)
+  tn1_id BIGINT; tn2_id BIGINT; tn3_id BIGINT;
+
+  -- Divisions (6: 2 per tournament)
+  d1_id BIGINT; d2_id BIGINT; d3_id BIGINT; d4_id BIGINT; d5_id BIGINT; d6_id BIGINT;
+
+  -- Pods (2: for round-robin divisions)
+  pod1_id BIGINT; pod2_id BIGINT;
+
+  -- Registrations
+  r1_id BIGINT; r2_id BIGINT; r3_id BIGINT; r4_id BIGINT;
+  r5_id BIGINT; r6_id BIGINT; r7_id BIGINT; r8_id BIGINT;
+
+  -- Matches (6)
+  m1_id BIGINT; m2_id BIGINT; m3_id BIGINT; m4_id BIGINT; m5_id BIGINT; m6_id BIGINT;
+
+  -- Match series (2)
+  ms1_id BIGINT; ms2_id BIGINT;
+
+  -- Quick matches (2)
+  qm1_id BIGINT; qm2_id BIGINT;
+
+  -- Division templates (2)
+  dt1_id BIGINT; dt2_id BIGINT;
+
+  -- League registrations (2)
+  lr1_id BIGINT; lr2_id BIGINT;
+
   pw_hash TEXT := '$2a$10$rQZ8K8YxHi3VBhDBqMCJh.JZwJ3rYPnSn6X5B4r3G5P5oQv0e5tIi';
   daniel_pw TEXT := '$2a$10$PWhdJ2i9ZwvfYY8qlrjBBeADmp2y0Q2N8xE0dDT0gbuAc32.3TnWK';
 BEGIN
 
 -- ============================================================
--- 1. USERS (11 users: 1 admin, 1 TD, 1 ref, 8 players)
+-- 1. USERS (24 total: 1 admin, 2 TDs, 2 refs, 1 scorekeeper, 1 broadcast op, 1 daniel, 16 players)
 -- ============================================================
 
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status)
@@ -56,298 +86,550 @@ VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'admin@court
 RETURNING id INTO admin_id;
 
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status)
-VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'td@courtcommand.com', pw_hash, 'Tournament', 'Director', '1985-06-20', 'tournament_director', 'active')
-RETURNING id INTO td_id;
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'td1@courtcommand.com', pw_hash, 'Tournament', 'Director', '1985-06-20', 'tournament_director', 'active')
+RETURNING id INTO td1_id;
 
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status)
-VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'ref@courtcommand.com', pw_hash, 'Head', 'Referee', '1988-03-10', 'head_referee', 'active')
-RETURNING id INTO ref_id;
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'td2@courtcommand.com', pw_hash, 'Sarah', 'DirectorTwo', '1987-09-12', 'tournament_director', 'active')
+RETURNING id INTO td2_id;
 
--- Daniel Velez — global admin (always seeded)
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'ref1@courtcommand.com', pw_hash, 'Head', 'Referee', '1988-03-10', 'head_referee', 'active')
+RETURNING id INTO ref1_id;
+
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'ref2@courtcommand.com', pw_hash, 'Line', 'Judge', '1991-11-28', 'referee', 'active')
+RETURNING id INTO ref2_id;
+
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'scorekeeper@courtcommand.com', pw_hash, 'Score', 'Keeper', '1999-02-14', 'scorekeeper', 'active')
+RETURNING id INTO scorekeeper_id;
+
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'broadcast@courtcommand.com', pw_hash, 'Broadcast', 'Operator', '1993-07-04', 'broadcast_operator', 'active')
+RETURNING id INTO broadcast_id;
+
+-- Daniel Velez — permanent admin
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status)
 VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'daniel.f.velez@gmail.com', daniel_pw, 'Daniel', 'Velez', '1990-01-01', 'platform_admin', 'active')
 RETURNING id INTO daniel_id;
 
+-- 16 Players (variety of cities, genders, handedness)
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
-VALUES
-('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'alex.j@demo.com', pw_hash, 'Alex', 'Johnson', '1995-04-12', 'player', 'active', 'male', 'right', 'Dallas', 'TX', 'US')
-RETURNING id INTO player1_id;
-
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'alex.j@demo.com', pw_hash, 'Alex', 'Johnson', '1995-04-12', 'player', 'active', 'male', 'right', 'Dallas', 'TX', 'US') RETURNING id INTO p1_id;
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
-VALUES
-('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'maria.g@demo.com', pw_hash, 'Maria', 'Garcia', '1993-08-25', 'player', 'active', 'female', 'right', 'Dallas', 'TX', 'US')
-RETURNING id INTO player2_id;
-
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'maria.g@demo.com', pw_hash, 'Maria', 'Garcia', '1993-08-25', 'player', 'active', 'female', 'right', 'Dallas', 'TX', 'US') RETURNING id INTO p2_id;
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
-VALUES
-('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'james.w@demo.com', pw_hash, 'James', 'Wilson', '1990-11-03', 'player', 'active', 'male', 'left', 'Fort Worth', 'TX', 'US')
-RETURNING id INTO player3_id;
-
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'james.w@demo.com', pw_hash, 'James', 'Wilson', '1990-11-03', 'player', 'active', 'male', 'left', 'Fort Worth', 'TX', 'US') RETURNING id INTO p3_id;
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
-VALUES
-('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'sarah.c@demo.com', pw_hash, 'Sarah', 'Chen', '1997-02-18', 'player', 'active', 'female', 'right', 'Fort Worth', 'TX', 'US')
-RETURNING id INTO player4_id;
-
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'sarah.c@demo.com', pw_hash, 'Sarah', 'Chen', '1997-02-18', 'player', 'active', 'female', 'right', 'Fort Worth', 'TX', 'US') RETURNING id INTO p4_id;
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
-VALUES
-('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'mike.b@demo.com', pw_hash, 'Mike', 'Brown', '1992-07-30', 'player', 'active', 'male', 'right', 'Austin', 'TX', 'US')
-RETURNING id INTO player5_id;
-
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'mike.b@demo.com', pw_hash, 'Mike', 'Brown', '1992-07-30', 'player', 'active', 'male', 'right', 'Austin', 'TX', 'US') RETURNING id INTO p5_id;
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
-VALUES
-('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'lisa.p@demo.com', pw_hash, 'Lisa', 'Park', '1996-12-05', 'player', 'active', 'female', 'left', 'Austin', 'TX', 'US')
-RETURNING id INTO player6_id;
-
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'lisa.p@demo.com', pw_hash, 'Lisa', 'Park', '1996-12-05', 'player', 'active', 'female', 'left', 'Austin', 'TX', 'US') RETURNING id INTO p6_id;
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
-VALUES
-('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'david.k@demo.com', pw_hash, 'David', 'Kim', '1994-09-14', 'player', 'active', 'male', 'right', 'Houston', 'TX', 'US')
-RETURNING id INTO player7_id;
-
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'david.k@demo.com', pw_hash, 'David', 'Kim', '1994-09-14', 'player', 'active', 'male', 'right', 'Houston', 'TX', 'US') RETURNING id INTO p7_id;
 INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
-VALUES
-('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'emma.d@demo.com', pw_hash, 'Emma', 'Davis', '1998-05-22', 'player', 'active', 'female', 'right', 'Houston', 'TX', 'US')
-RETURNING id INTO player8_id;
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'emma.d@demo.com', pw_hash, 'Emma', 'Davis', '1998-05-22', 'player', 'active', 'female', 'right', 'Houston', 'TX', 'US') RETURNING id INTO p8_id;
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'carlos.r@demo.com', pw_hash, 'Carlos', 'Rodriguez', '1991-03-08', 'player', 'active', 'male', 'right', 'San Antonio', 'TX', 'US') RETURNING id INTO p9_id;
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'jenny.l@demo.com', pw_hash, 'Jenny', 'Lee', '1996-07-19', 'player', 'active', 'female', 'right', 'San Antonio', 'TX', 'US') RETURNING id INTO p10_id;
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'kevin.m@demo.com', pw_hash, 'Kevin', 'Martinez', '1989-12-01', 'player', 'active', 'male', 'left', 'El Paso', 'TX', 'US') RETURNING id INTO p11_id;
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'amy.t@demo.com', pw_hash, 'Amy', 'Taylor', '1994-05-15', 'player', 'active', 'female', 'right', 'El Paso', 'TX', 'US') RETURNING id INTO p12_id;
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'brandon.h@demo.com', pw_hash, 'Brandon', 'Harris', '1993-10-22', 'player', 'active', 'male', 'right', 'Plano', 'TX', 'US') RETURNING id INTO p13_id;
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'rachel.w@demo.com', pw_hash, 'Rachel', 'White', '1997-08-30', 'player', 'active', 'female', 'right', 'Plano', 'TX', 'US') RETURNING id INTO p14_id;
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'tyler.n@demo.com', pw_hash, 'Tyler', 'Nguyen', '1990-06-14', 'player', 'active', 'male', 'right', 'Arlington', 'TX', 'US') RETURNING id INTO p15_id;
+INSERT INTO users (public_id, email, password_hash, first_name, last_name, date_of_birth, role, status, gender, handedness, city, state_province, country)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'olivia.s@demo.com', pw_hash, 'Olivia', 'Scott', '1998-01-25', 'player', 'active', 'female', 'left', 'Arlington', 'TX', 'US') RETURNING id INTO p16_id;
 
 -- ============================================================
--- 2. ORGANIZATIONS (2 orgs)
+-- 2. ORGANIZATIONS (3)
 -- ============================================================
 
-INSERT INTO organizations (name, slug, city, state_province, country, bio, primary_color, created_by_user_id)
-VALUES ('North Texas Pickleball Club', 'north-texas-pickleball-club', 'Dallas', 'TX', 'US', 'The premier pickleball organization in North Texas.', '#1e40af', admin_id)
+INSERT INTO organizations (name, slug, city, state_province, country, bio, primary_color, created_by_user_id, formatted_address)
+VALUES ('North Texas Pickleball Club', 'north-texas-pickleball-club', 'Dallas', 'TX', 'US', 'The premier pickleball organization in North Texas. Home to the Dallas Dinkers and Fort Worth Aces.', '#1e40af', admin_id, 'Dallas, TX, US')
 RETURNING id INTO org1_id;
 
-INSERT INTO organizations (name, slug, city, state_province, country, bio, primary_color, created_by_user_id)
-VALUES ('Gulf Coast Pickleball Alliance', 'gulf-coast-pickleball-alliance', 'Houston', 'TX', 'US', 'Bringing competitive pickleball to the Gulf Coast region.', '#16a34a', admin_id)
+INSERT INTO organizations (name, slug, city, state_province, country, bio, primary_color, created_by_user_id, formatted_address)
+VALUES ('Gulf Coast Pickleball Alliance', 'gulf-coast-pickleball-alliance', 'Houston', 'TX', 'US', 'Bringing competitive pickleball to the Gulf Coast region since 2024.', '#16a34a', admin_id, 'Houston, TX, US')
 RETURNING id INTO org2_id;
 
--- Org memberships (creator = admin)
-INSERT INTO org_memberships (org_id, player_id, role) VALUES (org1_id, admin_id, 'admin');
-INSERT INTO org_memberships (org_id, player_id, role) VALUES (org2_id, admin_id, 'admin');
--- Add some players to orgs
-INSERT INTO org_memberships (org_id, player_id, role) VALUES (org1_id, player1_id, 'member');
-INSERT INTO org_memberships (org_id, player_id, role) VALUES (org1_id, player2_id, 'member');
-INSERT INTO org_memberships (org_id, player_id, role) VALUES (org1_id, player3_id, 'member');
-INSERT INTO org_memberships (org_id, player_id, role) VALUES (org1_id, player4_id, 'member');
-INSERT INTO org_memberships (org_id, player_id, role) VALUES (org2_id, player5_id, 'member');
-INSERT INTO org_memberships (org_id, player_id, role) VALUES (org2_id, player6_id, 'member');
-INSERT INTO org_memberships (org_id, player_id, role) VALUES (org2_id, player7_id, 'member');
-INSERT INTO org_memberships (org_id, player_id, role) VALUES (org2_id, player8_id, 'member');
+INSERT INTO organizations (name, slug, city, state_province, country, bio, primary_color, secondary_color, created_by_user_id, formatted_address)
+VALUES ('Central Texas Paddle Sports', 'central-texas-paddle-sports', 'Austin', 'TX', 'US', 'Austin-based paddle sports organization covering Central Texas. Teams compete across multiple leagues.', '#7c3aed', '#a78bfa', td2_id, 'Austin, TX, US')
+RETURNING id INTO org3_id;
+
+-- Org memberships
+INSERT INTO org_memberships (org_id, player_id, role) VALUES
+  (org1_id, admin_id, 'admin'),
+  (org1_id, p1_id, 'member'), (org1_id, p2_id, 'member'),
+  (org1_id, p3_id, 'member'), (org1_id, p4_id, 'member'),
+  (org1_id, p13_id, 'member'), (org1_id, p14_id, 'member'),
+  (org2_id, admin_id, 'admin'),
+  (org2_id, p7_id, 'member'), (org2_id, p8_id, 'member'),
+  (org2_id, p9_id, 'member'), (org2_id, p10_id, 'member'),
+  (org3_id, td2_id, 'admin'),
+  (org3_id, p5_id, 'member'), (org3_id, p6_id, 'member'),
+  (org3_id, p11_id, 'member'), (org3_id, p12_id, 'member'),
+  (org3_id, p15_id, 'member'), (org3_id, p16_id, 'member');
 
 -- ============================================================
--- 3. TEAMS (4 teams, 2 per org, 2 players each)
+-- 3. TEAMS (8 teams: 3 org1, 2 org2, 3 org3)
 -- ============================================================
 
-INSERT INTO teams (name, short_name, slug, primary_color, org_id, city)
-VALUES ('Dallas Dinkers', 'DAL', 'dallas-dinkers', '#1e40af', org1_id, 'Dallas')
-RETURNING id INTO team1_id;
+INSERT INTO teams (name, short_name, slug, primary_color, org_id, city) VALUES ('Dallas Dinkers', 'DAL', 'dallas-dinkers', '#1e40af', org1_id, 'Dallas') RETURNING id INTO t1_id;
+INSERT INTO teams (name, short_name, slug, primary_color, org_id, city) VALUES ('Fort Worth Aces', 'FTW', 'fort-worth-aces', '#dc2626', org1_id, 'Fort Worth') RETURNING id INTO t2_id;
+INSERT INTO teams (name, short_name, slug, primary_color, org_id, city) VALUES ('Plano Pioneers', 'PLN', 'plano-pioneers', '#0891b2', org1_id, 'Plano') RETURNING id INTO t3_id;
+INSERT INTO teams (name, short_name, slug, primary_color, org_id, city) VALUES ('Houston Heat', 'HOU', 'houston-heat', '#ea580c', org2_id, 'Houston') RETURNING id INTO t4_id;
+INSERT INTO teams (name, short_name, slug, primary_color, org_id, city) VALUES ('San Antonio Smash', 'SAT', 'san-antonio-smash', '#ca8a04', org2_id, 'San Antonio') RETURNING id INTO t5_id;
+INSERT INTO teams (name, short_name, slug, primary_color, org_id, city) VALUES ('Austin Smashers', 'AUS', 'austin-smashers', '#16a34a', org3_id, 'Austin') RETURNING id INTO t6_id;
+INSERT INTO teams (name, short_name, slug, primary_color, org_id, city) VALUES ('El Paso Thunder', 'ELP', 'el-paso-thunder', '#9333ea', org3_id, 'El Paso') RETURNING id INTO t7_id;
+INSERT INTO teams (name, short_name, slug, primary_color, org_id, city) VALUES ('Arlington Arrows', 'ARL', 'arlington-arrows', '#059669', org3_id, 'Arlington') RETURNING id INTO t8_id;
 
-INSERT INTO teams (name, short_name, slug, primary_color, org_id, city)
-VALUES ('Fort Worth Aces', 'FTW', 'fort-worth-aces', '#dc2626', org1_id, 'Fort Worth')
-RETURNING id INTO team2_id;
-
-INSERT INTO teams (name, short_name, slug, primary_color, org_id, city)
-VALUES ('Austin Smashers', 'AUS', 'austin-smashers', '#16a34a', org2_id, 'Austin')
-RETURNING id INTO team3_id;
-
-INSERT INTO teams (name, short_name, slug, primary_color, org_id, city)
-VALUES ('Houston Heat', 'HOU', 'houston-heat', '#ea580c', org2_id, 'Houston')
-RETURNING id INTO team4_id;
-
--- Team rosters
-INSERT INTO team_rosters (team_id, player_id, role, status) VALUES (team1_id, player1_id, 'captain', 'active');
-INSERT INTO team_rosters (team_id, player_id, role, status) VALUES (team1_id, player2_id, 'player', 'active');
-INSERT INTO team_rosters (team_id, player_id, role, status) VALUES (team2_id, player3_id, 'captain', 'active');
-INSERT INTO team_rosters (team_id, player_id, role, status) VALUES (team2_id, player4_id, 'player', 'active');
-INSERT INTO team_rosters (team_id, player_id, role, status) VALUES (team3_id, player5_id, 'captain', 'active');
-INSERT INTO team_rosters (team_id, player_id, role, status) VALUES (team3_id, player6_id, 'player', 'active');
-INSERT INTO team_rosters (team_id, player_id, role, status) VALUES (team4_id, player7_id, 'captain', 'active');
-INSERT INTO team_rosters (team_id, player_id, role, status) VALUES (team4_id, player8_id, 'player', 'active');
+-- Team rosters (2 players per team)
+INSERT INTO team_rosters (team_id, player_id, role, status) VALUES
+  (t1_id, p1_id, 'captain', 'active'), (t1_id, p2_id, 'player', 'active'),
+  (t2_id, p3_id, 'captain', 'active'), (t2_id, p4_id, 'player', 'active'),
+  (t3_id, p13_id, 'captain', 'active'), (t3_id, p14_id, 'player', 'active'),
+  (t4_id, p7_id, 'captain', 'active'), (t4_id, p8_id, 'player', 'active'),
+  (t5_id, p9_id, 'captain', 'active'), (t5_id, p10_id, 'player', 'active'),
+  (t6_id, p5_id, 'captain', 'active'), (t6_id, p6_id, 'player', 'active'),
+  (t7_id, p11_id, 'captain', 'active'), (t7_id, p12_id, 'player', 'active'),
+  (t8_id, p15_id, 'captain', 'active'), (t8_id, p16_id, 'player', 'active');
 
 -- ============================================================
--- 4. VENUE + COURTS
+-- 4. VENUES (2) + COURTS (8 total)
 -- ============================================================
 
-INSERT INTO venues (name, slug, status, address_line_1, city, state_province, country, postal_code, timezone, bio, created_by_user_id)
-VALUES ('Pickleton Sports Complex', 'pickleton-sports-complex', 'published', '2585 Schwegmann Drive', 'Marrero', 'LA', 'US', '70072', 'America/Chicago', 'A state-of-the-art sports facility with 4 dedicated pickleball courts.', admin_id)
-RETURNING id INTO venue_id;
+INSERT INTO venues (name, slug, status, address_line_1, city, state_province, country, postal_code, timezone, bio, created_by_user_id, formatted_address, latitude, longitude)
+VALUES ('Pickleton Sports Complex', 'pickleton-sports-complex', 'published', '2585 Schwegmann Drive', 'Marrero', 'LA', 'US', '70072', 'America/Chicago', 'A state-of-the-art sports facility with 4 dedicated pickleball courts, pro shop, and spectator seating.', admin_id, '2585 Schwegmann Drive, Marrero, LA 70072, US', 29.8994, -90.1101)
+RETURNING id INTO v1_id;
 
--- Venue manager
-INSERT INTO venue_managers (venue_id, user_id, role, added_by) VALUES (venue_id, admin_id, 'admin', admin_id);
+INSERT INTO venues (name, slug, status, address_line_1, city, state_province, country, postal_code, timezone, bio, created_by_user_id, formatted_address, latitude, longitude)
+VALUES ('Lone Star Paddle Center', 'lone-star-paddle-center', 'published', '4200 W Pioneer Pkwy', 'Arlington', 'TX', 'US', '76013', 'America/Chicago', 'Arlington''s premier indoor pickleball facility with 4 courts, climate-controlled, LED lighting, and live streaming capabilities.', td1_id, '4200 W Pioneer Pkwy, Arlington, TX 76013, US', 32.7157, -97.1305)
+RETURNING id INTO v2_id;
 
-INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id)
-VALUES ('Court 1', 'court-1', venue_id, 'indoor_hard', true, true, 1, admin_id)
-RETURNING id INTO court1_id;
+-- Venue managers
+INSERT INTO venue_managers (venue_id, user_id, role, added_by) VALUES
+  (v1_id, admin_id, 'admin', admin_id),
+  (v1_id, td1_id, 'manager', admin_id),
+  (v2_id, td1_id, 'admin', td1_id),
+  (v2_id, td2_id, 'manager', td1_id);
 
-INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id)
-VALUES ('Court 2', 'court-2', venue_id, 'indoor_hard', false, true, 2, admin_id)
-RETURNING id INTO court2_id;
+-- Courts for Venue 1 (Pickleton)
+INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id) VALUES ('Court 1', 'court-1', v1_id, 'indoor_hard', true, true, 1, admin_id) RETURNING id INTO c1_id;
+INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id) VALUES ('Court 2', 'court-2', v1_id, 'indoor_hard', false, true, 2, admin_id) RETURNING id INTO c2_id;
+INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id) VALUES ('Court 3', 'court-3', v1_id, 'indoor_hard', false, true, 3, admin_id) RETURNING id INTO c3_id;
+INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id) VALUES ('Court 4', 'court-4', v1_id, 'outdoor_concrete', false, true, 4, admin_id) RETURNING id INTO c4_id;
 
-INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id)
-VALUES ('Court 3', 'court-3', venue_id, 'indoor_hard', false, true, 3, admin_id)
-RETURNING id INTO court3_id;
-
-INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id)
-VALUES ('Court 4', 'court-4', venue_id, 'outdoor_concrete', false, true, 4, admin_id)
-RETURNING id INTO court4_id;
+-- Courts for Venue 2 (Lone Star)
+INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id) VALUES ('Center Court', 'center-court', v2_id, 'indoor_hard', true, true, 1, td1_id) RETURNING id INTO c5_id;
+INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id) VALUES ('Court A', 'court-a', v2_id, 'indoor_hard', false, true, 2, td1_id) RETURNING id INTO c6_id;
+INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id) VALUES ('Court B', 'court-b', v2_id, 'indoor_hard', false, true, 3, td1_id) RETURNING id INTO c7_id;
+INSERT INTO courts (name, slug, venue_id, surface_type, is_show_court, is_active, sort_order, created_by_user_id) VALUES ('Outdoor Court', 'outdoor-court', v2_id, 'outdoor_sport_court', false, true, 4, td1_id) RETURNING id INTO c8_id;
 
 -- ============================================================
--- 5. LEAGUE + SEASON
+-- 5. LEAGUES (2) + DIVISION TEMPLATES
 -- ============================================================
 
-INSERT INTO leagues (public_id, name, slug, status, city, state_province, country, description, created_by_user_id)
-VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'Texas Pickleball League', 'texas-pickleball-league', 'active', 'Dallas', 'TX', 'US', 'The premier pickleball league covering all of Texas. Multiple seasons per year with divisions for all skill levels.', admin_id)
-RETURNING id INTO league_id;
+INSERT INTO leagues (public_id, name, slug, status, city, state_province, country, description, created_by_user_id, formatted_address)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'Texas Pickleball League', 'texas-pickleball-league', 'active', 'Dallas', 'TX', 'US', 'The premier pickleball league covering all of Texas. Multiple seasons per year with divisions for all skill levels.', admin_id, 'Dallas, TX, US')
+RETURNING id INTO lg1_id;
+
+INSERT INTO leagues (public_id, name, slug, status, city, state_province, country, description, created_by_user_id, formatted_address)
+VALUES ('CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'), 'Gulf South Paddle League', 'gulf-south-paddle-league', 'active', 'Houston', 'TX', 'US', 'A competitive pickleball league for the Gulf South region. Features both recreational and competitive divisions.', td2_id, 'Houston, TX, US')
+RETURNING id INTO lg2_id;
+
+-- Division templates for League 1
+INSERT INTO division_templates (league_id, name, format, gender_restriction, bracket_format, seed_method, max_teams, auto_approve)
+VALUES (lg1_id, 'Open Doubles', 'doubles', 'open', 'single_elimination', 'rating', 16, true)
+RETURNING id INTO dt1_id;
+
+INSERT INTO division_templates (league_id, name, format, gender_restriction, bracket_format, seed_method, max_teams, auto_approve)
+VALUES (lg1_id, 'Mixed Doubles', 'mixed_doubles', 'mixed', 'round_robin', 'manual', 8, true)
+RETURNING id INTO dt2_id;
+
+-- ============================================================
+-- 6. SEASONS (3: 2 for league 1, 1 for league 2)
+-- ============================================================
 
 INSERT INTO seasons (name, slug, league_id, status, start_date, end_date, standings_method)
-VALUES ('Spring 2026', 'spring-2026', league_id, 'active', '2026-03-01', '2026-06-30', 'win_loss')
-RETURNING id INTO season_id;
+VALUES ('Spring 2026', 'spring-2026', lg1_id, 'active', '2026-03-01', '2026-06-30', 'win_loss')
+RETURNING id INTO s1_id;
+
+INSERT INTO seasons (name, slug, league_id, status, start_date, end_date, standings_method)
+VALUES ('Fall 2025', 'fall-2025', lg1_id, 'completed', '2025-09-01', '2025-12-15', 'placement_points')
+RETURNING id INTO s2_id;
+
+INSERT INTO seasons (name, slug, league_id, status, start_date, end_date, standings_method)
+VALUES ('Season One', 'season-one', lg2_id, 'active', '2026-01-15', '2026-07-31', 'match_points')
+RETURNING id INTO s3_id;
 
 -- ============================================================
--- 6. TOURNAMENT + DIVISIONS
+-- 7. LEAGUE REGISTRATIONS (orgs joining leagues)
+-- ============================================================
+
+INSERT INTO league_registrations (league_id, org_id, status)
+VALUES (lg1_id, org1_id, 'active')
+RETURNING id INTO lr1_id;
+
+INSERT INTO league_registrations (league_id, org_id, status)
+VALUES (lg1_id, org3_id, 'active')
+RETURNING id INTO lr2_id;
+
+INSERT INTO league_registrations (league_id, org_id, status)
+VALUES (lg2_id, org2_id, 'active');
+
+-- Season confirmations moved after divisions (need division IDs)
+
+-- ============================================================
+-- 8. TOURNAMENTS (3)
 -- ============================================================
 
 INSERT INTO tournaments (public_id, name, slug, status, start_date, end_date, venue_id, league_id, season_id, description, created_by_user_id, td_user_id)
 VALUES (
   'CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'),
   'Spring Open 2026', 'spring-open-2026', 'in_progress',
-  '2026-04-15', '2026-04-17',
-  venue_id, league_id, season_id,
+  '2026-04-15', '2026-04-17', v1_id, lg1_id, s1_id,
   'The first tournament of the Texas Pickleball League Spring 2026 season. Open doubles and mixed doubles divisions.',
-  admin_id, td_id
-)
-RETURNING id INTO tournament_id;
+  admin_id, td1_id
+) RETURNING id INTO tn1_id;
+
+INSERT INTO tournaments (public_id, name, slug, status, start_date, end_date, venue_id, league_id, season_id, description, created_by_user_id, td_user_id)
+VALUES (
+  'CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'),
+  'Summer Slam 2026', 'summer-slam-2026', 'published',
+  '2026-06-10', '2026-06-12', v2_id, lg1_id, s1_id,
+  'The marquee mid-season event at Lone Star Paddle Center. 8-team bracket, best-of-3 format.',
+  td1_id, td1_id
+) RETURNING id INTO tn2_id;
+
+INSERT INTO tournaments (public_id, name, slug, status, start_date, end_date, venue_id, league_id, season_id, description, created_by_user_id, td_user_id)
+VALUES (
+  'CC-' || lpad(nextval('user_public_id_seq')::TEXT, 5, '0'),
+  'Gulf South Kickoff', 'gulf-south-kickoff', 'registration_open',
+  '2026-05-01', '2026-05-03', v2_id, lg2_id, s3_id,
+  'The inaugural tournament of the Gulf South Paddle League. Open to all skill levels.',
+  td2_id, td2_id
+) RETURNING id INTO tn3_id;
+
+-- Tournament-court assignments
+INSERT INTO tournament_courts (tournament_id, court_id) VALUES
+  (tn1_id, c1_id), (tn1_id, c2_id), (tn1_id, c3_id), (tn1_id, c4_id),
+  (tn2_id, c5_id), (tn2_id, c6_id), (tn2_id, c7_id),
+  (tn3_id, c5_id), (tn3_id, c6_id), (tn3_id, c7_id), (tn3_id, c8_id);
+
+-- ============================================================
+-- 10. DIVISIONS (6: 2 per tournament)
+-- ============================================================
 
 INSERT INTO divisions (name, slug, tournament_id, format, gender_restriction, bracket_format, scoring_format, status, max_teams, seed_method, auto_approve)
-VALUES ('Open Doubles', 'open-doubles', tournament_id, 'doubles', 'open', 'single_elimination', '{"scoring_type":"side_out","points_to_win":11,"win_by":2,"games_per_set":1,"sets_to_win":2}', 'in_progress', 16, 'rating', true)
-RETURNING id INTO div1_id;
+VALUES ('Open Doubles', 'open-doubles', tn1_id, 'doubles', 'open', 'single_elimination', '{"scoring_type":"side_out","points_to_win":11,"win_by":2,"games_per_set":1,"sets_to_win":2}', 'in_progress', 16, 'rating', true)
+RETURNING id INTO d1_id;
 
 INSERT INTO divisions (name, slug, tournament_id, format, gender_restriction, bracket_format, scoring_format, status, max_teams, seed_method, auto_approve)
-VALUES ('Mixed Doubles', 'mixed-doubles', tournament_id, 'mixed_doubles', 'mixed', 'round_robin', '{"scoring_type":"rally","points_to_win":15,"win_by":2,"games_per_set":1,"sets_to_win":1}', 'registration_open', 8, 'manual', true)
-RETURNING id INTO div2_id;
+VALUES ('Mixed Doubles', 'mixed-doubles', tn1_id, 'mixed_doubles', 'mixed', 'round_robin', '{"scoring_type":"rally","points_to_win":15,"win_by":2,"games_per_set":1,"sets_to_win":1}', 'registration_open', 8, 'manual', true)
+RETURNING id INTO d2_id;
+
+INSERT INTO divisions (name, slug, tournament_id, format, gender_restriction, bracket_format, scoring_format, status, max_teams, seed_method, auto_approve)
+VALUES ('Pro Doubles', 'pro-doubles', tn2_id, 'doubles', 'open', 'double_elimination', '{"scoring_type":"side_out","points_to_win":11,"win_by":2,"games_per_set":1,"sets_to_win":2}', 'draft', 8, 'rating', true)
+RETURNING id INTO d3_id;
+
+INSERT INTO divisions (name, slug, tournament_id, format, gender_restriction, bracket_format, scoring_format, status, max_teams, seed_method, auto_approve)
+VALUES ('Recreational Singles', 'rec-singles', tn2_id, 'singles', 'open', 'round_robin', '{"scoring_type":"rally","points_to_win":11,"win_by":2,"games_per_set":1,"sets_to_win":1}', 'draft', 16, 'random', true)
+RETURNING id INTO d4_id;
+
+INSERT INTO divisions (name, slug, tournament_id, format, gender_restriction, bracket_format, scoring_format, status, max_teams, seed_method, auto_approve)
+VALUES ('Open Doubles', 'open-doubles', tn3_id, 'doubles', 'open', 'single_elimination', '{"scoring_type":"side_out","points_to_win":11,"win_by":2,"games_per_set":1,"sets_to_win":2}', 'registration_open', 16, 'manual', true)
+RETURNING id INTO d5_id;
+
+INSERT INTO divisions (name, slug, tournament_id, format, gender_restriction, bracket_format, scoring_format, status, max_teams, seed_method, auto_approve)
+VALUES ('Womens Doubles', 'womens-doubles', tn3_id, 'doubles', 'womens', 'single_elimination', '{"scoring_type":"side_out","points_to_win":11,"win_by":2,"games_per_set":1,"sets_to_win":2}', 'registration_open', 8, 'manual', true)
+RETURNING id INTO d6_id;
 
 -- ============================================================
--- 7. REGISTRATIONS (4 teams in Open Doubles, checked in)
+-- SEASON CONFIRMATIONS (moved here — needs division IDs)
 -- ============================================================
 
-INSERT INTO registrations (division_id, team_id, registered_by_user_id, status, seed)
-VALUES (div1_id, team1_id, admin_id, 'checked_in', 1)
-RETURNING id INTO reg1_id;
-
-INSERT INTO registrations (division_id, team_id, registered_by_user_id, status, seed)
-VALUES (div1_id, team2_id, admin_id, 'checked_in', 2)
-RETURNING id INTO reg2_id;
-
-INSERT INTO registrations (division_id, team_id, registered_by_user_id, status, seed)
-VALUES (div1_id, team3_id, admin_id, 'checked_in', 3)
-RETURNING id INTO reg3_id;
-
-INSERT INTO registrations (division_id, team_id, registered_by_user_id, status, seed)
-VALUES (div1_id, team4_id, admin_id, 'checked_in', 4)
-RETURNING id INTO reg4_id;
+INSERT INTO season_confirmations (season_id, team_id, division_id, confirmed, deadline)
+VALUES (s1_id, t1_id, d1_id, true, '2026-02-28');
+INSERT INTO season_confirmations (season_id, team_id, division_id, confirmed, deadline)
+VALUES (s1_id, t2_id, d1_id, true, '2026-02-28');
+INSERT INTO season_confirmations (season_id, team_id, division_id, confirmed, deadline)
+VALUES (s1_id, t6_id, d1_id, false, '2026-02-28');
 
 -- ============================================================
--- 8. MATCHES (bracket: 2 semis + 1 final)
+-- 11. PODS (2 for round-robin divisions)
+-- ============================================================
+
+INSERT INTO pods (name, division_id, sort_order) VALUES ('Pool A', d2_id, 1) RETURNING id INTO pod1_id;
+INSERT INTO pods (name, division_id, sort_order) VALUES ('Pool B', d2_id, 2) RETURNING id INTO pod2_id;
+
+-- ============================================================
+-- 12. REGISTRATIONS (8 in tournament 1, 4 in tournament 3)
+-- ============================================================
+
+-- Open Doubles (tournament 1, division 1) — 4 teams checked in
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status, seed) VALUES (d1_id, t1_id, admin_id, 'checked_in', 1) RETURNING id INTO r1_id;
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status, seed) VALUES (d1_id, t2_id, admin_id, 'checked_in', 2) RETURNING id INTO r2_id;
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status, seed) VALUES (d1_id, t6_id, td2_id, 'checked_in', 3) RETURNING id INTO r3_id;
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status, seed) VALUES (d1_id, t4_id, admin_id, 'checked_in', 4) RETURNING id INTO r4_id;
+
+-- Mixed Doubles (tournament 1, division 2) — 4 teams approved (round-robin, no seeds yet)
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status) VALUES (d2_id, t1_id, admin_id, 'approved') RETURNING id INTO r5_id;
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status) VALUES (d2_id, t4_id, admin_id, 'approved') RETURNING id INTO r6_id;
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status) VALUES (d2_id, t6_id, td2_id, 'approved') RETURNING id INTO r7_id;
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status) VALUES (d2_id, t7_id, td2_id, 'approved') RETURNING id INTO r8_id;
+
+-- Gulf South Kickoff (tournament 3) — 2 teams registered
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status) VALUES (d5_id, t4_id, admin_id, 'approved');
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status) VALUES (d5_id, t5_id, admin_id, 'approved');
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status) VALUES (d6_id, t4_id, admin_id, 'pending');
+INSERT INTO registrations (division_id, team_id, registered_by_user_id, status) VALUES (d6_id, t5_id, admin_id, 'pending');
+
+-- ============================================================
+-- 13. MATCHES (6 bracket matches for tournament 1 Open Doubles)
 -- ============================================================
 
 -- Semi 1: Dallas Dinkers vs Houston Heat (in progress, 7-5)
 INSERT INTO matches (
   public_id, division_id, court_id, round, match_number,
-  status, team1_id, team2_id,
-  team1_seed, team2_seed,
+  status, team1_id, team2_id, team1_seed, team2_seed,
   points_to_win, win_by, games_per_set, sets_to_win, rally_scoring,
   team1_score, team2_score, serving_team, server_number,
   current_game, referee_user_id, created_by_user_id
-)
-VALUES (
-  'sf1-' || substr(md5(random()::text), 1, 12), div1_id, court1_id, 1, 1,
-  'in_progress', team1_id, team4_id,
-  1, 4,
-  11, 2, 1, 2, false,
-  7, 5, 1, 1, 1, ref_id, td_id
-)
-RETURNING id INTO match1_id;
+) VALUES (
+  'sf1-' || substr(md5(random()::text), 1, 12), d1_id, c1_id, 1, 1,
+  'in_progress', t1_id, t4_id, 1, 4,
+  11, 2, 1, 2, false, 7, 5, 1, 1, 1, ref1_id, td1_id
+) RETURNING id INTO m1_id;
 
 -- Semi 2: Fort Worth Aces vs Austin Smashers (scheduled)
 INSERT INTO matches (
   public_id, division_id, court_id, round, match_number,
-  status, team1_id, team2_id,
-  team1_seed, team2_seed,
+  status, team1_id, team2_id, team1_seed, team2_seed,
   points_to_win, win_by, games_per_set, sets_to_win, rally_scoring,
   team1_score, team2_score, serving_team, server_number,
-  current_game, created_by_user_id
-)
-VALUES (
-  'sf2-' || substr(md5(random()::text), 1, 12), div1_id, court2_id, 1, 2,
-  'scheduled', team2_id, team3_id,
-  2, 3,
-  11, 2, 1, 2, false,
-  0, 0, 1, 1, 1, td_id
-)
-RETURNING id INTO match2_id;
+  current_game, referee_user_id, created_by_user_id
+) VALUES (
+  'sf2-' || substr(md5(random()::text), 1, 12), d1_id, c2_id, 1, 2,
+  'scheduled', t2_id, t6_id, 2, 3,
+  11, 2, 1, 2, false, 0, 0, 1, 1, 1, ref2_id, td1_id
+) RETURNING id INTO m2_id;
 
 -- Final: TBD vs TBD (scheduled)
 INSERT INTO matches (
   public_id, division_id, court_id, round, match_number,
   status, points_to_win, win_by, games_per_set, sets_to_win, rally_scoring,
   team1_score, team2_score, serving_team, server_number, current_game, created_by_user_id
-)
-VALUES (
-  'final-' || substr(md5(random()::text), 1, 12), div1_id, court1_id, 2, 3,
-  'scheduled', 11, 2, 1, 2, false,
-  0, 0, 1, 1, 1, td_id
-)
-RETURNING id INTO match3_id;
+) VALUES (
+  'final-' || substr(md5(random()::text), 1, 12), d1_id, c1_id, 2, 3,
+  'scheduled', 11, 2, 1, 2, false, 0, 0, 1, 1, 1, td1_id
+) RETURNING id INTO m3_id;
 
 -- Wire bracket: semi winners feed into final
-UPDATE matches SET next_match_id = match3_id WHERE id IN (match1_id, match2_id);
+UPDATE matches SET next_match_id = m3_id WHERE id IN (m1_id, m2_id);
+
+-- 3 round-robin matches for Mixed Doubles (pool play — pods)
+INSERT INTO matches (
+  public_id, division_id, pod_id, round, match_number,
+  status, team1_id, team2_id,
+  points_to_win, win_by, games_per_set, sets_to_win, rally_scoring,
+  team1_score, team2_score, serving_team, server_number, current_game, created_by_user_id
+) VALUES (
+  'rr1-' || substr(md5(random()::text), 1, 12), d2_id, pod1_id, 1, 1,
+  'scheduled', t1_id, t4_id,
+  15, 2, 1, 1, true, 0, 0, 1, 1, 1, td1_id
+) RETURNING id INTO m4_id;
+
+INSERT INTO matches (
+  public_id, division_id, pod_id, round, match_number,
+  status, team1_id, team2_id,
+  points_to_win, win_by, games_per_set, sets_to_win, rally_scoring,
+  team1_score, team2_score, serving_team, server_number, current_game, created_by_user_id
+) VALUES (
+  'rr2-' || substr(md5(random()::text), 1, 12), d2_id, pod2_id, 1, 2,
+  'scheduled', t6_id, t7_id,
+  15, 2, 1, 1, true, 0, 0, 1, 1, 1, td1_id
+) RETURNING id INTO m5_id;
+
+INSERT INTO matches (
+  public_id, division_id, round, match_number,
+  status, team1_id, team2_id,
+  points_to_win, win_by, games_per_set, sets_to_win, rally_scoring,
+  team1_score, team2_score, serving_team, server_number, current_game, created_by_user_id
+) VALUES (
+  'rr3-' || substr(md5(random()::text), 1, 12), d2_id, 1, 3,
+  'scheduled', t1_id, t6_id,
+  15, 2, 1, 1, true, 0, 0, 1, 1, 1, td1_id
+) RETURNING id INTO m6_id;
 
 -- ============================================================
--- 9. MATCH EVENTS (some scoring events on semi 1)
+-- 14. MATCH EVENTS (scoring events on Semi 1)
 -- ============================================================
 
 INSERT INTO match_events (match_id, sequence_id, event_type, payload, team1_score, team2_score, current_game, serving_team, server_number, created_by_user_id)
 VALUES
-(match1_id, 1, 'start_game', '{"game":1}', 0, 0, 1, 1, 1, ref_id),
-(match1_id, 2, 'point_team1', '{"team":1}', 1, 0, 1, 1, 1, ref_id),
-(match1_id, 3, 'point_team1', '{"team":1}', 2, 0, 1, 1, 1, ref_id),
-(match1_id, 4, 'side_out', '{}', 2, 0, 1, 2, 1, ref_id),
-(match1_id, 5, 'point_team2', '{"team":2}', 2, 1, 1, 2, 1, ref_id),
-(match1_id, 6, 'point_team2', '{"team":2}', 2, 2, 1, 2, 1, ref_id),
-(match1_id, 7, 'side_out', '{}', 2, 2, 1, 1, 2, ref_id),
-(match1_id, 8, 'point_team1', '{"team":1}', 3, 2, 1, 1, 2, ref_id),
-(match1_id, 9, 'point_team1', '{"team":1}', 4, 2, 1, 1, 2, ref_id),
-(match1_id, 10, 'point_team1', '{"team":1}', 5, 2, 1, 1, 2, ref_id),
-(match1_id, 11, 'side_out', '{}', 5, 2, 1, 2, 2, ref_id),
-(match1_id, 12, 'point_team2', '{"team":2}', 5, 3, 1, 2, 2, ref_id),
-(match1_id, 13, 'point_team2', '{"team":2}', 5, 4, 1, 2, 2, ref_id),
-(match1_id, 14, 'point_team2', '{"team":2}', 5, 5, 1, 2, 2, ref_id),
-(match1_id, 15, 'side_out', '{}', 5, 5, 1, 1, 1, ref_id),
-(match1_id, 16, 'point_team1', '{"team":1}', 6, 5, 1, 1, 1, ref_id),
-(match1_id, 17, 'point_team1', '{"team":1}', 7, 5, 1, 1, 1, ref_id);
+(m1_id, 1, 'start_game', '{"game":1}', 0, 0, 1, 1, 1, ref1_id),
+(m1_id, 2, 'point_team1', '{"team":1}', 1, 0, 1, 1, 1, ref1_id),
+(m1_id, 3, 'point_team1', '{"team":1}', 2, 0, 1, 1, 1, ref1_id),
+(m1_id, 4, 'side_out', '{}', 2, 0, 1, 2, 1, ref1_id),
+(m1_id, 5, 'point_team2', '{"team":2}', 2, 1, 1, 2, 1, ref1_id),
+(m1_id, 6, 'point_team2', '{"team":2}', 2, 2, 1, 2, 1, ref1_id),
+(m1_id, 7, 'side_out', '{}', 2, 2, 1, 1, 2, ref1_id),
+(m1_id, 8, 'point_team1', '{"team":1}', 3, 2, 1, 1, 2, ref1_id),
+(m1_id, 9, 'point_team1', '{"team":1}', 4, 2, 1, 1, 2, ref1_id),
+(m1_id, 10, 'point_team1', '{"team":1}', 5, 2, 1, 1, 2, ref1_id),
+(m1_id, 11, 'side_out', '{}', 5, 2, 1, 2, 2, ref1_id),
+(m1_id, 12, 'point_team2', '{"team":2}', 5, 3, 1, 2, 2, ref1_id),
+(m1_id, 13, 'timeout', '{"team":1}', 5, 3, 1, 2, 2, ref1_id),
+(m1_id, 14, 'point_team2', '{"team":2}', 5, 4, 1, 2, 2, ref1_id),
+(m1_id, 15, 'point_team2', '{"team":2}', 5, 5, 1, 2, 2, ref1_id),
+(m1_id, 16, 'side_out', '{}', 5, 5, 1, 1, 1, ref1_id),
+(m1_id, 17, 'point_team1', '{"team":1}', 6, 5, 1, 1, 1, ref1_id),
+(m1_id, 18, 'point_team1', '{"team":1}', 7, 5, 1, 1, 1, ref1_id);
 
 -- ============================================================
--- 10. ANNOUNCEMENTS
+-- 15. MATCH SERIES (2)
 -- ============================================================
 
-INSERT INTO announcements (tournament_id, title, body, is_pinned, created_by_user_id)
-VALUES (tournament_id, 'Welcome to Spring Open 2026!', '<p>Welcome all teams! Check-in is at 8am on Court 1. Please have your team roster ready.</p>', true, td_id);
+INSERT INTO match_series (public_id, division_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, status, round, round_name, match_number)
+VALUES ('ms_' || substr(md5(random()::text), 1, 12), d1_id, td1_id, t1_id, t2_id, 'best_of_3', 2, 'pending', 1, 'Semifinal', 1)
+RETURNING id INTO ms1_id;
 
-INSERT INTO announcements (tournament_id, title, body, is_pinned, created_by_user_id)
-VALUES (tournament_id, 'Schedule Update', '<p>Open Doubles bracket play begins at 10am. Mixed Doubles round-robin starts at 2pm.</p>', false, td_id);
-
-INSERT INTO announcements (league_id, title, body, is_pinned, created_by_user_id)
-VALUES (league_id, 'Spring 2026 Season Kicks Off!', '<p>The Spring 2026 season is officially underway. Good luck to all teams!</p>', true, admin_id);
+INSERT INTO match_series (public_id, division_id, created_by_user_id, team1_id, team2_id, series_format, games_to_win, status, round, round_name, match_number)
+VALUES ('ms_' || substr(md5(random()::text), 1, 12), d1_id, td1_id, t6_id, t4_id, 'best_of_3', 2, 'pending', 1, 'Semifinal', 2)
+RETURNING id INTO ms2_id;
 
 -- ============================================================
--- 11. SCORING PRESETS (already seeded by migration 00017)
+-- 16. QUICK MATCHES (2)
+-- ============================================================
+
+INSERT INTO matches (
+  public_id, status, match_type, team1_id, team2_id,
+  points_to_win, win_by, games_per_set, sets_to_win, rally_scoring,
+  team1_score, team2_score, serving_team, server_number, current_game,
+  expires_at, created_by_user_id
+) VALUES (
+  'qm1-' || substr(md5(random()::text), 1, 12),
+  'in_progress', 'quick', t3_id, t5_id,
+  11, 2, 1, 1, false,
+  3, 2, 1, 2, 1,
+  NOW() + INTERVAL '24 hours', p13_id
+) RETURNING id INTO qm1_id;
+
+INSERT INTO matches (
+  public_id, status, match_type, team1_id, team2_id,
+  points_to_win, win_by, games_per_set, sets_to_win, rally_scoring,
+  team1_score, team2_score, serving_team, server_number, current_game,
+  expires_at, created_by_user_id
+) VALUES (
+  'qm2-' || substr(md5(random()::text), 1, 12),
+  'scheduled', 'quick', t7_id, t8_id,
+  15, 2, 1, 1, true,
+  0, 0, 1, 1, 1,
+  NOW() + INTERVAL '24 hours', p11_id
+) RETURNING id INTO qm2_id;
+
+-- ============================================================
+-- 17. STANDINGS ENTRIES
+-- ============================================================
+
+INSERT INTO standings_entries (season_id, division_id, team_id, wins, losses, draws, points_for, points_against, standing_points, rank)
+VALUES
+(s1_id, d1_id, t1_id, 3, 1, 0, 44, 32, 9, 1),
+(s1_id, d1_id, t2_id, 2, 2, 0, 38, 36, 6, 2),
+(s1_id, d1_id, t6_id, 2, 2, 0, 36, 38, 6, 3),
+(s1_id, d1_id, t4_id, 1, 3, 0, 30, 42, 3, 4);
+
+-- ============================================================
+-- 18. OVERLAY CONFIGS (2 courts with overlay settings)
+-- ============================================================
+
+INSERT INTO court_overlay_configs (court_id, theme_id, elements, data_overrides)
+VALUES (c1_id, 'classic', '{"scoreboard":{"visible":true,"auto_animate":true},"lower_third":{"visible":true,"auto_animate":true},"sponsor_bug":{"visible":false},"tournament_bug":{"visible":true}}', '{}');
+
+INSERT INTO court_overlay_configs (court_id, theme_id, elements, data_overrides)
+VALUES (c5_id, 'modern', '{"scoreboard":{"visible":true,"auto_animate":true},"lower_third":{"visible":false},"sponsor_bug":{"visible":true},"tournament_bug":{"visible":true}}', '{}');
+
+-- ============================================================
+-- 19. SOURCE PROFILES (2)
+-- ============================================================
+
+INSERT INTO source_profiles (name, source_type, created_by_user_id, api_url, auth_type, poll_interval_seconds, field_mapping, is_active)
+VALUES ('Local Court Command', 'court_command', admin_id, 'http://localhost:8080', 'none', 10, '{}', true);
+
+INSERT INTO source_profiles (name, source_type, created_by_user_id, api_url, auth_type, auth_config, poll_interval_seconds, field_mapping, is_active)
+VALUES ('External Scoring System', 'rest_api', broadcast_id, 'https://api.example.com/matches', 'api_key', '{"key":"demo-api-key-12345"}', 30, '{"match_status":"status","team_1_name":"home.name","team_2_name":"away.name","team_1_score":"home.score","team_2_score":"away.score"}', true);
+
+-- ============================================================
+-- 20. API KEYS (2)
+-- ============================================================
+
+INSERT INTO api_keys (user_id, name, key_hash, key_prefix, scopes, expires_at)
+VALUES (admin_id, 'Admin Read-Only Key', encode(sha256('ccapi_demo_admin_key_001'::bytea), 'hex'), 'ccapi_demo_ad', ARRAY['read'], NOW() + INTERVAL '365 days');
+
+INSERT INTO api_keys (user_id, name, key_hash, key_prefix, scopes, expires_at)
+VALUES (broadcast_id, 'Broadcast API Key', encode(sha256('ccapi_demo_broadcast_key'::bytea), 'hex'), 'ccapi_demo_br', ARRAY['read'], NOW() + INTERVAL '90 days');
+
+-- ============================================================
+-- 21. ACTIVITY LOGS (sample entries)
+-- ============================================================
+
+INSERT INTO activity_logs (user_id, action, entity_type, entity_id, metadata)
+VALUES
+(admin_id, 'user.create', 'user', td1_id, '{"role":"tournament_director"}'),
+(admin_id, 'venue.create', 'venue', v1_id, '{"name":"Pickleton Sports Complex"}'),
+(td1_id, 'tournament.create', 'tournament', tn1_id, '{"name":"Spring Open 2026"}'),
+(td1_id, 'match.start', 'match', m1_id, '{"teams":"Dallas Dinkers vs Houston Heat"}'),
+(admin_id, 'league.create', 'league', lg1_id, '{"name":"Texas Pickleball League"}'),
+(td2_id, 'tournament.create', 'tournament', tn3_id, '{"name":"Gulf South Kickoff"}'),
+(admin_id, 'venue.approve', 'venue', v2_id, '{"status":"published"}'),
+(ref1_id, 'match.score', 'match', m1_id, '{"event":"point_team1","score":"7-5"}');
+
+-- ============================================================
+-- 22. ANNOUNCEMENTS (5: 3 tournament, 2 league)
+-- ============================================================
+
+INSERT INTO announcements (tournament_id, title, body, is_pinned, created_by_user_id) VALUES
+(tn1_id, 'Welcome to Spring Open 2026!', '<p>Welcome all teams! Check-in is at 8am on Court 1. Please have your team roster ready.</p>', true, td1_id),
+(tn1_id, 'Schedule Update', '<p>Open Doubles bracket play begins at 10am. Mixed Doubles round-robin starts at 2pm.</p>', false, td1_id),
+(tn3_id, 'Registration Now Open!', '<p>The Gulf South Kickoff is accepting registrations. Open Doubles and Womens Doubles divisions available.</p>', true, td2_id);
+
+INSERT INTO announcements (league_id, title, body, is_pinned, created_by_user_id) VALUES
+(lg1_id, 'Spring 2026 Season Kicks Off!', '<p>The Spring 2026 season is officially underway. Good luck to all teams!</p>', true, admin_id),
+(lg2_id, 'Welcome to Gulf South Paddle League', '<p>We are excited to announce the launch of the Gulf South Paddle League. Our first tournament is coming in May!</p>', true, td2_id);
+
+-- ============================================================
+-- DONE
 -- ============================================================
 
 RAISE NOTICE 'Seed data inserted successfully!';
+RAISE NOTICE '';
 RAISE NOTICE 'Test accounts (password: TestPass123!):';
 RAISE NOTICE '  admin@courtcommand.com (platform_admin)';
-RAISE NOTICE '  td@courtcommand.com (tournament_director)';
-RAISE NOTICE '  ref@courtcommand.com (head_referee)';
+RAISE NOTICE '  td1@courtcommand.com (tournament_director)';
+RAISE NOTICE '  td2@courtcommand.com (tournament_director)';
+RAISE NOTICE '  ref1@courtcommand.com (head_referee)';
+RAISE NOTICE '  ref2@courtcommand.com (referee)';
+RAISE NOTICE '  scorekeeper@courtcommand.com (scorekeeper)';
+RAISE NOTICE '  broadcast@courtcommand.com (broadcast_operator)';
 RAISE NOTICE '  daniel.f.velez@gmail.com (platform_admin) — password: PASSword123!';
-RAISE NOTICE '  alex.j@demo.com through emma.d@demo.com (8 players)';
+RAISE NOTICE '  alex.j@demo.com through olivia.s@demo.com (16 players)';
+RAISE NOTICE '';
+RAISE NOTICE 'Entities created:';
+RAISE NOTICE '  24 users, 3 orgs, 8 teams, 2 venues, 8 courts';
+RAISE NOTICE '  2 leagues, 3 seasons, 2 division templates';
+RAISE NOTICE '  3 tournaments, 6 divisions, 2 pods';
+RAISE NOTICE '  12 registrations, 6 bracket matches + 2 quick matches';
+RAISE NOTICE '  18 match events, 2 match series, 4 standings entries';
+RAISE NOTICE '  2 overlay configs, 2 source profiles, 2 API keys';
+RAISE NOTICE '  8 activity logs, 5 announcements';
+RAISE NOTICE '  3 league registrations, 3 season confirmations';
 
 END $$;
