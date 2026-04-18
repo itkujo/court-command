@@ -121,7 +121,20 @@ export function TeamDetail({ teamId }: TeamDetailProps) {
                 ) : null
               }
             />
-            <InfoRow label="Organization" value={team.org_id ? String(team.org_id) : null} />
+            <InfoRow
+              label="Organization"
+              value={
+                team.org_name && team.org_id ? (
+                  <Link
+                    to="/organizations/$orgId"
+                    params={{ orgId: String(team.org_id) }}
+                    className="text-cyan-400 hover:underline"
+                  >
+                    {team.org_name}
+                  </Link>
+                ) : null
+              }
+            />
             <InfoRow label="City" value={team.city} />
             <InfoRow
               label="Founded"

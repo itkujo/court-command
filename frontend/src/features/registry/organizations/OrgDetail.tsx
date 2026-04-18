@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useOrg, useDeleteOrg, useBlockOrg, useUnblockOrg, useOrgBlockStatus, useMyOrgRole } from './hooks'
 import { useAuth } from '../../auth/hooks'
 import { MembersPanel } from './MembersPanel'
+import { OrgTeamsPanel } from './OrgTeamsPanel'
 import { InfoRow } from '../../../components/InfoRow'
 import { Skeleton } from '../../../components/Skeleton'
 import { EmptyState } from '../../../components/EmptyState'
@@ -150,6 +151,8 @@ export function OrgDetail({ orgId }: OrgDetailProps) {
             <InfoRow label="Created" value={formatDate(org.created_at)} />
           </dl>
         </div>
+
+        <OrgTeamsPanel orgId={orgId} canManage={canManage} />
 
         <MembersPanel orgId={orgId} canManage={canManage} />
       </div>

@@ -10,7 +10,7 @@ import { EmptyState } from '../../../components/EmptyState'
 import { SkeletonTable } from '../../../components/Skeleton'
 import { Button } from '../../../components/Button'
 import { Users2, Plus } from 'lucide-react'
-import { formatDate } from '../../../lib/formatters'
+
 import { AdSlot } from '../../../components/AdSlot'
 
 export function TeamList() {
@@ -59,18 +59,27 @@ export function TeamList() {
       ),
     },
     {
+      key: 'org_name',
+      header: 'Organization',
+      render: (t: (typeof teams)[0]) =>
+        t.org_name ? (
+          <Link
+            to="/organizations/$orgId"
+            params={{ orgId: String(t.org_id) }}
+            className="text-cyan-400 hover:underline"
+          >
+            {t.org_name}
+          </Link>
+        ) : (
+          <span className="text-(--color-text-muted)">&mdash;</span>
+        ),
+      className: 'hidden md:table-cell',
+    },
+    {
       key: 'city',
       header: 'City',
       render: (t: (typeof teams)[0]) => (
         <span className="text-(--color-text-secondary)">{t.city || '\u2014'}</span>
-      ),
-      className: 'hidden md:table-cell',
-    },
-    {
-      key: 'created_at',
-      header: 'Created',
-      render: (t: (typeof teams)[0]) => (
-        <span className="text-(--color-text-secondary)">{formatDate(t.created_at)}</span>
       ),
       className: 'hidden lg:table-cell',
     },

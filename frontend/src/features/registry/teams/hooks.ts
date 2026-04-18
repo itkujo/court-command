@@ -18,6 +18,8 @@ export interface Team {
   primary_color: string | null
   secondary_color: string | null
   org_id: number | null
+  org_name: string | null
+  org_slug: string | null
   city: string | null
   founded_year: number | null
   bio: string | null
@@ -82,6 +84,18 @@ export function useDeleteTeam(id: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] })
     },
+  })
+}
+
+export function useTeamsByOrg(orgId: string | number, limit = 50, offset = 0) {
+  return useQuery<PaginatedData<Team>>({
+    queryKey: ['teams', 'by-org', orgId, { limit, offset }],
+    queryFn: () =>
+      apiGetPaginated<Team>(
+        `/api/v1/organizations/${orgId}/teams${buildQueryString({ limit, offset })}`,
+      ),
+    enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

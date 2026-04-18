@@ -61,7 +61,7 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	healthHandler := handler.NewHealthHandler(pool, store.Client())
 	playerHandler := handler.NewPlayerHandler(playerService)
 	teamHandler := handler.NewTeamHandler(teamService)
-	orgHandler := handler.NewOrgHandler(orgService)
+	orgHandler := handler.NewOrgHandler(orgService, teamService)
 	venueHandler := handler.NewVenueHandler(venueService)
 	courtHandler := handler.NewCourtHandler(venueService)
 

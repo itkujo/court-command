@@ -32,6 +32,8 @@ type TeamResponse struct {
 	PrimaryColor   *string `json:"primary_color,omitempty"`
 	SecondaryColor *string `json:"secondary_color,omitempty"`
 	OrgID          *int64  `json:"org_id,omitempty"`
+	OrgName        *string `json:"org_name,omitempty"`
+	OrgSlug        *string `json:"org_slug,omitempty"`
 	City           *string `json:"city,omitempty"`
 	FoundedYear    *int32  `json:"founded_year,omitempty"`
 	Bio            *string `json:"bio,omitempty"`
@@ -76,6 +78,43 @@ func toTeamResponse(t generated.Team) TeamResponse {
 	}
 
 	return resp
+}
+
+// enrichTeamWithOrg looks up the org name/slug for a team that has an org_id.
+func (s *TeamService) enrichTeamWithOrg(ctx context.Context, resp *TeamResponse) {
+	if resp.OrgID == nil {
+		return
+	}
+	org, err := s.queries.GetOrgByID(ctx, *resp.OrgID)
+	if err != nil {
+		return // best-effort
+	}
+	resp.OrgName = &org.Name
+	resp.OrgSlug = &org.Slug
+}
+
+// ListTeamsByOrg returns all teams belonging to a specific organization.
+func (s *TeamService) ListTeamsByOrg(ctx context.Context, orgID int64, limit, offset int32) ([]TeamResponse, int64, error) {
+	params := generated.ListTeamsByOrgParams{
+		OrgID:  pgtype.Int8{Int64: orgID, Valid: true},
+		Limit:  limit,
+		Offset: offset,
+	}
+	teams, err := s.queries.ListTeamsByOrg(ctx, params)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list teams by org: %w", err)
+	}
+	total, err := s.queries.CountTeamsByOrg(ctx, pgtype.Int8{Int64: orgID, Valid: true})
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count teams by org: %w", err)
+	}
+
+	result := make([]TeamResponse, len(teams))
+	for i, t := range teams {
+		result[i] = toTeamResponse(t)
+		// Org name is already known since all teams share the same org
+	}
+	return result, total, nil
 }
 
 // CreateTeam creates a new team.
@@ -124,7 +163,9 @@ func (s *TeamService) GetTeam(ctx context.Context, teamID int64) (TeamResponse, 
 	if err != nil {
 		return TeamResponse{}, &NotFoundError{Message: "team not found"}
 	}
-	return toTeamResponse(team), nil
+	resp := toTeamResponse(team)
+	s.enrichTeamWithOrg(ctx, &resp)
+	return resp, nil
 }
 
 // GetTeamBySlug retrieves a team by slug.
@@ -133,7 +174,9 @@ func (s *TeamService) GetTeamBySlug(ctx context.Context, slug string) (TeamRespo
 	if err != nil {
 		return TeamResponse{}, &NotFoundError{Message: "team not found"}
 	}
-	return toTeamResponse(team), nil
+	resp := toTeamResponse(team)
+	s.enrichTeamWithOrg(ctx, &resp)
+	return resp, nil
 }
 
 // UpdateTeam updates a team's details.
@@ -180,6 +223,7 @@ func (s *TeamService) ListTeams(ctx context.Context, limit, offset int32) ([]Tea
 	for i, t := range teams {
 		result[i] = toTeamResponse(t)
 	}
+	s.enrichTeamsWithOrg(ctx, result)
 
 	return result, count, nil
 }
@@ -204,8 +248,32 @@ func (s *TeamService) SearchTeams(ctx context.Context, params generated.SearchTe
 	for i, t := range teams {
 		result[i] = toTeamResponse(t)
 	}
+	s.enrichTeamsWithOrg(ctx, result)
 
 	return result, count, nil
+}
+
+// enrichTeamsWithOrg batch-enriches a slice of teams with org names.
+// Uses a map to avoid N+1 queries when multiple teams share the same org.
+func (s *TeamService) enrichTeamsWithOrg(ctx context.Context, teams []TeamResponse) {
+	orgCache := make(map[int64]*generated.Organization)
+	for i := range teams {
+		if teams[i].OrgID == nil {
+			continue
+		}
+		orgID := *teams[i].OrgID
+		org, ok := orgCache[orgID]
+		if !ok {
+			fetched, err := s.queries.GetOrgByID(ctx, orgID)
+			if err != nil {
+				continue // best-effort
+			}
+			org = &fetched
+			orgCache[orgID] = org
+		}
+		teams[i].OrgName = &org.Name
+		teams[i].OrgSlug = &org.Slug
+	}
 }
 
 // AddPlayerToTeam adds a player to a team's roster.

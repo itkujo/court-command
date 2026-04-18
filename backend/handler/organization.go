@@ -16,12 +16,13 @@ import (
 
 // OrgHandler handles organization HTTP requests.
 type OrgHandler struct {
-	orgService *service.OrganizationService
+	orgService  *service.OrganizationService
+	teamService *service.TeamService
 }
 
 // NewOrgHandler creates a new OrgHandler.
-func NewOrgHandler(orgService *service.OrganizationService) *OrgHandler {
-	return &OrgHandler{orgService: orgService}
+func NewOrgHandler(orgService *service.OrganizationService, teamService *service.TeamService) *OrgHandler {
+	return &OrgHandler{orgService: orgService, teamService: teamService}
 }
 
 // Routes returns a chi.Router with all organization routes mounted.
@@ -42,6 +43,9 @@ func (h *OrgHandler) Routes() chi.Router {
 	r.Post("/{orgID}/members", h.AddMember)
 	r.Delete("/{orgID}/members/{playerID}", h.RemoveMember)
 	r.Patch("/{orgID}/members/{playerID}/role", h.UpdateMemberRole)
+
+	// Teams sub-route
+	r.Get("/{orgID}/teams", h.ListOrgTeams)
 
 	// Player self-service
 	r.Post("/{orgID}/leave", h.LeaveSelf)
@@ -574,4 +578,24 @@ func (h *OrgHandler) ListMyOrgs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	Success(w, orgs)
+}
+
+// ListOrgTeams returns all teams belonging to a specific organization.
+func (h *OrgHandler) ListOrgTeams(w http.ResponseWriter, r *http.Request) {
+	orgIDStr := chi.URLParam(r, "orgID")
+	orgID, err := strconv.ParseInt(orgIDStr, 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid organization ID")
+		return
+	}
+
+	limit, offset := parsePagination(r)
+
+	teams, total, err := h.teamService.ListTeamsByOrg(r.Context(), orgID, limit, offset)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Paginated(w, teams, total, int(limit), int(offset))
 }

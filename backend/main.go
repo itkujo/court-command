@@ -97,7 +97,7 @@ func main() {
 	healthHandler := handler.NewHealthHandler(pool, sessionStore.Client())
 	playerHandler := handler.NewPlayerHandler(playerService)
 	teamHandler := handler.NewTeamHandler(teamService)
-	orgHandler := handler.NewOrgHandler(orgService)
+	orgHandler := handler.NewOrgHandler(orgService, teamService)
 	venueHandler := handler.NewVenueHandler(venueService)
 	courtHandler := handler.NewCourtHandler(venueService)
 
