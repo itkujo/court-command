@@ -14,13 +14,14 @@ import (
 
 // TournamentService handles tournament business logic.
 type TournamentService struct {
-	queries *generated.Queries
-	pool    *pgxpool.Pool
+	queries      *generated.Queries
+	pool         *pgxpool.Pool
+	staffService *TournamentStaffService
 }
 
 // NewTournamentService creates a new TournamentService.
-func NewTournamentService(queries *generated.Queries, pool *pgxpool.Pool) *TournamentService {
-	return &TournamentService{queries: queries, pool: pool}
+func NewTournamentService(queries *generated.Queries, pool *pgxpool.Pool, staffService *TournamentStaffService) *TournamentService {
+	return &TournamentService{queries: queries, pool: pool, staffService: staffService}
 }
 
 // TournamentResponse is the public representation of a tournament.
@@ -155,6 +156,11 @@ func (s *TournamentService) Create(ctx context.Context, params generated.CreateT
 	tournament, err := s.queries.CreateTournament(ctx, params)
 	if err != nil {
 		return TournamentResponse{}, fmt.Errorf("failed to create tournament: %w", err)
+	}
+
+	// Auto-create staff accounts (ref + scorekeeper)
+	if err := s.staffService.CreateStaffAccounts(ctx, tournament.ID); err != nil {
+		return TournamentResponse{}, fmt.Errorf("creating staff accounts: %w", err)
 	}
 
 	return toTournamentResponse(tournament), nil

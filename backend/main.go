@@ -69,7 +69,8 @@ func main() {
 
 	// Phase 3 services
 	leagueService := service.NewLeagueService(queries)
-	tournamentService := service.NewTournamentService(queries, pool)
+	tournamentStaffService := service.NewTournamentStaffService(queries, pool)
+	tournamentService := service.NewTournamentService(queries, pool, tournamentStaffService)
 	divisionService := service.NewDivisionService(queries)
 	registrationService := service.NewRegistrationService(queries)
 	seasonService := service.NewSeasonService(queries)
@@ -104,6 +105,7 @@ func main() {
 	// Phase 3 handlers
 	leagueHandler := handler.NewLeagueHandler(leagueService)
 	tournamentHandler := handler.NewTournamentHandler(tournamentService)
+	tournamentStaffHandler := handler.NewTournamentStaffHandler(tournamentStaffService, tournamentService)
 	divisionHandler := handler.NewDivisionHandler(divisionService)
 	registrationHandler := handler.NewRegistrationHandler(registrationService)
 	seasonHandler := handler.NewSeasonHandler(seasonService)
@@ -176,15 +178,16 @@ func main() {
 		SecureCookie:   secureCookie,
 
 		// Phase 3
-		LeagueHandler:       leagueHandler,
-		TournamentHandler:   tournamentHandler,
-		DivisionHandler:     divisionHandler,
-		RegistrationHandler: registrationHandler,
-		SeasonHandler:       seasonHandler,
-		PodHandler:          podHandler,
-		AnnouncementHandler: announcementHandler,
-		DivTemplateHandler:  divTemplateHandler,
-		LeagueRegHandler:    leagueRegHandler,
+		LeagueHandler:          leagueHandler,
+		TournamentHandler:      tournamentHandler,
+		TournamentStaffHandler: tournamentStaffHandler,
+		DivisionHandler:        divisionHandler,
+		RegistrationHandler:    registrationHandler,
+		SeasonHandler:          seasonHandler,
+		PodHandler:             podHandler,
+		AnnouncementHandler:    announcementHandler,
+		DivTemplateHandler:     divTemplateHandler,
+		LeagueRegHandler:       leagueRegHandler,
 
 		// Phase 4A
 		ScoringPresetHandler: scoringPresetHandler,

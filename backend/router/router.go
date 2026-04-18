@@ -33,15 +33,16 @@ type Config struct {
 	SecureCookie   bool
 
 	// Phase 3 handlers
-	LeagueHandler       *handler.LeagueHandler
-	TournamentHandler   *handler.TournamentHandler
-	DivisionHandler     *handler.DivisionHandler
-	RegistrationHandler *handler.RegistrationHandler
-	SeasonHandler       *handler.SeasonHandler
-	PodHandler          *handler.PodHandler
-	AnnouncementHandler *handler.AnnouncementHandler
-	DivTemplateHandler  *handler.DivisionTemplateHandler
-	LeagueRegHandler    *handler.LeagueRegistrationHandler
+	LeagueHandler          *handler.LeagueHandler
+	TournamentHandler      *handler.TournamentHandler
+	TournamentStaffHandler *handler.TournamentStaffHandler
+	DivisionHandler        *handler.DivisionHandler
+	RegistrationHandler    *handler.RegistrationHandler
+	SeasonHandler          *handler.SeasonHandler
+	PodHandler             *handler.PodHandler
+	AnnouncementHandler    *handler.AnnouncementHandler
+	DivTemplateHandler     *handler.DivisionTemplateHandler
+	LeagueRegHandler       *handler.LeagueRegistrationHandler
 
 	// Phase 4A handlers
 	ScoringPresetHandler *handler.ScoringPresetHandler
@@ -183,6 +184,9 @@ func New(cfg *Config) chi.Router {
 			r.Post("/{tournamentID}/courts", cfg.CourtHandler.AssignCourtToTournament)
 			r.Post("/{tournamentID}/courts/temp", cfg.CourtHandler.CreateTempCourtForTournament)
 			r.Delete("/{tournamentID}/courts/{courtID}", cfg.CourtHandler.UnassignCourtFromTournament)
+			r.Route("/{tournamentID}/staff", func(r chi.Router) {
+				r.Mount("/", cfg.TournamentStaffHandler.Routes())
+			})
 		})
 
 		// Division sub-resources (registrations and pods — auth checked by handlers)
