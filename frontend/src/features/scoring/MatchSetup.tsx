@@ -4,7 +4,10 @@ import { Button } from '../../components/Button'
 import { FormField } from '../../components/FormField'
 import { Input } from '../../components/Input'
 import { Select } from '../../components/Select'
-import type { Match } from './types'
+import { useToast } from '../../components/Toast'
+import { useAssignMatchToCourt, useCourtsForTournament } from './hooks'
+import type { Match, CourtSummary } from './types'
+import { AlertTriangle } from 'lucide-react'
 
 export interface MatchSetupProps {
   match: Match
@@ -15,6 +18,8 @@ export interface MatchSetupProps {
     first_serving_player_id?: number | null
   }) => void
   onCancel?: () => void
+  /** Pass courts directly if you have them (avoids extra fetch) */
+  availableCourts?: Array<{ id: number; name: string }>
 }
 
 export function MatchSetup({
@@ -22,10 +27,38 @@ export function MatchSetup({
   pending,
   onBegin,
   onCancel,
+  availableCourts,
 }: MatchSetupProps) {
+  const { toast } = useToast()
   const [firstServingTeam, setFirstServingTeam] = useState<1 | 2>(1)
   const [scoredByName, setScoredByName] = useState('')
   const [firstServingPlayerId, setFirstServingPlayerId] = useState<string>('')
+
+  // Court assignment for non-quick matches without a court
+  const needsCourt = !match.court_id && !match.is_quick_match
+  const [courtAssigned, setCourtAssigned] = useState(!!match.court_id)
+  const assignCourt = useAssignMatchToCourt()
+
+  // Fetch tournament courts if not provided and match has a tournament_id
+  const { data: fetchedCourts } = useCourtsForTournament(
+    !availableCourts && match.tournament_id ? match.tournament_id : undefined,
+  )
+  const courts: Array<{ id: number; name: string }> =
+    availableCourts ?? (fetchedCourts ?? []).map((c: CourtSummary) => ({ id: c.id, name: c.name }))
+
+  async function handleCourtAssign(courtId: number) {
+    try {
+      await assignCourt.mutateAsync({
+        matchId: match.id,
+        courtId,
+        tournamentId: match.tournament_id ?? undefined,
+      })
+      setCourtAssigned(true)
+      toast('success', 'Court assigned')
+    } catch (err) {
+      toast('error', (err as Error).message)
+    }
+  }
 
   const team1Players = match.team_1?.players ?? []
   const team2Players = match.team_2?.players ?? []
@@ -37,6 +70,8 @@ export function MatchSetup({
     setFirstServingTeam(team)
     setFirstServingPlayerId('')
   }
+
+  const canBegin = !needsCourt || courtAssigned
 
   return (
     <div className="max-w-md mx-auto w-full flex flex-col gap-4 p-4">
@@ -137,6 +172,45 @@ export function MatchSetup({
         </p>
       </FormField>
 
+      {/* Court assignment — required for non-quick matches */}
+      {needsCourt && !courtAssigned && (
+        <div className="p-3 rounded border border-amber-500/30 bg-amber-500/10">
+          <div className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400 mb-2">
+            <AlertTriangle className="h-4 w-4" />
+            Court Required
+          </div>
+          <p className="text-xs text-(--color-text-secondary) mb-2">
+            This match needs a court assignment before it can start.
+          </p>
+          <Select
+            value=""
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              if (v > 0) handleCourtAssign(v)
+            }}
+            disabled={assignCourt.isPending}
+          >
+            <option value="">Select a court...</option>
+            {courts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+          {courts.length === 0 && (
+            <p className="text-xs text-(--color-text-muted) mt-1">
+              No courts available. Assign courts to the tournament first.
+            </p>
+          )}
+        </div>
+      )}
+
+      {needsCourt && courtAssigned && (
+        <div className="p-3 rounded border border-green-500/30 bg-green-500/10 text-sm text-green-700 dark:text-green-400">
+          Court assigned. Ready to begin.
+        </div>
+      )}
+
       <div className="flex gap-2 mt-2">
         {onCancel ? (
           <Button variant="secondary" onClick={onCancel} className="flex-1">
@@ -155,6 +229,7 @@ export function MatchSetup({
             })
           }
           loading={pending}
+          disabled={!canBegin}
           className="flex-1 h-12 text-base font-semibold"
         >
           Begin Match

@@ -1,6 +1,6 @@
 // frontend/src/features/scoring/hooks.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiGet, apiGetPaginated, apiPost } from '../../lib/api'
+import { apiGet, apiGetPaginated, apiPatch, apiPost } from '../../lib/api'
 import type {
   CourtSummary,
   Match,
@@ -70,6 +70,33 @@ export function useCourtsForTournament(tournamentId: number | undefined) {
       apiGet<CourtSummary[]>(`/api/v1/tournaments/${tournamentId}/courts`),
     enabled: !!tournamentId,
     staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useAssignMatchToCourt() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      matchId,
+      courtId,
+    }: {
+      matchId: number
+      courtId: number
+      tournamentId?: number
+    }) =>
+      apiPatch<Match>(`/api/v1/matches/${matchId}/court`, {
+        court_id: courtId,
+      }),
+    onSuccess: (_data, vars) => {
+      // Invalidate bracket/match queries so they refresh with the new court
+      qc.invalidateQueries({ queryKey: ['divisions'] })
+      qc.invalidateQueries({ queryKey: ['matches'] })
+      if (vars.tournamentId) {
+        qc.invalidateQueries({
+          queryKey: ['tournaments', vars.tournamentId, 'courts'],
+        })
+      }
+    },
   })
 }
 

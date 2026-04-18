@@ -1,18 +1,25 @@
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   useGenerateBracket,
   useListBracketMatches,
   type Division,
 } from './hooks'
+import {
+  useCourtsForTournament,
+  useAssignMatchToCourt,
+} from '../scoring/hooks'
 import { useToast } from '../../components/Toast'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
+import { Select } from '../../components/Select'
 import { Skeleton } from '../../components/Skeleton'
-import { Trophy } from 'lucide-react'
+import { Trophy, MapPin } from 'lucide-react'
 
 interface DivisionBracketProps {
   division: Division
   divisionId: string
+  tournamentId?: string
 }
 
 interface TeamSummary {
@@ -41,6 +48,8 @@ interface BracketMatch {
   status: string
   next_match_id?: number | null
   next_match_slot?: number | null
+  court_id?: number | null
+  court_name?: string | null
 }
 
 function formatBracket(value: string): string {
@@ -77,18 +86,42 @@ function teamDisplayName(
 function MatchCard({
   match,
   isLastRound,
+  courts,
+  tournamentId,
 }: {
   match: BracketMatch
   isLastRound: boolean
+  courts?: Array<{ id: number; name: string }> | null
+  tournamentId?: string
 }) {
+  const { toast } = useToast()
+  const assignCourt = useAssignMatchToCourt()
+  const [assigning, setAssigning] = useState(false)
+
   const winner = match.winner_team_id
   const isComplete = match.status === 'completed'
   const canScore =
     !!match.public_id &&
     (match.status === 'scheduled' || match.status === 'in_progress')
+  const hasCourt = !!match.court_id
+  const needsCourt = canScore && !hasCourt
 
   const team1Won = isComplete && winner === match.team_1_id
   const team2Won = isComplete && winner === match.team_2_id
+
+  async function handleAssignCourt(courtId: number) {
+    try {
+      await assignCourt.mutateAsync({
+        matchId: match.id,
+        courtId,
+        tournamentId: tournamentId ? Number(tournamentId) : undefined,
+      })
+      setAssigning(false)
+      toast('success', 'Court assigned')
+    } catch (err) {
+      toast('error', (err as Error).message)
+    }
+  }
 
   return (
     <div className="bracket-match relative rounded-lg border border-(--color-border) bg-(--color-bg-primary) min-w-[200px] shadow-sm">
@@ -97,21 +130,77 @@ function MatchCard({
         <span className="text-[11px] font-medium text-(--color-text-muted) uppercase tracking-wider">
           {match.match_number != null ? `M${match.match_number}` : ''}
         </span>
-        {canScore && match.public_id && (
-          <Link
-            to="/ref/matches/$publicId"
-            params={{ publicId: match.public_id }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Button variant="primary" size="sm">
-              Score
+        <div className="flex items-center gap-1.5">
+          {/* Show court name badge if assigned */}
+          {hasCourt && match.court_name && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-(--color-accent)/10 text-(--color-accent) font-medium">
+              {match.court_name}
+            </span>
+          )}
+          {/* Score button — only when court is assigned */}
+          {canScore && hasCourt && match.public_id && (
+            <Link
+              to="/ref/matches/$publicId"
+              params={{ publicId: match.public_id }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Button variant="primary" size="sm">
+                Score
+              </Button>
+            </Link>
+          )}
+          {/* Assign Court — when scorable but no court */}
+          {needsCourt && !assigning && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                setAssigning(true)
+              }}
+            >
+              <MapPin className="h-3 w-3 mr-1" />
+              Assign Court
             </Button>
-          </Link>
-        )}
-        {isComplete && isLastRound && (
-          <Trophy className="h-3.5 w-3.5 text-amber-500" />
-        )}
+          )}
+          {isComplete && isLastRound && (
+            <Trophy className="h-3.5 w-3.5 text-amber-500" />
+          )}
+        </div>
       </div>
+
+      {/* Court assignment dropdown */}
+      {needsCourt && assigning && (
+        <div className="px-3 py-2 border-b border-(--color-border) bg-(--color-bg-hover)">
+          <Select
+            value=""
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              if (v > 0) handleAssignCourt(v)
+            }}
+            disabled={assignCourt.isPending}
+          >
+            <option value="">Select a court...</option>
+            {(courts ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+          {(!courts || courts.length === 0) && (
+            <p className="text-xs text-(--color-text-muted) mt-1">
+              No courts assigned to this tournament yet. Add courts in the Courts tab.
+            </p>
+          )}
+          <button
+            type="button"
+            className="text-xs text-(--color-text-muted) mt-1 hover:underline"
+            onClick={() => setAssigning(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       {/* Team 1 */}
       <div
@@ -241,11 +330,16 @@ function BracketConnectors({
 export function DivisionBracket({
   division,
   divisionId,
+  tournamentId,
 }: DivisionBracketProps) {
   const { toast } = useToast()
   const generateMutation = useGenerateBracket(divisionId)
   const { data, isLoading } = useListBracketMatches(divisionId)
   const matches = (data as BracketMatch[] | undefined) ?? []
+  const { data: tournamentCourts } = useCourtsForTournament(
+    tournamentId ? Number(tournamentId) : undefined,
+  )
+  const courts = (tournamentCourts ?? []).map((c) => ({ id: c.id, name: c.name }))
 
   async function handleGenerate() {
     try {
@@ -317,7 +411,7 @@ export function DivisionBracket({
         <Card>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {matches.map((m) => (
-              <MatchCard key={m.id} match={m} isLastRound={false} />
+              <MatchCard key={m.id} match={m} isLastRound={false} courts={courts} tournamentId={tournamentId} />
             ))}
           </div>
         </Card>
@@ -365,7 +459,7 @@ export function DivisionBracket({
                     }}
                   >
                     {roundMatches.map((m) => (
-                      <MatchCard key={m.id} match={m} isLastRound={isLast} />
+                      <MatchCard key={m.id} match={m} isLastRound={isLast} courts={courts} tournamentId={tournamentId} />
                     ))}
                   </div>
                 </div>

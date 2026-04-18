@@ -101,6 +101,7 @@ export function DivisionDetail({
           <DivisionBracket
             division={division}
             divisionId={divisionId}
+            tournamentId={tournamentId}
           />
         )}
       </TabLayout>
