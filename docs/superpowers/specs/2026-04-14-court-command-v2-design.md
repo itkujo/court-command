@@ -1447,6 +1447,50 @@ GitHub Actions:
 - If Google returns a named place, the business name is prepended to `formatted_address` (e.g., "All In Pickleball, 123 Main St, Austin, TX 78701, USA")
 - **Detail pages and list views** use `formatted_address` with fallback to `[city, state_province].filter(Boolean).join(', ')` for pre-migration data
 
+### Tournament Staff Accounts (Added Post-Phase 7)
+- When a tournament is created, the system auto-creates 2 dedicated user accounts: `ref{TOURNAMENT_ID}@cc.dev` (role: referee) and `score{TOURNAMENT_ID}@cc.dev` (role: scorekeeper)
+- Random 16-char passwords stored in `tournament_staff` table (visible to TD for sharing)
+- **Staff tab** on tournament detail page (TD/admin only) shows credentials, copy-to-clipboard, regenerate password
+- Ref console scoped: staff refs/scorekeepers see only their tournament's courts; platform_admin sees all
+- `GET /me/tournament-staff` endpoint returns tournament assignment for the current user
+- Migration 00038: `tournament_staff` table with tournament_id, user_id, role, raw_password
+
+### Ad Management System (Added Post-Phase 7)
+- `ad_configs` table (migration 00036+00037) with: slot_name, ad_type (image/embed), image_url, link_url, alt_text, embed_code, is_active, sort_order, sizes TEXT[], name, display_duration_sec (default 8)
+- Admin ad manager page (`/admin/ads`) with full CRUD: create/edit modal supporting image upload OR embed code, size targeting, display duration
+- AdSlot component rewritten to fetch real ads from `GET /api/v1/ads` (public, active only), render image carousel with per-ad duration, render embed ads as raw HTML
+- 3 RelentNet SVG placeholder banners shipped in `frontend/public/ads/` and seeded via `make seed`
+- Orphaned upload cleanup: daily background job + `POST /api/v1/admin/uploads/cleanup` manual trigger, checks 11 URL columns across 7 tables
+
+### Court Detail + Stream Embed (Added Post-Phase 7)
+- PublicCourtDetail page shows: stream embed (YouTube/Twitch/Vimeo/HLS/generic iframe), active match card, upcoming matches, recent results, court details
+- CourtEditForm with stream platform dropdown, URL input (context-aware placeholders), stream title, live toggle
+- CourtGrid supports `mode="public"` linking to `/courts/$courtId` instead of ref console
+- TournamentCourts tab uses `mode="public"` for court cards
+
+### Bracket Court Assignment (Added Post-Phase 7)
+- `useAssignMatchToCourt` hook calls `PATCH /api/v1/matches/${matchId}/court`
+- DivisionBracket shows 'Assign Court' dropdown (MapPin icon) on scorable unassigned matches
+- Score button only appears after court is assigned
+- MatchSetup shows amber 'Court Required' warning with court picker when no court; Begin button disabled until assigned
+- Quick matches exempt from court requirement
+
+### Ref Console Venue Grouping (Added Post-Phase 7)
+- `CourtResponse` enriched with `venue_name` via backend venue lookup cache
+- RefHome groups courts by venue name with section headers (MapPin icon + venue name + count)
+- Single venue: flat grid (no headers). Multiple venues: sorted alphabetically, 'Floating Courts' last.
+
+### Public Spectator Navigation (Added Post-Phase 7)
+- **Dual-layout navigation**: anonymous users get top bar (desktop) + bottom tabs (mobile); authenticated users keep existing sidebar
+- **Desktop top bar** (`PublicTopBar`): sticky, Logo left, links center (Home, Events, Live, News, Sign In right). "Live" shows red pulsing dot when matches active. "News" links to Ghost CMS.
+- **Mobile bottom tabs** (`PublicBottomTabs`): 5 tabs — Home (House), Events (Trophy), Live (Radio with red dot), News (Newspaper, opens new tab), More (MoreHorizontal, slide-up menu with Venues, About, Sign In, Theme toggle)
+- **Events page** (`/public/events`): combined tournaments + leagues feed sorted by date, filterable by type
+- **Live page** (`/public/live`): all in-progress matches grouped by tournament name, 10s auto-refresh polling
+- **Enriched PublicTournamentDetail**: 4 tabs — Overview (details + description), Divisions (format/bracket/status cards), Schedule (matches grouped by round with filter pills), Courts (grid with active matches + stream embeds)
+- **Enriched PublicLeagueDetail**: 3 tabs — Overview (details + description), Seasons (cards with pagination), Tournaments (linked cards with pagination)
+- **Enriched PublicVenueDetail**: 2 tabs — Overview (location + court count), Courts (live matches + stream embeds)
+- Backend: public read endpoints for tournament divisions/matches/courts (no auth required)
+
 ### Google Maps View on Venue + Org Lists (Added Post-Phase 7)
 - **MapView component** (`frontend/src/components/MapView.tsx`) — shared Google Maps renderer with pin markers, info windows, click-to-navigate
 - **Shared loader** (`frontend/src/lib/google-maps.ts`) — deduplicates Google Maps SDK loading across AddressInput and MapView
@@ -1475,3 +1519,8 @@ GitHub Actions:
 15. **Google Places address standardization** — single search bar with formatted_address display, silent metadata extraction for filtering, and lat/lng for future proximity search
 16. **Admin user impersonation** — platform admins can "view as" any user for troubleshooting and support, with full audit trail and safety guardrails
 17. **Map view on venue/org directories** — Google Maps integration shows all venues and organizations with addresses as interactive pins, with list/map toggle
+18. **Tournament staff auto-creation** — each tournament gets dedicated ref + scorekeeper accounts with scoped court access, credential management in Staff tab
+19. **Ad management system** — full admin CRUD for image/embed ads with size targeting, per-ad display duration, carousel rotation, and orphaned upload cleanup
+20. **Public spectator experience** — dual-layout navigation (top bar + bottom tabs for anonymous, sidebar for authenticated), Live matches page with tournament grouping, enriched public tournament/league/venue detail pages with divisions, brackets, courts, and stream embeds
+21. **Ref console venue grouping** — courts grouped by venue with section headers for multi-venue events
+22. **Bracket court assignment** — matches require court assignment before scoring with inline court picker on bracket cards and match setup

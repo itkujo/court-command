@@ -472,12 +472,74 @@ See `docs/superpowers/lessons/2026-04-16-phase-3-review-defects.md` for preventi
 - **Seed Data System**: `make seed` populates all entity types for dev/testing
 - **Backup/Restore**: `make backup`, `make backup-full`, `make restore-db`, `make restore-uploads`
 
+### Tournament Staff Accounts
+- Auto-creates `ref{ID}@cc.dev` (referee) + `score{ID}@cc.dev` (scorekeeper) on tournament creation
+- Random 16-char passwords, stored in `tournament_staff` table for TD viewing
+- Staff tab on tournament detail page (TD/admin only) with credential display + copy + regenerate
+- Ref console scoped: staff refs see only their tournament's courts, platform admins see all
+- `GET /me/tournament-staff` endpoint for staff assignment lookup
+- Frontend: TournamentStaff component, RefHome scoping by tournament assignment
+
+### Ad Management System
+- `ad_configs` table with image/embed type support, size targeting, per-ad display duration
+- Admin ad manager page (`/admin/ads`) with full CRUD, image upload + embed code support
+- AdSlot component rewritten: fetches real ads from API, image carousel with per-ad timing, embed rendering
+- 3 RelentNet placeholder SVG banners shipped as defaults in seed data
+- Public `GET /api/v1/ads` (active ads only) + admin CRUD at `/api/v1/admin/ads/*`
+
+### Orphaned Upload Cleanup
+- `ListOrphanedUploads` sqlc query checks 11 URL columns across 7 tables
+- `CleanOrphanedUploads` service method + daily background job (7-day age filter)
+- Admin endpoint `POST /api/v1/admin/uploads/cleanup` for immediate cleanup
+- 'Clean Orphans' button on admin Uploads page
+
+### Org-Team Relationship
+- `TeamResponse` enriched with `org_name`, `org_slug` via org lookup
+- `GET /api/v1/organizations/{orgID}/teams` endpoint
+- TeamList shows Organization column with clickable link
+- TeamDetail shows org name as clickable link
+- OrgDetail shows OrgTeamsPanel above MembersPanel
+
+### Admin Dashboard Improvements
+- All 8 stat cards now clickable with navigation links
+- Added cards for Ad Manager, Uploads, API Keys, Activity Log
+- Suspend/archive buttons on UserSearch, VenueApproval, ApiKeyManager list pages
+
+### Court Detail + Stream Embed
+- PublicCourtDetail with stream embed (YouTube/Twitch/Vimeo/HLS/generic iframe)
+- CourtEditForm with stream platform/URL/title/live toggle
+- CourtGrid supports `mode="public"` linking to court detail
+- TournamentCourts tab links to public court pages
+
+### Bracket Court Assignment
+- `useAssignMatchToCourt` hook for PATCH /matches/{id}/court
+- DivisionBracket: 'Assign Court' button on unassigned matches, Score button only after assignment
+- MatchSetup: court picker warning when no court assigned, Begin button disabled until assigned
+
+### Ref Console Venue Grouping
+- `CourtResponse` enriched with `venue_name` via backend venue lookup
+- RefHome groups courts by venue with section headers (MapPin icon + venue name + count)
+
+### Public Spectator Experience
+- **Navigation restructure**: top bar (desktop) + bottom tabs (mobile) for anonymous users; sidebar kept for authenticated
+- **PublicTopBar**: sticky nav with Home, Events, Live (red dot when active), News (Ghost CMS, new tab), Sign In
+- **PublicBottomTabs**: 5-icon mobile bar (Home, Events, Live, News, More with slide-up menu)
+- **LivePage** (`/public/live`): all in-progress matches grouped by tournament, 10s polling
+- **EventsPage** (`/public/events`): combined tournaments + leagues feed, filterable
+- **PublicTournamentDetail**: 4 tabs — Overview (details + description), Divisions (format/bracket/status cards), Schedule (matches grouped by round with status filters), Courts (grid with active matches + stream embeds)
+- **PublicLeagueDetail**: 3 tabs — Overview, Seasons (cards with pagination), Tournaments (linked cards with pagination)
+- **PublicVenueDetail**: 2 tabs — Overview (location + court count), Courts (live matches + stream embeds)
+- Backend: public read endpoints for tournament divisions, matches, courts (no auth required)
+
 ### Migrations Added
 - 00031: Admin impersonation session fields
 - 00032: `venue_managers` join table with backfill
 - 00033: Address standardization (address_line_1/2, postal_code, lat/lng on orgs, leagues, users)
 - 00034: Admin create unclaimed player support
 - 00035: `formatted_address` column on all 4 entity tables with backfill
+- 00036: `ad_configs` table for ad management
+- 00037: `display_duration_sec` column on ad_configs
+- 00038: `tournament_staff` table for auto-created ref/scorekeeper accounts
 
 ---
 
