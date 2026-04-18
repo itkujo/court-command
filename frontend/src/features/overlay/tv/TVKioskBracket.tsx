@@ -287,25 +287,34 @@ function DivisionSlide({ division }: { division: Division }) {
   )
 }
 
-// Backend returns a different shape under this endpoint than the Division
-// hook types state — match the interface shape that DivisionBracket.tsx
-// casts to (score_team1/score_team2/team1_id/team2_id/public_id). We render
-// defensively with optional access.
+// Backend MatchResponse uses underscored field names (team_1_id, team_1_score).
+// Accept both conventions defensively.
 interface KioskBracketMatch {
   id: number
   round?: number
+  round_name?: string | null
   match_number?: number
   position?: number
+  // API field names (correct)
+  team_1_id?: number | null
+  team_2_id?: number | null
+  team_1_seed?: number | null
+  team_2_seed?: number | null
+  team_1_score?: number | null
+  team_2_score?: number | null
+  team_1?: { id: number; name: string; short_name?: string } | null
+  team_2?: { id: number; name: string; short_name?: string } | null
+  // Legacy fallback field names
   team1_id?: number | null
   team2_id?: number | null
   team_a_id?: number | null
   team_b_id?: number | null
   team1_seed?: number | null
   team2_seed?: number | null
-  winner_team_id?: number | null
-  winner_id?: number | null
   score_team1?: number | null
   score_team2?: number | null
+  winner_team_id?: number | null
+  winner_id?: number | null
   status?: string
 }
 
@@ -359,11 +368,11 @@ function BracketColumns({ matches }: { matches: unknown[] }) {
 }
 
 function KioskMatchCard({ match }: { match: KioskBracketMatch }) {
-  const team1ID = match.team1_id ?? match.team_a_id ?? null
-  const team2ID = match.team2_id ?? match.team_b_id ?? null
+  const team1ID = match.team_1_id ?? match.team1_id ?? match.team_a_id ?? null
+  const team2ID = match.team_2_id ?? match.team2_id ?? match.team_b_id ?? null
   const winnerID = match.winner_team_id ?? match.winner_id ?? null
-  const score1 = match.score_team1
-  const score2 = match.score_team2
+  const score1 = match.team_1_score ?? match.score_team1
+  const score2 = match.team_2_score ?? match.score_team2
 
   return (
     <div className="rounded-lg border border-(--color-border) bg-(--color-bg-secondary) px-4 py-3">
@@ -376,13 +385,13 @@ function KioskMatchCard({ match }: { match: KioskBracketMatch }) {
         </span>
       </div>
       <TeamLine
-        label={formatTeam(team1ID, match.team1_seed)}
+        label={formatTeamWithName(team1ID, match.team_1 ?? match.team_1, match.team_1_seed ?? match.team1_seed)}
         score={score1 ?? null}
         winner={winnerID != null && winnerID === team1ID}
       />
       <div className="my-1 border-t border-(--color-border)" />
       <TeamLine
-        label={formatTeam(team2ID, match.team2_seed)}
+        label={formatTeamWithName(team2ID, match.team_2 ?? match.team_2, match.team_2_seed ?? match.team2_seed)}
         score={score2 ?? null}
         winner={winnerID != null && winnerID === team2ID}
       />
@@ -413,10 +422,17 @@ function TeamLine({
   )
 }
 
-function formatTeam(id: number | null, seed?: number | null): string {
-  if (id == null) return 'TBD'
+function formatTeamWithName(
+  id: number | null,
+  team?: { name: string; short_name?: string } | null,
+  seed?: number | null,
+): string {
+  if (id == null && !team) return 'TBD'
   const seedPart = seed != null ? `(${seed}) ` : ''
-  return `${seedPart}Team #${id}`
+  if (team?.short_name) return `${seedPart}${team.short_name}`
+  if (team?.name) return `${seedPart}${team.name}`
+  if (id != null) return `${seedPart}Team #${id}`
+  return 'TBD'
 }
 
 // ---------------------------------------------------------------------------

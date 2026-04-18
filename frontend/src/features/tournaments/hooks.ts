@@ -121,18 +121,35 @@ export interface ScoringPreset {
   created_at: string
 }
 
+export interface BracketMatchTeamSummary {
+  id: number
+  name: string
+  short_name?: string
+  primary_color?: string | null
+  logo_url?: string | null
+}
+
 export interface BracketMatch {
   id: number
-  division_id: number
-  round: number
-  position: number
-  team_a_id: number | null
-  team_b_id: number | null
-  winner_id: number | null
+  public_id?: string
+  division_id?: number | null
+  round?: number | null
+  round_name?: string | null
+  match_number?: number | null
+  team_1_id?: number | null
+  team_2_id?: number | null
+  team_1?: BracketMatchTeamSummary | null
+  team_2?: BracketMatchTeamSummary | null
+  team_1_seed?: number | null
+  team_2_seed?: number | null
+  team_1_score?: number | null
+  team_2_score?: number | null
+  winner_team_id?: number | null
   status: string
-  scheduled_at: string | null
-  court_id: number | null
-  scores: Record<string, unknown> | null
+  next_match_id?: number | null
+  next_match_slot?: number | null
+  scheduled_at?: string | null
+  court_id?: number | null
   created_at: string
   updated_at: string
 }

@@ -15,36 +15,88 @@ interface DivisionBracketProps {
   divisionId: string
 }
 
+interface TeamSummary {
+  id: number
+  name: string
+  short_name?: string
+  primary_color?: string | null
+  logo_url?: string | null
+}
+
 interface BracketMatch {
   id: number
   public_id?: string
-  round: number
-  match_number: number
-  team1_id: number | null
-  team2_id: number | null
-  team1_seed?: number | null
-  team2_seed?: number | null
-  winner_team_id: number | null
+  round?: number | null
+  round_name?: string | null
+  match_number?: number | null
+  team_1_id?: number | null
+  team_2_id?: number | null
+  team_1?: TeamSummary | null
+  team_2?: TeamSummary | null
+  team_1_seed?: number | null
+  team_2_seed?: number | null
+  winner_team_id?: number | null
+  team_1_score?: number | null
+  team_2_score?: number | null
   status: string
-  score_team1?: number | null
-  score_team2?: number | null
+  next_match_id?: number | null
+  next_match_slot?: number | null
 }
 
 function formatBracket(value: string): string {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function MatchCard({ match }: { match: BracketMatch }) {
+/** Map total round count + current round index to a readable label. */
+function getRoundLabel(
+  round: number,
+  totalRounds: number,
+  roundName?: string | null,
+): string {
+  if (roundName) return roundName
+
+  const remaining = totalRounds - round
+  if (remaining === 0) return 'Finals'
+  if (remaining === 1) return 'Semifinals'
+  if (remaining === 2) return 'Quarterfinals'
+  return `Round ${round}`
+}
+
+function teamDisplayName(
+  team: TeamSummary | null | undefined,
+  teamId: number | null | undefined,
+  seed: number | null | undefined,
+): string {
+  const seedStr = seed != null ? `(${seed}) ` : ''
+  if (team?.short_name) return `${seedStr}${team.short_name}`
+  if (team?.name) return `${seedStr}${team.name}`
+  if (teamId) return `${seedStr}Team #${teamId}`
+  return 'TBD'
+}
+
+function MatchCard({
+  match,
+  isLastRound,
+}: {
+  match: BracketMatch
+  isLastRound: boolean
+}) {
   const winner = match.winner_team_id
+  const isComplete = match.status === 'completed'
   const canScore =
     !!match.public_id &&
     (match.status === 'scheduled' || match.status === 'in_progress')
+
+  const team1Won = isComplete && winner === match.team_1_id
+  const team2Won = isComplete && winner === match.team_2_id
+
   return (
-    <div className="rounded-lg border border-(--color-border) bg-(--color-bg-primary) p-2 min-w-[180px]">
-      <div className="flex items-center justify-between mb-1">
-        <div className="text-xs text-(--color-text-secondary)">
-          R{match.round} · M{match.match_number}
-        </div>
+    <div className="bracket-match relative rounded-lg border border-(--color-border) bg-(--color-bg-primary) min-w-[200px] shadow-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-(--color-border) bg-(--color-bg-secondary) rounded-t-lg">
+        <span className="text-[11px] font-medium text-(--color-text-muted) uppercase tracking-wider">
+          {match.match_number != null ? `M${match.match_number}` : ''}
+        </span>
         {canScore && match.public_id && (
           <Link
             to="/ref/matches/$publicId"
@@ -56,35 +108,133 @@ function MatchCard({ match }: { match: BracketMatch }) {
             </Button>
           </Link>
         )}
+        {isComplete && isLastRound && (
+          <Trophy className="h-3.5 w-3.5 text-amber-500" />
+        )}
       </div>
+
+      {/* Team 1 */}
       <div
-        className={`flex items-center justify-between text-sm py-1 ${
-          winner === match.team1_id
-            ? 'font-semibold text-(--color-text-primary)'
-            : 'text-(--color-text-secondary)'
+        className={`flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+          team1Won
+            ? 'bg-(--color-accent)/8 font-semibold text-(--color-text-primary)'
+            : team2Won
+              ? 'text-(--color-text-muted)'
+              : 'text-(--color-text-secondary)'
         }`}
       >
-        <span>
-          {match.team1_seed != null && `(${match.team1_seed}) `}
-          {match.team1_id ? `Team #${match.team1_id}` : 'TBD'}
+        <span className="truncate max-w-[140px]">
+          {teamDisplayName(match.team_1, match.team_1_id, match.team_1_seed)}
         </span>
-        {match.score_team1 != null && <span>{match.score_team1}</span>}
+        <span className="ml-2 tabular-nums font-medium">
+          {match.team_1_score != null ? match.team_1_score : ''}
+        </span>
       </div>
-      <div className="border-t border-(--color-border) my-1" />
+
+      {/* Divider */}
+      <div className="border-t border-(--color-border)" />
+
+      {/* Team 2 */}
       <div
-        className={`flex items-center justify-between text-sm py-1 ${
-          winner === match.team2_id
-            ? 'font-semibold text-(--color-text-primary)'
-            : 'text-(--color-text-secondary)'
+        className={`flex items-center justify-between px-3 py-2 text-sm rounded-b-lg transition-colors ${
+          team2Won
+            ? 'bg-(--color-accent)/8 font-semibold text-(--color-text-primary)'
+            : team1Won
+              ? 'text-(--color-text-muted)'
+              : 'text-(--color-text-secondary)'
         }`}
       >
-        <span>
-          {match.team2_seed != null && `(${match.team2_seed}) `}
-          {match.team2_id ? `Team #${match.team2_id}` : 'TBD'}
+        <span className="truncate max-w-[140px]">
+          {teamDisplayName(match.team_2, match.team_2_id, match.team_2_seed)}
         </span>
-        {match.score_team2 != null && <span>{match.score_team2}</span>}
+        <span className="ml-2 tabular-nums font-medium">
+          {match.team_2_score != null ? match.team_2_score : ''}
+        </span>
       </div>
     </div>
+  )
+}
+
+/**
+ * SVG connector lines between adjacent bracket rounds.
+ * Draws horizontal + vertical lines from each pair of source matches
+ * converging into a single destination match.
+ */
+function BracketConnectors({
+  sourceCount,
+  matchHeight,
+  gap,
+}: {
+  sourceCount: number
+  matchHeight: number
+  gap: number
+}) {
+  const pairCount = Math.ceil(sourceCount / 2)
+  const step = matchHeight + gap
+  const svgWidth = 32
+  const connectors: React.ReactNode[] = []
+
+  for (let i = 0; i < pairCount; i++) {
+    const topIdx = i * 2
+    const botIdx = i * 2 + 1
+    if (botIdx >= sourceCount) break
+
+    const topY = topIdx * step + matchHeight / 2
+    const botY = botIdx * step + matchHeight / 2
+    const midY = (topY + botY) / 2
+
+    connectors.push(
+      <g key={i}>
+        {/* horizontal from top match */}
+        <line
+          x1={0}
+          y1={topY}
+          x2={svgWidth / 2}
+          y2={topY}
+          stroke="var(--color-border)"
+          strokeWidth={1.5}
+        />
+        {/* horizontal from bottom match */}
+        <line
+          x1={0}
+          y1={botY}
+          x2={svgWidth / 2}
+          y2={botY}
+          stroke="var(--color-border)"
+          strokeWidth={1.5}
+        />
+        {/* vertical connecting the two */}
+        <line
+          x1={svgWidth / 2}
+          y1={topY}
+          x2={svgWidth / 2}
+          y2={botY}
+          stroke="var(--color-border)"
+          strokeWidth={1.5}
+        />
+        {/* horizontal out to next round */}
+        <line
+          x1={svgWidth / 2}
+          y1={midY}
+          x2={svgWidth}
+          y2={midY}
+          stroke="var(--color-border)"
+          strokeWidth={1.5}
+        />
+      </g>,
+    )
+  }
+
+  const totalHeight = sourceCount * step - gap
+  return (
+    <svg
+      width={svgWidth}
+      height={totalHeight}
+      className="flex-shrink-0 self-start"
+      style={{ marginTop: 0 }}
+    >
+      {connectors}
+    </svg>
   )
 }
 
@@ -113,12 +263,15 @@ export function DivisionBracket({
   // Group matches by round
   const rounds: Record<number, BracketMatch[]> = {}
   for (const m of matches) {
-    if (!rounds[m.round]) rounds[m.round] = []
-    rounds[m.round].push(m)
+    const r = m.round ?? 1
+    if (!rounds[r]) rounds[r] = []
+    rounds[r].push(m)
   }
   const roundKeys = Object.keys(rounds)
     .map((k) => Number(k))
     .sort((a, b) => a - b)
+
+  const totalRounds = roundKeys.length
 
   const isRoundRobin =
     division.bracket_format === 'round_robin' ||
@@ -164,13 +317,17 @@ export function DivisionBracket({
         <Card>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {matches.map((m) => (
-              <MatchCard key={m.id} match={m} />
+              <MatchCard key={m.id} match={m} isLastRound={false} />
             ))}
           </div>
         </Card>
       </div>
     )
   }
+
+  // Elimination bracket layout
+  const MATCH_HEIGHT = 76 // px per match card (approx)
+  const MATCH_GAP = 12 // gap between match cards in a column
 
   return (
     <div>
@@ -179,22 +336,58 @@ export function DivisionBracket({
           {formatBracket(division.bracket_format)} · {matches.length} matches
         </h2>
       </div>
-      <div className="overflow-x-auto">
-        <div className="flex gap-6 min-w-max">
-          {roundKeys.map((round) => (
-            <div key={round} className="flex flex-col gap-4">
-              <h3 className="text-sm font-medium text-(--color-text-secondary) uppercase tracking-wider">
-                Round {round}
-              </h3>
-              <div className="flex flex-col gap-3">
-                {rounds[round]
-                  .sort((a, b) => a.match_number - b.match_number)
-                  .map((m) => (
-                    <MatchCard key={m.id} match={m} />
-                  ))}
+      <div className="overflow-x-auto pb-4">
+        <div className="flex items-start min-w-max">
+          {roundKeys.map((round, roundIdx) => {
+            const roundMatches = rounds[round].sort(
+              (a, b) => (a.match_number ?? 0) - (b.match_number ?? 0),
+            )
+            const isLast = roundIdx === roundKeys.length - 1
+            const showConnectors = !isLast && roundMatches.length > 1
+
+            return (
+              <div key={round} className="flex items-start">
+                {/* Round column */}
+                <div className="flex flex-col">
+                  <h3 className="text-xs font-semibold text-(--color-text-muted) uppercase tracking-wider mb-3 px-1">
+                    {getRoundLabel(round, totalRounds, rounds[round][0]?.round_name)}
+                  </h3>
+                  <div
+                    className="flex flex-col justify-around"
+                    style={{
+                      gap: `${MATCH_GAP}px`,
+                      // Each subsequent round needs more vertical spacing
+                      // to center-align with the parent round's pairs
+                      minHeight:
+                        roundIdx === 0
+                          ? undefined
+                          : `${rounds[roundKeys[0]].length * (MATCH_HEIGHT + MATCH_GAP) - MATCH_GAP}px`,
+                    }}
+                  >
+                    {roundMatches.map((m) => (
+                      <MatchCard key={m.id} match={m} isLastRound={isLast} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Connector lines */}
+                {showConnectors && (
+                  <div
+                    className="flex items-start"
+                    style={{
+                      paddingTop: '28px', // offset for round label height
+                    }}
+                  >
+                    <BracketConnectors
+                      sourceCount={roundMatches.length}
+                      matchHeight={MATCH_HEIGHT}
+                      gap={MATCH_GAP}
+                    />
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
