@@ -140,7 +140,7 @@ export function OrgDetail({ orgId }: OrgDetailProps) {
             />
             <InfoRow
               label="Location"
-              value={[org.city, org.state_province, org.country].filter(Boolean).join(', ')}
+              value={org.formatted_address || [org.city, org.state_province, org.country].filter(Boolean).join(', ')}
             />
             <InfoRow
               label="Founded"

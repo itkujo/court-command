@@ -21,6 +21,7 @@ UPDATE users SET
     postal_code = COALESCE(sqlc.narg('postal_code'), postal_code),
     address_line_1 = COALESCE(sqlc.narg('address_line_1'), address_line_1),
     address_line_2 = COALESCE(sqlc.narg('address_line_2'), address_line_2),
+    formatted_address = COALESCE(sqlc.narg('formatted_address'), formatted_address),
     latitude = COALESCE(sqlc.narg('latitude'), latitude),
     longitude = COALESCE(sqlc.narg('longitude'), longitude),
     phone = COALESCE(sqlc.narg('phone'), phone),

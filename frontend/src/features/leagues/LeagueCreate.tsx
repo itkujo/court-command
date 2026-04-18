@@ -23,9 +23,10 @@ export function LeagueCreate() {
   const [contactPhone, setContactPhone] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [address, setAddress] = useState<Partial<AddressData>>({
+    formatted_address: '',
     city: '',
     state_province: '',
-    country: 'US',
+    country: '',
   })
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [bannerUrl, setBannerUrl] = useState<string | null>(null)
@@ -52,6 +53,7 @@ export function LeagueCreate() {
         contact_email: contactEmail.trim() || null,
         contact_phone: contactPhone.trim() || null,
         website_url: websiteUrl.trim() || null,
+        formatted_address: address.formatted_address?.trim() || null,
         city: address.city?.trim() || null,
         state_province: address.state_province?.trim() || null,
         country: address.country?.trim() || null,

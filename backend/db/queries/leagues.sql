@@ -2,10 +2,10 @@
 INSERT INTO leagues (
     name, slug, status, logo_url, banner_url, description, website_url,
     contact_email, contact_phone, city, state_province, country,
-    postal_code, address_line_1, address_line_2, latitude, longitude,
+    postal_code, address_line_1, address_line_2, formatted_address, latitude, longitude,
     rules_document_url, social_links, sponsor_info, notes, created_by_user_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
 ) RETURNING *;
 
 -- name: GetLeagueByID :one
@@ -65,6 +65,7 @@ UPDATE leagues SET
     postal_code = COALESCE(sqlc.narg('postal_code'), postal_code),
     address_line_1 = COALESCE(sqlc.narg('address_line_1'), address_line_1),
     address_line_2 = COALESCE(sqlc.narg('address_line_2'), address_line_2),
+    formatted_address = COALESCE(sqlc.narg('formatted_address'), formatted_address),
     latitude = COALESCE(sqlc.narg('latitude'), latitude),
     longitude = COALESCE(sqlc.narg('longitude'), longitude),
     rules_document_url = COALESCE(sqlc.narg('rules_document_url'), rules_document_url),

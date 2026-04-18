@@ -62,23 +62,24 @@ func (h *OrgHandler) CreateOrg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Name           string   `json:"name"`
-		LogoURL        *string  `json:"logo_url"`
-		PrimaryColor   *string  `json:"primary_color"`
-		SecondaryColor *string  `json:"secondary_color"`
-		WebsiteURL     *string  `json:"website_url"`
-		ContactEmail   *string  `json:"contact_email"`
-		ContactPhone   *string  `json:"contact_phone"`
-		City           *string  `json:"city"`
-		StateProvince  *string  `json:"state_province"`
-		Country        *string  `json:"country"`
-		PostalCode     *string  `json:"postal_code"`
-		AddressLine1   *string  `json:"address_line_1"`
-		AddressLine2   *string  `json:"address_line_2"`
-		Latitude       *float64 `json:"latitude"`
-		Longitude      *float64 `json:"longitude"`
-		Bio            *string  `json:"bio"`
-		FoundedYear    *int32   `json:"founded_year"`
+		Name             string   `json:"name"`
+		LogoURL          *string  `json:"logo_url"`
+		PrimaryColor     *string  `json:"primary_color"`
+		SecondaryColor   *string  `json:"secondary_color"`
+		WebsiteURL       *string  `json:"website_url"`
+		ContactEmail     *string  `json:"contact_email"`
+		ContactPhone     *string  `json:"contact_phone"`
+		City             *string  `json:"city"`
+		StateProvince    *string  `json:"state_province"`
+		Country          *string  `json:"country"`
+		PostalCode       *string  `json:"postal_code"`
+		AddressLine1     *string  `json:"address_line_1"`
+		AddressLine2     *string  `json:"address_line_2"`
+		FormattedAddress *string  `json:"formatted_address"`
+		Latitude         *float64 `json:"latitude"`
+		Longitude        *float64 `json:"longitude"`
+		Bio              *string  `json:"bio"`
+		FoundedYear      *int32   `json:"founded_year"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -97,22 +98,23 @@ func (h *OrgHandler) CreateOrg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	params := generated.CreateOrganizationParams{
-		Name:            body.Name,
-		LogoUrl:         body.LogoURL,
-		PrimaryColor:    body.PrimaryColor,
-		SecondaryColor:  body.SecondaryColor,
-		WebsiteUrl:      body.WebsiteURL,
-		ContactEmail:    body.ContactEmail,
-		ContactPhone:    body.ContactPhone,
-		City:            body.City,
-		StateProvince:   body.StateProvince,
-		Country:         body.Country,
-		PostalCode:      body.PostalCode,
-		AddressLine1:    body.AddressLine1,
-		AddressLine2:    body.AddressLine2,
-		Bio:             body.Bio,
-		FoundedYear:     foundedYear,
-		CreatedByUserID: sess.UserID,
+		Name:             body.Name,
+		LogoUrl:          body.LogoURL,
+		PrimaryColor:     body.PrimaryColor,
+		SecondaryColor:   body.SecondaryColor,
+		WebsiteUrl:       body.WebsiteURL,
+		ContactEmail:     body.ContactEmail,
+		ContactPhone:     body.ContactPhone,
+		City:             body.City,
+		StateProvince:    body.StateProvince,
+		Country:          body.Country,
+		PostalCode:       body.PostalCode,
+		AddressLine1:     body.AddressLine1,
+		AddressLine2:     body.AddressLine2,
+		FormattedAddress: body.FormattedAddress,
+		Bio:              body.Bio,
+		FoundedYear:      foundedYear,
+		CreatedByUserID:  sess.UserID,
 	}
 
 	if body.Latitude != nil {
@@ -176,23 +178,24 @@ func (h *OrgHandler) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Name           *string  `json:"name"`
-		LogoURL        *string  `json:"logo_url"`
-		PrimaryColor   *string  `json:"primary_color"`
-		SecondaryColor *string  `json:"secondary_color"`
-		WebsiteURL     *string  `json:"website_url"`
-		ContactEmail   *string  `json:"contact_email"`
-		ContactPhone   *string  `json:"contact_phone"`
-		City           *string  `json:"city"`
-		StateProvince  *string  `json:"state_province"`
-		Country        *string  `json:"country"`
-		PostalCode     *string  `json:"postal_code"`
-		AddressLine1   *string  `json:"address_line_1"`
-		AddressLine2   *string  `json:"address_line_2"`
-		Latitude       *float64 `json:"latitude"`
-		Longitude      *float64 `json:"longitude"`
-		Bio            *string  `json:"bio"`
-		FoundedYear    *int32   `json:"founded_year"`
+		Name             *string  `json:"name"`
+		LogoURL          *string  `json:"logo_url"`
+		PrimaryColor     *string  `json:"primary_color"`
+		SecondaryColor   *string  `json:"secondary_color"`
+		WebsiteURL       *string  `json:"website_url"`
+		ContactEmail     *string  `json:"contact_email"`
+		ContactPhone     *string  `json:"contact_phone"`
+		City             *string  `json:"city"`
+		StateProvince    *string  `json:"state_province"`
+		Country          *string  `json:"country"`
+		PostalCode       *string  `json:"postal_code"`
+		AddressLine1     *string  `json:"address_line_1"`
+		AddressLine2     *string  `json:"address_line_2"`
+		FormattedAddress *string  `json:"formatted_address"`
+		Latitude         *float64 `json:"latitude"`
+		Longitude        *float64 `json:"longitude"`
+		Bio              *string  `json:"bio"`
+		FoundedYear      *int32   `json:"founded_year"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -206,21 +209,22 @@ func (h *OrgHandler) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	params := generated.UpdateOrgParams{
-		Name:           body.Name,
-		LogoUrl:        body.LogoURL,
-		PrimaryColor:   body.PrimaryColor,
-		SecondaryColor: body.SecondaryColor,
-		WebsiteUrl:     body.WebsiteURL,
-		ContactEmail:   body.ContactEmail,
-		ContactPhone:   body.ContactPhone,
-		City:           body.City,
-		StateProvince:  body.StateProvince,
-		Country:        body.Country,
-		PostalCode:     body.PostalCode,
-		AddressLine1:   body.AddressLine1,
-		AddressLine2:   body.AddressLine2,
-		Bio:            body.Bio,
-		FoundedYear:    foundedYear,
+		Name:             body.Name,
+		LogoUrl:          body.LogoURL,
+		PrimaryColor:     body.PrimaryColor,
+		SecondaryColor:   body.SecondaryColor,
+		WebsiteUrl:       body.WebsiteURL,
+		ContactEmail:     body.ContactEmail,
+		ContactPhone:     body.ContactPhone,
+		City:             body.City,
+		StateProvince:    body.StateProvince,
+		Country:          body.Country,
+		PostalCode:       body.PostalCode,
+		AddressLine1:     body.AddressLine1,
+		AddressLine2:     body.AddressLine2,
+		FormattedAddress: body.FormattedAddress,
+		Bio:              body.Bio,
+		FoundedYear:      foundedYear,
 	}
 
 	if body.Latitude != nil {

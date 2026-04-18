@@ -46,7 +46,7 @@ export function VenueList() {
       lat: v.latitude!,
       lng: v.longitude!,
       label: v.name,
-      sublabel: [v.city, v.state_province].filter(Boolean).join(', '),
+      sublabel: v.formatted_address || [v.city, v.state_province].filter(Boolean).join(', '),
     }))
 
   const columns = [

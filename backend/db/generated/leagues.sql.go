@@ -56,11 +56,11 @@ const createLeague = `-- name: CreateLeague :one
 INSERT INTO leagues (
     name, slug, status, logo_url, banner_url, description, website_url,
     contact_email, contact_phone, city, state_province, country,
-    postal_code, address_line_1, address_line_2, latitude, longitude,
+    postal_code, address_line_1, address_line_2, formatted_address, latitude, longitude,
     rules_document_url, social_links, sponsor_info, notes, created_by_user_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
-) RETURNING id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
+) RETURNING id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address
 `
 
 type CreateLeagueParams struct {
@@ -79,6 +79,7 @@ type CreateLeagueParams struct {
 	PostalCode       *string       `json:"postal_code"`
 	AddressLine1     *string       `json:"address_line_1"`
 	AddressLine2     *string       `json:"address_line_2"`
+	FormattedAddress *string       `json:"formatted_address"`
 	Latitude         pgtype.Float8 `json:"latitude"`
 	Longitude        pgtype.Float8 `json:"longitude"`
 	RulesDocumentUrl *string       `json:"rules_document_url"`
@@ -105,6 +106,7 @@ func (q *Queries) CreateLeague(ctx context.Context, arg CreateLeagueParams) (Lea
 		arg.PostalCode,
 		arg.AddressLine1,
 		arg.AddressLine2,
+		arg.FormattedAddress,
 		arg.Latitude,
 		arg.Longitude,
 		arg.RulesDocumentUrl,
@@ -142,12 +144,13 @@ func (q *Queries) CreateLeague(ctx context.Context, arg CreateLeagueParams) (Lea
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const getLeagueByID = `-- name: GetLeagueByID :one
-SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude FROM leagues WHERE id = $1 AND deleted_at IS NULL
+SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM leagues WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetLeagueByID(ctx context.Context, id int64) (League, error) {
@@ -181,12 +184,13 @@ func (q *Queries) GetLeagueByID(ctx context.Context, id int64) (League, error) {
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const getLeagueByPublicID = `-- name: GetLeagueByPublicID :one
-SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude FROM leagues WHERE public_id = $1 AND deleted_at IS NULL
+SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM leagues WHERE public_id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetLeagueByPublicID(ctx context.Context, publicID string) (League, error) {
@@ -220,12 +224,13 @@ func (q *Queries) GetLeagueByPublicID(ctx context.Context, publicID string) (Lea
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const getLeagueBySlug = `-- name: GetLeagueBySlug :one
-SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude FROM leagues WHERE slug = $1 AND deleted_at IS NULL
+SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM leagues WHERE slug = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetLeagueBySlug(ctx context.Context, slug string) (League, error) {
@@ -259,12 +264,13 @@ func (q *Queries) GetLeagueBySlug(ctx context.Context, slug string) (League, err
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const listLeagues = `-- name: ListLeagues :many
-SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude FROM leagues
+SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM leagues
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
@@ -312,6 +318,7 @@ func (q *Queries) ListLeagues(ctx context.Context, arg ListLeaguesParams) ([]Lea
 			&i.PostalCode,
 			&i.Latitude,
 			&i.Longitude,
+			&i.FormattedAddress,
 		); err != nil {
 			return nil, err
 		}
@@ -324,7 +331,7 @@ func (q *Queries) ListLeagues(ctx context.Context, arg ListLeaguesParams) ([]Lea
 }
 
 const listLeaguesByCreator = `-- name: ListLeaguesByCreator :many
-SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude FROM leagues
+SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM leagues
 WHERE created_by_user_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -373,6 +380,7 @@ func (q *Queries) ListLeaguesByCreator(ctx context.Context, arg ListLeaguesByCre
 			&i.PostalCode,
 			&i.Latitude,
 			&i.Longitude,
+			&i.FormattedAddress,
 		); err != nil {
 			return nil, err
 		}
@@ -385,7 +393,7 @@ func (q *Queries) ListLeaguesByCreator(ctx context.Context, arg ListLeaguesByCre
 }
 
 const searchLeagues = `-- name: SearchLeagues :many
-SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude FROM leagues
+SELECT id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM leagues
 WHERE deleted_at IS NULL
   AND (
     name ILIKE '%' || $3::TEXT || '%'
@@ -440,6 +448,7 @@ func (q *Queries) SearchLeagues(ctx context.Context, arg SearchLeaguesParams) ([
 			&i.PostalCode,
 			&i.Latitude,
 			&i.Longitude,
+			&i.FormattedAddress,
 		); err != nil {
 			return nil, err
 		}
@@ -489,15 +498,16 @@ UPDATE leagues SET
     postal_code = COALESCE($13, postal_code),
     address_line_1 = COALESCE($14, address_line_1),
     address_line_2 = COALESCE($15, address_line_2),
-    latitude = COALESCE($16, latitude),
-    longitude = COALESCE($17, longitude),
-    rules_document_url = COALESCE($18, rules_document_url),
-    social_links = COALESCE($19, social_links),
-    sponsor_info = COALESCE($20, sponsor_info),
-    notes = COALESCE($21, notes),
+    formatted_address = COALESCE($16, formatted_address),
+    latitude = COALESCE($17, latitude),
+    longitude = COALESCE($18, longitude),
+    rules_document_url = COALESCE($19, rules_document_url),
+    social_links = COALESCE($20, social_links),
+    sponsor_info = COALESCE($21, sponsor_info),
+    notes = COALESCE($22, notes),
     updated_at = NOW()
-WHERE id = $22 AND deleted_at IS NULL
-RETURNING id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude
+WHERE id = $23 AND deleted_at IS NULL
+RETURNING id, public_id, name, slug, status, logo_url, banner_url, description, website_url, contact_email, contact_phone, city, state_province, country, rules_document_url, social_links, sponsor_info, notes, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address
 `
 
 type UpdateLeagueParams struct {
@@ -516,6 +526,7 @@ type UpdateLeagueParams struct {
 	PostalCode       *string       `json:"postal_code"`
 	AddressLine1     *string       `json:"address_line_1"`
 	AddressLine2     *string       `json:"address_line_2"`
+	FormattedAddress *string       `json:"formatted_address"`
 	Latitude         pgtype.Float8 `json:"latitude"`
 	Longitude        pgtype.Float8 `json:"longitude"`
 	RulesDocumentUrl *string       `json:"rules_document_url"`
@@ -542,6 +553,7 @@ func (q *Queries) UpdateLeague(ctx context.Context, arg UpdateLeagueParams) (Lea
 		arg.PostalCode,
 		arg.AddressLine1,
 		arg.AddressLine2,
+		arg.FormattedAddress,
 		arg.Latitude,
 		arg.Longitude,
 		arg.RulesDocumentUrl,
@@ -579,6 +591,7 @@ func (q *Queries) UpdateLeague(ctx context.Context, arg UpdateLeagueParams) (Lea
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }

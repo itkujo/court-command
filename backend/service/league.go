@@ -38,6 +38,7 @@ type LeagueResponse struct {
 	PostalCode       *string         `json:"postal_code,omitempty"`
 	AddressLine1     *string         `json:"address_line_1,omitempty"`
 	AddressLine2     *string         `json:"address_line_2,omitempty"`
+	FormattedAddress *string         `json:"formatted_address,omitempty"`
 	Latitude         *float64        `json:"latitude,omitempty"`
 	Longitude        *float64        `json:"longitude,omitempty"`
 	RulesDocumentURL *string         `json:"rules_document_url,omitempty"`
@@ -76,6 +77,7 @@ func toLeagueResponse(l generated.League) LeagueResponse {
 		PostalCode:       l.PostalCode,
 		AddressLine1:     l.AddressLine1,
 		AddressLine2:     l.AddressLine2,
+		FormattedAddress: l.FormattedAddress,
 		Latitude:         lat,
 		Longitude:        lng,
 		RulesDocumentURL: l.RulesDocumentUrl,

@@ -119,7 +119,7 @@ export function LeagueOverview({ league }: Props) {
             />
             <InfoRow
               label="Location"
-              value={[league.city, league.state_province, league.country].filter(Boolean).join(', ') || null}
+              value={league.formatted_address || [league.city, league.state_province, league.country].filter(Boolean).join(', ') || null}
             />
           </div>
           {league.description && (

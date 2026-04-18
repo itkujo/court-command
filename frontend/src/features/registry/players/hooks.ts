@@ -12,6 +12,7 @@ export interface Player {
   date_of_birth: string | null
   handedness: string | null
   skill_rating: number | null
+  formatted_address: string | null
   city: string | null
   state_province: string | null
   country: string | null

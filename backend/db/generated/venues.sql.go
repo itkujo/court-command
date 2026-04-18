@@ -86,47 +86,48 @@ func (q *Queries) CountVenues(ctx context.Context, status *string) (int64, error
 const createVenue = `-- name: CreateVenue :one
 INSERT INTO venues (
     name, slug, status, address_line_1, address_line_2, city, state_province,
-    country, postal_code, latitude, longitude, timezone, website_url,
+    country, postal_code, formatted_address, latitude, longitude, timezone, website_url,
     contact_email, contact_phone, logo_url, photo_url, venue_map_url,
     description, surface_types, amenities, org_id, managed_by_user_id,
     bio, notes, created_by_user_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10, $11, $12, $13,
-    $14, $15, $16, $17, $18,
-    $19, $20, $21, $22, $23,
-    $24, $25, $26
+    $8, $9, $10, $11, $12, $13, $14,
+    $15, $16, $17, $18, $19,
+    $20, $21, $22, $23, $24,
+    $25, $26, $27
 )
-RETURNING id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at
+RETURNING id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at, formatted_address
 `
 
 type CreateVenueParams struct {
-	Name            string        `json:"name"`
-	Slug            string        `json:"slug"`
-	Status          string        `json:"status"`
-	AddressLine1    *string       `json:"address_line_1"`
-	AddressLine2    *string       `json:"address_line_2"`
-	City            *string       `json:"city"`
-	StateProvince   *string       `json:"state_province"`
-	Country         *string       `json:"country"`
-	PostalCode      *string       `json:"postal_code"`
-	Latitude        pgtype.Float8 `json:"latitude"`
-	Longitude       pgtype.Float8 `json:"longitude"`
-	Timezone        *string       `json:"timezone"`
-	WebsiteUrl      *string       `json:"website_url"`
-	ContactEmail    *string       `json:"contact_email"`
-	ContactPhone    *string       `json:"contact_phone"`
-	LogoUrl         *string       `json:"logo_url"`
-	PhotoUrl        *string       `json:"photo_url"`
-	VenueMapUrl     *string       `json:"venue_map_url"`
-	Description     *string       `json:"description"`
-	SurfaceTypes    []byte        `json:"surface_types"`
-	Amenities       []byte        `json:"amenities"`
-	OrgID           pgtype.Int8   `json:"org_id"`
-	ManagedByUserID pgtype.Int8   `json:"managed_by_user_id"`
-	Bio             *string       `json:"bio"`
-	Notes           *string       `json:"notes"`
-	CreatedByUserID int64         `json:"created_by_user_id"`
+	Name             string        `json:"name"`
+	Slug             string        `json:"slug"`
+	Status           string        `json:"status"`
+	AddressLine1     *string       `json:"address_line_1"`
+	AddressLine2     *string       `json:"address_line_2"`
+	City             *string       `json:"city"`
+	StateProvince    *string       `json:"state_province"`
+	Country          *string       `json:"country"`
+	PostalCode       *string       `json:"postal_code"`
+	FormattedAddress *string       `json:"formatted_address"`
+	Latitude         pgtype.Float8 `json:"latitude"`
+	Longitude        pgtype.Float8 `json:"longitude"`
+	Timezone         *string       `json:"timezone"`
+	WebsiteUrl       *string       `json:"website_url"`
+	ContactEmail     *string       `json:"contact_email"`
+	ContactPhone     *string       `json:"contact_phone"`
+	LogoUrl          *string       `json:"logo_url"`
+	PhotoUrl         *string       `json:"photo_url"`
+	VenueMapUrl      *string       `json:"venue_map_url"`
+	Description      *string       `json:"description"`
+	SurfaceTypes     []byte        `json:"surface_types"`
+	Amenities        []byte        `json:"amenities"`
+	OrgID            pgtype.Int8   `json:"org_id"`
+	ManagedByUserID  pgtype.Int8   `json:"managed_by_user_id"`
+	Bio              *string       `json:"bio"`
+	Notes            *string       `json:"notes"`
+	CreatedByUserID  int64         `json:"created_by_user_id"`
 }
 
 func (q *Queries) CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue, error) {
@@ -140,6 +141,7 @@ func (q *Queries) CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue
 		arg.StateProvince,
 		arg.Country,
 		arg.PostalCode,
+		arg.FormattedAddress,
 		arg.Latitude,
 		arg.Longitude,
 		arg.Timezone,
@@ -190,12 +192,13 @@ func (q *Queries) CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const getVenueByID = `-- name: GetVenueByID :one
-SELECT id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at FROM venues
+SELECT id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at, formatted_address FROM venues
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -233,12 +236,13 @@ func (q *Queries) GetVenueByID(ctx context.Context, id int64) (Venue, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const getVenueBySlug = `-- name: GetVenueBySlug :one
-SELECT id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at FROM venues
+SELECT id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at, formatted_address FROM venues
 WHERE slug = $1 AND deleted_at IS NULL
 `
 
@@ -276,6 +280,7 @@ func (q *Queries) GetVenueBySlug(ctx context.Context, slug string) (Venue, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
@@ -293,7 +298,7 @@ func (q *Queries) GetVenueCourtCount(ctx context.Context, venueID pgtype.Int8) (
 }
 
 const listPendingVenues = `-- name: ListPendingVenues :many
-SELECT id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at FROM venues
+SELECT id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at, formatted_address FROM venues
 WHERE status = 'pending_review' AND deleted_at IS NULL
 ORDER BY created_at ASC
 LIMIT $1 OFFSET $2
@@ -344,6 +349,7 @@ func (q *Queries) ListPendingVenues(ctx context.Context, arg ListPendingVenuesPa
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.FormattedAddress,
 		); err != nil {
 			return nil, err
 		}
@@ -356,7 +362,7 @@ func (q *Queries) ListPendingVenues(ctx context.Context, arg ListPendingVenuesPa
 }
 
 const listVenues = `-- name: ListVenues :many
-SELECT id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at FROM venues
+SELECT id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at, formatted_address FROM venues
 WHERE deleted_at IS NULL
   AND ($3::TEXT IS NULL OR status = $3::TEXT)
 ORDER BY name
@@ -409,6 +415,7 @@ func (q *Queries) ListVenues(ctx context.Context, arg ListVenuesParams) ([]Venue
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.FormattedAddress,
 		); err != nil {
 			return nil, err
 		}
@@ -421,7 +428,7 @@ func (q *Queries) ListVenues(ctx context.Context, arg ListVenuesParams) ([]Venue
 }
 
 const searchVenues = `-- name: SearchVenues :many
-SELECT id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at FROM venues
+SELECT id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at, formatted_address FROM venues
 WHERE deleted_at IS NULL
   AND ($3::TEXT IS NULL OR status = $3::TEXT)
   AND (
@@ -494,6 +501,7 @@ func (q *Queries) SearchVenues(ctx context.Context, arg SearchVenuesParams) ([]V
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.FormattedAddress,
 		); err != nil {
 			return nil, err
 		}
@@ -526,52 +534,54 @@ UPDATE venues SET
     state_province = COALESCE($5, state_province),
     country = COALESCE($6, country),
     postal_code = COALESCE($7, postal_code),
-    latitude = COALESCE($8, latitude),
-    longitude = COALESCE($9, longitude),
-    timezone = COALESCE($10, timezone),
-    website_url = COALESCE($11, website_url),
-    contact_email = COALESCE($12, contact_email),
-    contact_phone = COALESCE($13, contact_phone),
-    logo_url = COALESCE($14, logo_url),
-    photo_url = COALESCE($15, photo_url),
-    venue_map_url = COALESCE($16, venue_map_url),
-    description = COALESCE($17, description),
-    surface_types = COALESCE($18, surface_types),
-    amenities = COALESCE($19, amenities),
-    org_id = COALESCE($20, org_id),
-    managed_by_user_id = COALESCE($21, managed_by_user_id),
-    bio = COALESCE($22, bio),
-    notes = COALESCE($23, notes),
+    formatted_address = COALESCE($8, formatted_address),
+    latitude = COALESCE($9, latitude),
+    longitude = COALESCE($10, longitude),
+    timezone = COALESCE($11, timezone),
+    website_url = COALESCE($12, website_url),
+    contact_email = COALESCE($13, contact_email),
+    contact_phone = COALESCE($14, contact_phone),
+    logo_url = COALESCE($15, logo_url),
+    photo_url = COALESCE($16, photo_url),
+    venue_map_url = COALESCE($17, venue_map_url),
+    description = COALESCE($18, description),
+    surface_types = COALESCE($19, surface_types),
+    amenities = COALESCE($20, amenities),
+    org_id = COALESCE($21, org_id),
+    managed_by_user_id = COALESCE($22, managed_by_user_id),
+    bio = COALESCE($23, bio),
+    notes = COALESCE($24, notes),
     updated_at = now()
-WHERE id = $24 AND deleted_at IS NULL
-RETURNING id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at
+WHERE id = $25 AND deleted_at IS NULL
+RETURNING id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at, formatted_address
 `
 
 type UpdateVenueParams struct {
-	Name            *string       `json:"name"`
-	AddressLine1    *string       `json:"address_line_1"`
-	AddressLine2    *string       `json:"address_line_2"`
-	City            *string       `json:"city"`
-	StateProvince   *string       `json:"state_province"`
-	Country         *string       `json:"country"`
-	PostalCode      *string       `json:"postal_code"`
-	Latitude        pgtype.Float8 `json:"latitude"`
-	Longitude       pgtype.Float8 `json:"longitude"`
-	Timezone        *string       `json:"timezone"`
-	WebsiteUrl      *string       `json:"website_url"`
-	ContactEmail    *string       `json:"contact_email"`
-	ContactPhone    *string       `json:"contact_phone"`
-	LogoUrl         *string       `json:"logo_url"`
-	PhotoUrl        *string       `json:"photo_url"`
-	VenueMapUrl     *string       `json:"venue_map_url"`
-	Description     *string       `json:"description"`
-	SurfaceTypes    []byte        `json:"surface_types"`
-	Amenities       []byte        `json:"amenities"`
-	OrgID           pgtype.Int8   `json:"org_id"`
-	ManagedByUserID pgtype.Int8   `json:"managed_by_user_id"`
-	Bio             *string       `json:"bio"`
-	Notes           *string       `json:"notes"`
-	VenueID         int64         `json:"venue_id"`
+	Name             *string       `json:"name"`
+	AddressLine1     *string       `json:"address_line_1"`
+	AddressLine2     *string       `json:"address_line_2"`
+	City             *string       `json:"city"`
+	StateProvince    *string       `json:"state_province"`
+	Country          *string       `json:"country"`
+	PostalCode       *string       `json:"postal_code"`
+	FormattedAddress *string       `json:"formatted_address"`
+	Latitude         pgtype.Float8 `json:"latitude"`
+	Longitude        pgtype.Float8 `json:"longitude"`
+	Timezone         *string       `json:"timezone"`
+	WebsiteUrl       *string       `json:"website_url"`
+	ContactEmail     *string       `json:"contact_email"`
+	ContactPhone     *string       `json:"contact_phone"`
+	LogoUrl          *string       `json:"logo_url"`
+	PhotoUrl         *string       `json:"photo_url"`
+	VenueMapUrl      *string       `json:"venue_map_url"`
+	Description      *string       `json:"description"`
+	SurfaceTypes     []byte        `json:"surface_types"`
+	Amenities        []byte        `json:"amenities"`
+	OrgID            pgtype.Int8   `json:"org_id"`
+	ManagedByUserID  pgtype.Int8   `json:"managed_by_user_id"`
+	Bio              *string       `json:"bio"`
+	Notes            *string       `json:"notes"`
+	VenueID          int64         `json:"venue_id"`
 }
 
 func (q *Queries) UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue, error) {
@@ -583,6 +593,7 @@ func (q *Queries) UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue
 		arg.StateProvince,
 		arg.Country,
 		arg.PostalCode,
+		arg.FormattedAddress,
 		arg.Latitude,
 		arg.Longitude,
 		arg.Timezone,
@@ -633,6 +644,7 @@ func (q *Queries) UpdateVenue(ctx context.Context, arg UpdateVenueParams) (Venue
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
@@ -642,7 +654,7 @@ UPDATE venues SET
     status = $2,
     updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at
+RETURNING id, name, slug, status, address_line_1, address_line_2, city, state_province, country, postal_code, latitude, longitude, timezone, website_url, contact_email, contact_phone, logo_url, photo_url, venue_map_url, description, surface_types, amenities, org_id, managed_by_user_id, bio, notes, created_by_user_id, created_at, updated_at, deleted_at, formatted_address
 `
 
 type UpdateVenueStatusParams struct {
@@ -684,6 +696,7 @@ func (q *Queries) UpdateVenueStatus(ctx context.Context, arg UpdateVenueStatusPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.FormattedAddress,
 	)
 	return i, err
 }

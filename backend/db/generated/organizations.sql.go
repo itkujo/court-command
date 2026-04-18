@@ -68,32 +68,33 @@ func (q *Queries) CountSearchOrgs(ctx context.Context, arg CountSearchOrgsParams
 }
 
 const createOrganization = `-- name: CreateOrganization :one
-INSERT INTO organizations (name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, postal_code, address_line_1, address_line_2, latitude, longitude, bio, founded_year, social_links, created_by_user_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-RETURNING id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude
+INSERT INTO organizations (name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, postal_code, address_line_1, address_line_2, formatted_address, latitude, longitude, bio, founded_year, social_links, created_by_user_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+RETURNING id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address
 `
 
 type CreateOrganizationParams struct {
-	Name            string        `json:"name"`
-	Slug            string        `json:"slug"`
-	LogoUrl         *string       `json:"logo_url"`
-	PrimaryColor    *string       `json:"primary_color"`
-	SecondaryColor  *string       `json:"secondary_color"`
-	WebsiteUrl      *string       `json:"website_url"`
-	ContactEmail    *string       `json:"contact_email"`
-	ContactPhone    *string       `json:"contact_phone"`
-	City            *string       `json:"city"`
-	StateProvince   *string       `json:"state_province"`
-	Country         *string       `json:"country"`
-	PostalCode      *string       `json:"postal_code"`
-	AddressLine1    *string       `json:"address_line_1"`
-	AddressLine2    *string       `json:"address_line_2"`
-	Latitude        pgtype.Float8 `json:"latitude"`
-	Longitude       pgtype.Float8 `json:"longitude"`
-	Bio             *string       `json:"bio"`
-	FoundedYear     pgtype.Int4   `json:"founded_year"`
-	SocialLinks     []byte        `json:"social_links"`
-	CreatedByUserID int64         `json:"created_by_user_id"`
+	Name             string        `json:"name"`
+	Slug             string        `json:"slug"`
+	LogoUrl          *string       `json:"logo_url"`
+	PrimaryColor     *string       `json:"primary_color"`
+	SecondaryColor   *string       `json:"secondary_color"`
+	WebsiteUrl       *string       `json:"website_url"`
+	ContactEmail     *string       `json:"contact_email"`
+	ContactPhone     *string       `json:"contact_phone"`
+	City             *string       `json:"city"`
+	StateProvince    *string       `json:"state_province"`
+	Country          *string       `json:"country"`
+	PostalCode       *string       `json:"postal_code"`
+	AddressLine1     *string       `json:"address_line_1"`
+	AddressLine2     *string       `json:"address_line_2"`
+	FormattedAddress *string       `json:"formatted_address"`
+	Latitude         pgtype.Float8 `json:"latitude"`
+	Longitude        pgtype.Float8 `json:"longitude"`
+	Bio              *string       `json:"bio"`
+	FoundedYear      pgtype.Int4   `json:"founded_year"`
+	SocialLinks      []byte        `json:"social_links"`
+	CreatedByUserID  int64         `json:"created_by_user_id"`
 }
 
 func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error) {
@@ -112,6 +113,7 @@ func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganization
 		arg.PostalCode,
 		arg.AddressLine1,
 		arg.AddressLine2,
+		arg.FormattedAddress,
 		arg.Latitude,
 		arg.Longitude,
 		arg.Bio,
@@ -145,12 +147,13 @@ func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganization
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const getOrgByID = `-- name: GetOrgByID :one
-SELECT id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude FROM organizations
+SELECT id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM organizations
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -182,12 +185,13 @@ func (q *Queries) GetOrgByID(ctx context.Context, id int64) (Organization, error
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const getOrgBySlug = `-- name: GetOrgBySlug :one
-SELECT id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude FROM organizations
+SELECT id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM organizations
 WHERE slug = $1 AND deleted_at IS NULL
 `
 
@@ -219,12 +223,13 @@ func (q *Queries) GetOrgBySlug(ctx context.Context, slug string) (Organization, 
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const listOrgs = `-- name: ListOrgs :many
-SELECT id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude FROM organizations
+SELECT id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM organizations
 WHERE deleted_at IS NULL
 ORDER BY name
 LIMIT $1 OFFSET $2
@@ -269,6 +274,7 @@ func (q *Queries) ListOrgs(ctx context.Context, arg ListOrgsParams) ([]Organizat
 			&i.PostalCode,
 			&i.Latitude,
 			&i.Longitude,
+			&i.FormattedAddress,
 		); err != nil {
 			return nil, err
 		}
@@ -281,7 +287,7 @@ func (q *Queries) ListOrgs(ctx context.Context, arg ListOrgsParams) ([]Organizat
 }
 
 const listOrgsByUser = `-- name: ListOrgsByUser :many
-SELECT o.id, o.name, o.slug, o.logo_url, o.primary_color, o.secondary_color, o.website_url, o.contact_email, o.contact_phone, o.city, o.state_province, o.country, o.bio, o.founded_year, o.social_links, o.created_by_user_id, o.created_at, o.updated_at, o.deleted_at, o.address_line_1, o.address_line_2, o.postal_code, o.latitude, o.longitude, om.role AS membership_role
+SELECT o.id, o.name, o.slug, o.logo_url, o.primary_color, o.secondary_color, o.website_url, o.contact_email, o.contact_phone, o.city, o.state_province, o.country, o.bio, o.founded_year, o.social_links, o.created_by_user_id, o.created_at, o.updated_at, o.deleted_at, o.address_line_1, o.address_line_2, o.postal_code, o.latitude, o.longitude, o.formatted_address, om.role AS membership_role
 FROM organizations o
 JOIN org_memberships om ON om.org_id = o.id
 WHERE om.player_id = $1 AND om.left_at IS NULL AND o.deleted_at IS NULL
@@ -289,31 +295,32 @@ ORDER BY o.name
 `
 
 type ListOrgsByUserRow struct {
-	ID              int64              `json:"id"`
-	Name            string             `json:"name"`
-	Slug            string             `json:"slug"`
-	LogoUrl         *string            `json:"logo_url"`
-	PrimaryColor    *string            `json:"primary_color"`
-	SecondaryColor  *string            `json:"secondary_color"`
-	WebsiteUrl      *string            `json:"website_url"`
-	ContactEmail    *string            `json:"contact_email"`
-	ContactPhone    *string            `json:"contact_phone"`
-	City            *string            `json:"city"`
-	StateProvince   *string            `json:"state_province"`
-	Country         *string            `json:"country"`
-	Bio             *string            `json:"bio"`
-	FoundedYear     pgtype.Int4        `json:"founded_year"`
-	SocialLinks     []byte             `json:"social_links"`
-	CreatedByUserID int64              `json:"created_by_user_id"`
-	CreatedAt       time.Time          `json:"created_at"`
-	UpdatedAt       time.Time          `json:"updated_at"`
-	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
-	AddressLine1    *string            `json:"address_line_1"`
-	AddressLine2    *string            `json:"address_line_2"`
-	PostalCode      *string            `json:"postal_code"`
-	Latitude        pgtype.Float8      `json:"latitude"`
-	Longitude       pgtype.Float8      `json:"longitude"`
-	MembershipRole  string             `json:"membership_role"`
+	ID               int64              `json:"id"`
+	Name             string             `json:"name"`
+	Slug             string             `json:"slug"`
+	LogoUrl          *string            `json:"logo_url"`
+	PrimaryColor     *string            `json:"primary_color"`
+	SecondaryColor   *string            `json:"secondary_color"`
+	WebsiteUrl       *string            `json:"website_url"`
+	ContactEmail     *string            `json:"contact_email"`
+	ContactPhone     *string            `json:"contact_phone"`
+	City             *string            `json:"city"`
+	StateProvince    *string            `json:"state_province"`
+	Country          *string            `json:"country"`
+	Bio              *string            `json:"bio"`
+	FoundedYear      pgtype.Int4        `json:"founded_year"`
+	SocialLinks      []byte             `json:"social_links"`
+	CreatedByUserID  int64              `json:"created_by_user_id"`
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	AddressLine1     *string            `json:"address_line_1"`
+	AddressLine2     *string            `json:"address_line_2"`
+	PostalCode       *string            `json:"postal_code"`
+	Latitude         pgtype.Float8      `json:"latitude"`
+	Longitude        pgtype.Float8      `json:"longitude"`
+	FormattedAddress *string            `json:"formatted_address"`
+	MembershipRole   string             `json:"membership_role"`
 }
 
 func (q *Queries) ListOrgsByUser(ctx context.Context, playerID int64) ([]ListOrgsByUserRow, error) {
@@ -350,6 +357,7 @@ func (q *Queries) ListOrgsByUser(ctx context.Context, playerID int64) ([]ListOrg
 			&i.PostalCode,
 			&i.Latitude,
 			&i.Longitude,
+			&i.FormattedAddress,
 			&i.MembershipRole,
 		); err != nil {
 			return nil, err
@@ -363,7 +371,7 @@ func (q *Queries) ListOrgsByUser(ctx context.Context, playerID int64) ([]ListOrg
 }
 
 const searchOrgs = `-- name: SearchOrgs :many
-SELECT id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude FROM organizations
+SELECT id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM organizations
 WHERE deleted_at IS NULL
   AND (
     $3::TEXT IS NULL
@@ -426,6 +434,7 @@ func (q *Queries) SearchOrgs(ctx context.Context, arg SearchOrgsParams) ([]Organ
 			&i.PostalCode,
 			&i.Latitude,
 			&i.Longitude,
+			&i.FormattedAddress,
 		); err != nil {
 			return nil, err
 		}
@@ -464,36 +473,38 @@ UPDATE organizations SET
     postal_code = COALESCE($11, postal_code),
     address_line_1 = COALESCE($12, address_line_1),
     address_line_2 = COALESCE($13, address_line_2),
-    latitude = COALESCE($14, latitude),
-    longitude = COALESCE($15, longitude),
-    bio = COALESCE($16, bio),
-    founded_year = COALESCE($17, founded_year),
-    social_links = COALESCE($18, social_links),
+    formatted_address = COALESCE($14, formatted_address),
+    latitude = COALESCE($15, latitude),
+    longitude = COALESCE($16, longitude),
+    bio = COALESCE($17, bio),
+    founded_year = COALESCE($18, founded_year),
+    social_links = COALESCE($19, social_links),
     updated_at = now()
-WHERE id = $19 AND deleted_at IS NULL
-RETURNING id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude
+WHERE id = $20 AND deleted_at IS NULL
+RETURNING id, name, slug, logo_url, primary_color, secondary_color, website_url, contact_email, contact_phone, city, state_province, country, bio, founded_year, social_links, created_by_user_id, created_at, updated_at, deleted_at, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address
 `
 
 type UpdateOrgParams struct {
-	Name           *string       `json:"name"`
-	LogoUrl        *string       `json:"logo_url"`
-	PrimaryColor   *string       `json:"primary_color"`
-	SecondaryColor *string       `json:"secondary_color"`
-	WebsiteUrl     *string       `json:"website_url"`
-	ContactEmail   *string       `json:"contact_email"`
-	ContactPhone   *string       `json:"contact_phone"`
-	City           *string       `json:"city"`
-	StateProvince  *string       `json:"state_province"`
-	Country        *string       `json:"country"`
-	PostalCode     *string       `json:"postal_code"`
-	AddressLine1   *string       `json:"address_line_1"`
-	AddressLine2   *string       `json:"address_line_2"`
-	Latitude       pgtype.Float8 `json:"latitude"`
-	Longitude      pgtype.Float8 `json:"longitude"`
-	Bio            *string       `json:"bio"`
-	FoundedYear    pgtype.Int4   `json:"founded_year"`
-	SocialLinks    []byte        `json:"social_links"`
-	OrgID          int64         `json:"org_id"`
+	Name             *string       `json:"name"`
+	LogoUrl          *string       `json:"logo_url"`
+	PrimaryColor     *string       `json:"primary_color"`
+	SecondaryColor   *string       `json:"secondary_color"`
+	WebsiteUrl       *string       `json:"website_url"`
+	ContactEmail     *string       `json:"contact_email"`
+	ContactPhone     *string       `json:"contact_phone"`
+	City             *string       `json:"city"`
+	StateProvince    *string       `json:"state_province"`
+	Country          *string       `json:"country"`
+	PostalCode       *string       `json:"postal_code"`
+	AddressLine1     *string       `json:"address_line_1"`
+	AddressLine2     *string       `json:"address_line_2"`
+	FormattedAddress *string       `json:"formatted_address"`
+	Latitude         pgtype.Float8 `json:"latitude"`
+	Longitude        pgtype.Float8 `json:"longitude"`
+	Bio              *string       `json:"bio"`
+	FoundedYear      pgtype.Int4   `json:"founded_year"`
+	SocialLinks      []byte        `json:"social_links"`
+	OrgID            int64         `json:"org_id"`
 }
 
 func (q *Queries) UpdateOrg(ctx context.Context, arg UpdateOrgParams) (Organization, error) {
@@ -511,6 +522,7 @@ func (q *Queries) UpdateOrg(ctx context.Context, arg UpdateOrgParams) (Organizat
 		arg.PostalCode,
 		arg.AddressLine1,
 		arg.AddressLine2,
+		arg.FormattedAddress,
 		arg.Latitude,
 		arg.Longitude,
 		arg.Bio,
@@ -544,6 +556,7 @@ func (q *Queries) UpdateOrg(ctx context.Context, arg UpdateOrgParams) (Organizat
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }

@@ -77,7 +77,7 @@ INSERT INTO users (
 ) VALUES (
     $1, $2, $3, '', 'player', 'unclaimed'
 )
-RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address
 `
 
 type CreateUnclaimedUserParams struct {
@@ -126,6 +126,7 @@ func (q *Queries) CreateUnclaimedUser(ctx context.Context, arg CreateUnclaimedUs
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
@@ -137,7 +138,7 @@ INSERT INTO users (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7
 )
-RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address
 `
 
 type CreateUserParams struct {
@@ -199,12 +200,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM users
 WHERE email = $1 AND deleted_at IS NULL
 `
 
@@ -248,12 +250,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email *string) (User, erro
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM users
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -297,12 +300,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const getUserByPublicID = `-- name: GetUserByPublicID :one
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM users
 WHERE public_id = $1 AND deleted_at IS NULL
 `
 
@@ -346,12 +350,13 @@ func (q *Queries) GetUserByPublicID(ctx context.Context, publicID string) (User,
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM users
 WHERE deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
@@ -408,6 +413,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.PostalCode,
 			&i.Latitude,
 			&i.Longitude,
+			&i.FormattedAddress,
 		); err != nil {
 			return nil, err
 		}
@@ -420,7 +426,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 }
 
 const searchUsers = `-- name: SearchUsers :many
-SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude FROM users
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM users
 WHERE deleted_at IS NULL
   AND (
     $3::TEXT IS NULL
@@ -495,6 +501,7 @@ func (q *Queries) SearchUsers(ctx context.Context, arg SearchUsersParams) ([]Use
 			&i.PostalCode,
 			&i.Latitude,
 			&i.Longitude,
+			&i.FormattedAddress,
 		); err != nil {
 			return nil, err
 		}
@@ -525,7 +532,7 @@ UPDATE users SET
     display_name = COALESCE($4, display_name),
     updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address
 `
 
 type UpdateUserParams struct {
@@ -580,6 +587,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
@@ -589,7 +597,7 @@ UPDATE users SET
     role = $2,
     updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address
 `
 
 type UpdateUserRoleParams struct {
@@ -637,6 +645,7 @@ func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) 
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }
@@ -646,7 +655,7 @@ UPDATE users SET
     status = $2,
     updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude
+RETURNING id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address
 `
 
 type UpdateUserStatusParams struct {
@@ -694,6 +703,7 @@ func (q *Queries) UpdateUserStatus(ctx context.Context, arg UpdateUserStatusPara
 		&i.PostalCode,
 		&i.Latitude,
 		&i.Longitude,
+		&i.FormattedAddress,
 	)
 	return i, err
 }

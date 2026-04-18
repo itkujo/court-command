@@ -1,16 +1,16 @@
 -- name: CreateVenue :one
 INSERT INTO venues (
     name, slug, status, address_line_1, address_line_2, city, state_province,
-    country, postal_code, latitude, longitude, timezone, website_url,
+    country, postal_code, formatted_address, latitude, longitude, timezone, website_url,
     contact_email, contact_phone, logo_url, photo_url, venue_map_url,
     description, surface_types, amenities, org_id, managed_by_user_id,
     bio, notes, created_by_user_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10, $11, $12, $13,
-    $14, $15, $16, $17, $18,
-    $19, $20, $21, $22, $23,
-    $24, $25, $26
+    $8, $9, $10, $11, $12, $13, $14,
+    $15, $16, $17, $18, $19,
+    $20, $21, $22, $23, $24,
+    $25, $26, $27
 )
 RETURNING *;
 
@@ -31,6 +31,7 @@ UPDATE venues SET
     state_province = COALESCE(sqlc.narg('state_province'), state_province),
     country = COALESCE(sqlc.narg('country'), country),
     postal_code = COALESCE(sqlc.narg('postal_code'), postal_code),
+    formatted_address = COALESCE(sqlc.narg('formatted_address'), formatted_address),
     latitude = COALESCE(sqlc.narg('latitude'), latitude),
     longitude = COALESCE(sqlc.narg('longitude'), longitude),
     timezone = COALESCE(sqlc.narg('timezone'), timezone),

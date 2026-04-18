@@ -174,7 +174,7 @@ func (q *Queries) ListVenueManagers(ctx context.Context, venueID int64) ([]ListV
 }
 
 const listVenuesByManager = `-- name: ListVenuesByManager :many
-SELECT v.id, v.name, v.slug, v.status, v.address_line_1, v.address_line_2, v.city, v.state_province, v.country, v.postal_code, v.latitude, v.longitude, v.timezone, v.website_url, v.contact_email, v.contact_phone, v.logo_url, v.photo_url, v.venue_map_url, v.description, v.surface_types, v.amenities, v.org_id, v.managed_by_user_id, v.bio, v.notes, v.created_by_user_id, v.created_at, v.updated_at, v.deleted_at
+SELECT v.id, v.name, v.slug, v.status, v.address_line_1, v.address_line_2, v.city, v.state_province, v.country, v.postal_code, v.latitude, v.longitude, v.timezone, v.website_url, v.contact_email, v.contact_phone, v.logo_url, v.photo_url, v.venue_map_url, v.description, v.surface_types, v.amenities, v.org_id, v.managed_by_user_id, v.bio, v.notes, v.created_by_user_id, v.created_at, v.updated_at, v.deleted_at, v.formatted_address
 FROM venues v
 JOIN venue_managers vm ON vm.venue_id = v.id
 WHERE vm.user_id = $1 AND v.deleted_at IS NULL
@@ -221,6 +221,7 @@ func (q *Queries) ListVenuesByManager(ctx context.Context, userID int64) ([]Venu
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.FormattedAddress,
 		); err != nil {
 			return nil, err
 		}

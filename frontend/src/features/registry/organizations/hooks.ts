@@ -19,6 +19,7 @@ export interface Organization {
   website_url: string | null
   contact_email: string | null
   contact_phone: string | null
+  formatted_address: string | null
   city: string | null
   state_province: string | null
   country: string | null

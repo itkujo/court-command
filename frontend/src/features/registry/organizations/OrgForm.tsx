@@ -27,11 +27,12 @@ export function OrgForm({ org }: OrgFormProps) {
   const [contactEmail, setContactEmail] = useState(org?.contact_email ?? '')
   const [websiteUrl, setWebsiteUrl] = useState(org?.website_url ?? '')
   const [address, setAddress] = useState<Partial<AddressData>>({
+    formatted_address: org?.formatted_address ?? '',
     address_line_1: org?.address_line_1 ?? '',
     address_line_2: org?.address_line_2 ?? '',
     city: org?.city ?? '',
     state_province: org?.state_province ?? '',
-    country: org?.country ?? 'US',
+    country: org?.country ?? '',
     postal_code: org?.postal_code ?? '',
     latitude: org?.latitude ?? undefined,
     longitude: org?.longitude ?? undefined,
@@ -62,6 +63,7 @@ export function OrgForm({ org }: OrgFormProps) {
       name: name.trim(),
       contact_email: contactEmail.trim() || null,
       website_url: websiteUrl.trim() || null,
+      formatted_address: address.formatted_address?.trim() || null,
       city: address.city?.trim() || null,
       state_province: address.state_province?.trim() || null,
       country: address.country?.trim() || null,

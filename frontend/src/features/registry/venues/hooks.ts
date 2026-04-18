@@ -15,6 +15,7 @@ export interface Venue {
   name: string
   slug: string
   status: string
+  formatted_address: string | null
   address_line_1: string | null
   address_line_2: string | null
   city: string | null

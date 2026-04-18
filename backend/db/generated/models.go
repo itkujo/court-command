@@ -185,6 +185,7 @@ type League struct {
 	PostalCode       *string            `json:"postal_code"`
 	Latitude         pgtype.Float8      `json:"latitude"`
 	Longitude        pgtype.Float8      `json:"longitude"`
+	FormattedAddress *string            `json:"formatted_address"`
 }
 
 type LeagueRegistration struct {
@@ -318,30 +319,31 @@ type OrgMembership struct {
 }
 
 type Organization struct {
-	ID              int64              `json:"id"`
-	Name            string             `json:"name"`
-	Slug            string             `json:"slug"`
-	LogoUrl         *string            `json:"logo_url"`
-	PrimaryColor    *string            `json:"primary_color"`
-	SecondaryColor  *string            `json:"secondary_color"`
-	WebsiteUrl      *string            `json:"website_url"`
-	ContactEmail    *string            `json:"contact_email"`
-	ContactPhone    *string            `json:"contact_phone"`
-	City            *string            `json:"city"`
-	StateProvince   *string            `json:"state_province"`
-	Country         *string            `json:"country"`
-	Bio             *string            `json:"bio"`
-	FoundedYear     pgtype.Int4        `json:"founded_year"`
-	SocialLinks     []byte             `json:"social_links"`
-	CreatedByUserID int64              `json:"created_by_user_id"`
-	CreatedAt       time.Time          `json:"created_at"`
-	UpdatedAt       time.Time          `json:"updated_at"`
-	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
-	AddressLine1    *string            `json:"address_line_1"`
-	AddressLine2    *string            `json:"address_line_2"`
-	PostalCode      *string            `json:"postal_code"`
-	Latitude        pgtype.Float8      `json:"latitude"`
-	Longitude       pgtype.Float8      `json:"longitude"`
+	ID               int64              `json:"id"`
+	Name             string             `json:"name"`
+	Slug             string             `json:"slug"`
+	LogoUrl          *string            `json:"logo_url"`
+	PrimaryColor     *string            `json:"primary_color"`
+	SecondaryColor   *string            `json:"secondary_color"`
+	WebsiteUrl       *string            `json:"website_url"`
+	ContactEmail     *string            `json:"contact_email"`
+	ContactPhone     *string            `json:"contact_phone"`
+	City             *string            `json:"city"`
+	StateProvince    *string            `json:"state_province"`
+	Country          *string            `json:"country"`
+	Bio              *string            `json:"bio"`
+	FoundedYear      pgtype.Int4        `json:"founded_year"`
+	SocialLinks      []byte             `json:"social_links"`
+	CreatedByUserID  int64              `json:"created_by_user_id"`
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	AddressLine1     *string            `json:"address_line_1"`
+	AddressLine2     *string            `json:"address_line_2"`
+	PostalCode       *string            `json:"postal_code"`
+	Latitude         pgtype.Float8      `json:"latitude"`
+	Longitude        pgtype.Float8      `json:"longitude"`
+	FormattedAddress *string            `json:"formatted_address"`
 }
 
 type Pod struct {
@@ -581,39 +583,41 @@ type User struct {
 	PostalCode            *string            `json:"postal_code"`
 	Latitude              pgtype.Float8      `json:"latitude"`
 	Longitude             pgtype.Float8      `json:"longitude"`
+	FormattedAddress      *string            `json:"formatted_address"`
 }
 
 type Venue struct {
-	ID              int64              `json:"id"`
-	Name            string             `json:"name"`
-	Slug            string             `json:"slug"`
-	Status          string             `json:"status"`
-	AddressLine1    *string            `json:"address_line_1"`
-	AddressLine2    *string            `json:"address_line_2"`
-	City            *string            `json:"city"`
-	StateProvince   *string            `json:"state_province"`
-	Country         *string            `json:"country"`
-	PostalCode      *string            `json:"postal_code"`
-	Latitude        pgtype.Float8      `json:"latitude"`
-	Longitude       pgtype.Float8      `json:"longitude"`
-	Timezone        *string            `json:"timezone"`
-	WebsiteUrl      *string            `json:"website_url"`
-	ContactEmail    *string            `json:"contact_email"`
-	ContactPhone    *string            `json:"contact_phone"`
-	LogoUrl         *string            `json:"logo_url"`
-	PhotoUrl        *string            `json:"photo_url"`
-	VenueMapUrl     *string            `json:"venue_map_url"`
-	Description     *string            `json:"description"`
-	SurfaceTypes    []byte             `json:"surface_types"`
-	Amenities       []byte             `json:"amenities"`
-	OrgID           pgtype.Int8        `json:"org_id"`
-	ManagedByUserID pgtype.Int8        `json:"managed_by_user_id"`
-	Bio             *string            `json:"bio"`
-	Notes           *string            `json:"notes"`
-	CreatedByUserID int64              `json:"created_by_user_id"`
-	CreatedAt       time.Time          `json:"created_at"`
-	UpdatedAt       time.Time          `json:"updated_at"`
-	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	ID               int64              `json:"id"`
+	Name             string             `json:"name"`
+	Slug             string             `json:"slug"`
+	Status           string             `json:"status"`
+	AddressLine1     *string            `json:"address_line_1"`
+	AddressLine2     *string            `json:"address_line_2"`
+	City             *string            `json:"city"`
+	StateProvince    *string            `json:"state_province"`
+	Country          *string            `json:"country"`
+	PostalCode       *string            `json:"postal_code"`
+	Latitude         pgtype.Float8      `json:"latitude"`
+	Longitude        pgtype.Float8      `json:"longitude"`
+	Timezone         *string            `json:"timezone"`
+	WebsiteUrl       *string            `json:"website_url"`
+	ContactEmail     *string            `json:"contact_email"`
+	ContactPhone     *string            `json:"contact_phone"`
+	LogoUrl          *string            `json:"logo_url"`
+	PhotoUrl         *string            `json:"photo_url"`
+	VenueMapUrl      *string            `json:"venue_map_url"`
+	Description      *string            `json:"description"`
+	SurfaceTypes     []byte             `json:"surface_types"`
+	Amenities        []byte             `json:"amenities"`
+	OrgID            pgtype.Int8        `json:"org_id"`
+	ManagedByUserID  pgtype.Int8        `json:"managed_by_user_id"`
+	Bio              *string            `json:"bio"`
+	Notes            *string            `json:"notes"`
+	CreatedByUserID  int64              `json:"created_by_user_id"`
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	FormattedAddress *string            `json:"formatted_address"`
 }
 
 type VenueManager struct {

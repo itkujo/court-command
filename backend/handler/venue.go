@@ -66,29 +66,30 @@ func (h *VenueHandler) CreateVenue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Name            string          `json:"name"`
-		AddressLine1    *string         `json:"address_line_1"`
-		AddressLine2    *string         `json:"address_line_2"`
-		City            *string         `json:"city"`
-		StateProvince   *string         `json:"state_province"`
-		Country         *string         `json:"country"`
-		PostalCode      *string         `json:"postal_code"`
-		Latitude        *float64        `json:"latitude"`
-		Longitude       *float64        `json:"longitude"`
-		Timezone        *string         `json:"timezone"`
-		WebsiteURL      *string         `json:"website_url"`
-		ContactEmail    *string         `json:"contact_email"`
-		ContactPhone    *string         `json:"contact_phone"`
-		LogoURL         *string         `json:"logo_url"`
-		PhotoURL        *string         `json:"photo_url"`
-		VenueMapURL     *string         `json:"venue_map_url"`
-		Description     *string         `json:"description"`
-		SurfaceTypes    json.RawMessage `json:"surface_types"`
-		Amenities       json.RawMessage `json:"amenities"`
-		OrgID           *int64          `json:"org_id"`
-		ManagedByUserID *int64          `json:"managed_by_user_id"`
-		Bio             *string         `json:"bio"`
-		Notes           *string         `json:"notes"`
+		Name             string          `json:"name"`
+		AddressLine1     *string         `json:"address_line_1"`
+		AddressLine2     *string         `json:"address_line_2"`
+		City             *string         `json:"city"`
+		StateProvince    *string         `json:"state_province"`
+		Country          *string         `json:"country"`
+		PostalCode       *string         `json:"postal_code"`
+		FormattedAddress *string         `json:"formatted_address"`
+		Latitude         *float64        `json:"latitude"`
+		Longitude        *float64        `json:"longitude"`
+		Timezone         *string         `json:"timezone"`
+		WebsiteURL       *string         `json:"website_url"`
+		ContactEmail     *string         `json:"contact_email"`
+		ContactPhone     *string         `json:"contact_phone"`
+		LogoURL          *string         `json:"logo_url"`
+		PhotoURL         *string         `json:"photo_url"`
+		VenueMapURL      *string         `json:"venue_map_url"`
+		Description      *string         `json:"description"`
+		SurfaceTypes     json.RawMessage `json:"surface_types"`
+		Amenities        json.RawMessage `json:"amenities"`
+		OrgID            *int64          `json:"org_id"`
+		ManagedByUserID  *int64          `json:"managed_by_user_id"`
+		Bio              *string         `json:"bio"`
+		Notes            *string         `json:"notes"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -102,24 +103,25 @@ func (h *VenueHandler) CreateVenue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	params := generated.CreateVenueParams{
-		Name:            body.Name,
-		AddressLine1:    body.AddressLine1,
-		AddressLine2:    body.AddressLine2,
-		City:            body.City,
-		StateProvince:   body.StateProvince,
-		Country:         body.Country,
-		PostalCode:      body.PostalCode,
-		Timezone:        body.Timezone,
-		WebsiteUrl:      body.WebsiteURL,
-		ContactEmail:    body.ContactEmail,
-		ContactPhone:    body.ContactPhone,
-		LogoUrl:         body.LogoURL,
-		PhotoUrl:        body.PhotoURL,
-		VenueMapUrl:     body.VenueMapURL,
-		Description:     body.Description,
-		Bio:             body.Bio,
-		Notes:           body.Notes,
-		CreatedByUserID: sess.UserID,
+		Name:             body.Name,
+		AddressLine1:     body.AddressLine1,
+		AddressLine2:     body.AddressLine2,
+		City:             body.City,
+		StateProvince:    body.StateProvince,
+		Country:          body.Country,
+		PostalCode:       body.PostalCode,
+		FormattedAddress: body.FormattedAddress,
+		Timezone:         body.Timezone,
+		WebsiteUrl:       body.WebsiteURL,
+		ContactEmail:     body.ContactEmail,
+		ContactPhone:     body.ContactPhone,
+		LogoUrl:          body.LogoURL,
+		PhotoUrl:         body.PhotoURL,
+		VenueMapUrl:      body.VenueMapURL,
+		Description:      body.Description,
+		Bio:              body.Bio,
+		Notes:            body.Notes,
+		CreatedByUserID:  sess.UserID,
 	}
 
 	if body.Latitude != nil {
@@ -199,29 +201,30 @@ func (h *VenueHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Name            *string         `json:"name"`
-		AddressLine1    *string         `json:"address_line_1"`
-		AddressLine2    *string         `json:"address_line_2"`
-		City            *string         `json:"city"`
-		StateProvince   *string         `json:"state_province"`
-		Country         *string         `json:"country"`
-		PostalCode      *string         `json:"postal_code"`
-		Latitude        *float64        `json:"latitude"`
-		Longitude       *float64        `json:"longitude"`
-		Timezone        *string         `json:"timezone"`
-		WebsiteURL      *string         `json:"website_url"`
-		ContactEmail    *string         `json:"contact_email"`
-		ContactPhone    *string         `json:"contact_phone"`
-		LogoURL         *string         `json:"logo_url"`
-		PhotoURL        *string         `json:"photo_url"`
-		VenueMapURL     *string         `json:"venue_map_url"`
-		Description     *string         `json:"description"`
-		SurfaceTypes    json.RawMessage `json:"surface_types"`
-		Amenities       json.RawMessage `json:"amenities"`
-		OrgID           *int64          `json:"org_id"`
-		ManagedByUserID *int64          `json:"managed_by_user_id"`
-		Bio             *string         `json:"bio"`
-		Notes           *string         `json:"notes"`
+		Name             *string         `json:"name"`
+		AddressLine1     *string         `json:"address_line_1"`
+		AddressLine2     *string         `json:"address_line_2"`
+		City             *string         `json:"city"`
+		StateProvince    *string         `json:"state_province"`
+		Country          *string         `json:"country"`
+		PostalCode       *string         `json:"postal_code"`
+		FormattedAddress *string         `json:"formatted_address"`
+		Latitude         *float64        `json:"latitude"`
+		Longitude        *float64        `json:"longitude"`
+		Timezone         *string         `json:"timezone"`
+		WebsiteURL       *string         `json:"website_url"`
+		ContactEmail     *string         `json:"contact_email"`
+		ContactPhone     *string         `json:"contact_phone"`
+		LogoURL          *string         `json:"logo_url"`
+		PhotoURL         *string         `json:"photo_url"`
+		VenueMapURL      *string         `json:"venue_map_url"`
+		Description      *string         `json:"description"`
+		SurfaceTypes     json.RawMessage `json:"surface_types"`
+		Amenities        json.RawMessage `json:"amenities"`
+		OrgID            *int64          `json:"org_id"`
+		ManagedByUserID  *int64          `json:"managed_by_user_id"`
+		Bio              *string         `json:"bio"`
+		Notes            *string         `json:"notes"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -230,24 +233,25 @@ func (h *VenueHandler) UpdateVenue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	params := generated.UpdateVenueParams{
-		VenueID:       venueID,
-		Name:          body.Name,
-		AddressLine1:  body.AddressLine1,
-		AddressLine2:  body.AddressLine2,
-		City:          body.City,
-		StateProvince: body.StateProvince,
-		Country:       body.Country,
-		PostalCode:    body.PostalCode,
-		Timezone:      body.Timezone,
-		WebsiteUrl:    body.WebsiteURL,
-		ContactEmail:  body.ContactEmail,
-		ContactPhone:  body.ContactPhone,
-		LogoUrl:       body.LogoURL,
-		PhotoUrl:      body.PhotoURL,
-		VenueMapUrl:   body.VenueMapURL,
-		Description:   body.Description,
-		Bio:           body.Bio,
-		Notes:         body.Notes,
+		VenueID:          venueID,
+		Name:             body.Name,
+		AddressLine1:     body.AddressLine1,
+		AddressLine2:     body.AddressLine2,
+		City:             body.City,
+		StateProvince:    body.StateProvince,
+		Country:          body.Country,
+		PostalCode:       body.PostalCode,
+		FormattedAddress: body.FormattedAddress,
+		Timezone:         body.Timezone,
+		WebsiteUrl:       body.WebsiteURL,
+		ContactEmail:     body.ContactEmail,
+		ContactPhone:     body.ContactPhone,
+		LogoUrl:          body.LogoURL,
+		PhotoUrl:         body.PhotoURL,
+		VenueMapUrl:      body.VenueMapURL,
+		Description:      body.Description,
+		Bio:              body.Bio,
+		Notes:            body.Notes,
 	}
 
 	if body.Latitude != nil {

@@ -33,36 +33,37 @@ func (s *VenueService) SetMatchService(m *MatchService) {
 
 // VenueResponse is the public representation of a venue.
 type VenueResponse struct {
-	ID              int64           `json:"id"`
-	Name            string          `json:"name"`
-	Slug            string          `json:"slug"`
-	Status          string          `json:"status"`
-	AddressLine1    *string         `json:"address_line_1,omitempty"`
-	AddressLine2    *string         `json:"address_line_2,omitempty"`
-	City            *string         `json:"city,omitempty"`
-	StateProvince   *string         `json:"state_province,omitempty"`
-	Country         *string         `json:"country,omitempty"`
-	PostalCode      *string         `json:"postal_code,omitempty"`
-	Latitude        *float64        `json:"latitude,omitempty"`
-	Longitude       *float64        `json:"longitude,omitempty"`
-	Timezone        *string         `json:"timezone,omitempty"`
-	WebsiteURL      *string         `json:"website_url,omitempty"`
-	ContactEmail    *string         `json:"contact_email,omitempty"`
-	ContactPhone    *string         `json:"contact_phone,omitempty"`
-	LogoURL         *string         `json:"logo_url,omitempty"`
-	PhotoURL        *string         `json:"photo_url,omitempty"`
-	VenueMapURL     *string         `json:"venue_map_url,omitempty"`
-	Description     *string         `json:"description,omitempty"`
-	SurfaceTypes    json.RawMessage `json:"surface_types"`
-	Amenities       json.RawMessage `json:"amenities"`
-	OrgID           *int64          `json:"org_id,omitempty"`
-	ManagedByUserID *int64          `json:"managed_by_user_id,omitempty"`
-	Bio             *string         `json:"bio,omitempty"`
-	Notes           *string         `json:"notes,omitempty"`
-	CreatedByUserID int64           `json:"created_by_user_id"`
-	CourtCount      int64           `json:"court_count"`
-	CreatedAt       string          `json:"created_at"`
-	UpdatedAt       string          `json:"updated_at"`
+	ID               int64           `json:"id"`
+	Name             string          `json:"name"`
+	Slug             string          `json:"slug"`
+	Status           string          `json:"status"`
+	AddressLine1     *string         `json:"address_line_1,omitempty"`
+	AddressLine2     *string         `json:"address_line_2,omitempty"`
+	City             *string         `json:"city,omitempty"`
+	StateProvince    *string         `json:"state_province,omitempty"`
+	Country          *string         `json:"country,omitempty"`
+	PostalCode       *string         `json:"postal_code,omitempty"`
+	FormattedAddress *string         `json:"formatted_address,omitempty"`
+	Latitude         *float64        `json:"latitude,omitempty"`
+	Longitude        *float64        `json:"longitude,omitempty"`
+	Timezone         *string         `json:"timezone,omitempty"`
+	WebsiteURL       *string         `json:"website_url,omitempty"`
+	ContactEmail     *string         `json:"contact_email,omitempty"`
+	ContactPhone     *string         `json:"contact_phone,omitempty"`
+	LogoURL          *string         `json:"logo_url,omitempty"`
+	PhotoURL         *string         `json:"photo_url,omitempty"`
+	VenueMapURL      *string         `json:"venue_map_url,omitempty"`
+	Description      *string         `json:"description,omitempty"`
+	SurfaceTypes     json.RawMessage `json:"surface_types"`
+	Amenities        json.RawMessage `json:"amenities"`
+	OrgID            *int64          `json:"org_id,omitempty"`
+	ManagedByUserID  *int64          `json:"managed_by_user_id,omitempty"`
+	Bio              *string         `json:"bio,omitempty"`
+	Notes            *string         `json:"notes,omitempty"`
+	CreatedByUserID  int64           `json:"created_by_user_id"`
+	CourtCount       int64           `json:"court_count"`
+	CreatedAt        string          `json:"created_at"`
+	UpdatedAt        string          `json:"updated_at"`
 }
 
 // CourtResponse is the public representation of a court.
@@ -92,30 +93,31 @@ type CourtResponse struct {
 
 func toVenueResponse(v generated.Venue, courtCount int64) VenueResponse {
 	resp := VenueResponse{
-		ID:              v.ID,
-		Name:            v.Name,
-		Slug:            v.Slug,
-		Status:          v.Status,
-		AddressLine1:    v.AddressLine1,
-		AddressLine2:    v.AddressLine2,
-		City:            v.City,
-		StateProvince:   v.StateProvince,
-		Country:         v.Country,
-		PostalCode:      v.PostalCode,
-		Timezone:        v.Timezone,
-		WebsiteURL:      v.WebsiteUrl,
-		ContactEmail:    v.ContactEmail,
-		ContactPhone:    v.ContactPhone,
-		LogoURL:         v.LogoUrl,
-		PhotoURL:        v.PhotoUrl,
-		VenueMapURL:     v.VenueMapUrl,
-		Description:     v.Description,
-		Bio:             v.Bio,
-		Notes:           v.Notes,
-		CreatedByUserID: v.CreatedByUserID,
-		CourtCount:      courtCount,
-		CreatedAt:       v.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:       v.UpdatedAt.Format(time.RFC3339),
+		ID:               v.ID,
+		Name:             v.Name,
+		Slug:             v.Slug,
+		Status:           v.Status,
+		AddressLine1:     v.AddressLine1,
+		AddressLine2:     v.AddressLine2,
+		City:             v.City,
+		StateProvince:    v.StateProvince,
+		Country:          v.Country,
+		PostalCode:       v.PostalCode,
+		FormattedAddress: v.FormattedAddress,
+		Timezone:         v.Timezone,
+		WebsiteURL:       v.WebsiteUrl,
+		ContactEmail:     v.ContactEmail,
+		ContactPhone:     v.ContactPhone,
+		LogoURL:          v.LogoUrl,
+		PhotoURL:         v.PhotoUrl,
+		VenueMapURL:      v.VenueMapUrl,
+		Description:      v.Description,
+		Bio:              v.Bio,
+		Notes:            v.Notes,
+		CreatedByUserID:  v.CreatedByUserID,
+		CourtCount:       courtCount,
+		CreatedAt:        v.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:        v.UpdatedAt.Format(time.RFC3339),
 	}
 
 	if v.Latitude.Valid {

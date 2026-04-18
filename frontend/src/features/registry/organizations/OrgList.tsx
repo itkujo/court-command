@@ -37,7 +37,7 @@ export function OrgList() {
       lat: o.latitude!,
       lng: o.longitude!,
       label: o.name,
-      sublabel: [o.city, o.state_province].filter(Boolean).join(', '),
+      sublabel: o.formatted_address || [o.city, o.state_province].filter(Boolean).join(', '),
     }))
 
   const columns = [

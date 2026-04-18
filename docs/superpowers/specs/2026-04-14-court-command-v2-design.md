@@ -1429,21 +1429,23 @@ GitHub Actions:
 - `useAuth()` returns `isImpersonating` flag for conditional rendering
 - Stop impersonation triggers full page reload to reset all cached state
 
-### Google Places Address Standardization (Added Post-Phase 7)
-- **AddressInput component** (`frontend/src/components/AddressInput.tsx`) — shared address input with Google Places Autocomplete integration
+### Google Places Address Standardization (Added Post-Phase 7, Simplified Post-Phase 8)
+- **AddressInput component** (`frontend/src/components/AddressInput.tsx`) — single search bar with Google Places Autocomplete; no separate address field inputs
 - **Google Places API (New)** + **Maps JavaScript API** used for address auto-complete
 - API key configured via `VITE_GOOGLE_MAPS_API_KEY` environment variable
-- **Auto-fill behavior**: user starts typing street address → Google suggests matches → selecting a suggestion auto-fills all fields (street, city, state, country, postal code, lat/lng)
-- **Fallback**: if Google API unavailable, falls back to manual text inputs with US state dropdown
-- **`compact` prop** hides street address + postal code for entities needing only city/state/country
-- **Entities with full address support**: Venues (all 8 fields), Organizations (migration 00033), Leagues (migration 00033), Players/Users (migration 00033, private)
-- **All address fields**: address_line_1, address_line_2, city, state_province, country, postal_code, latitude (DOUBLE PRECISION), longitude (DOUBLE PRECISION)
-- **Backend handlers updated**: org Create/Update, league Create/Update, player UpdateProfile — all accept and pass the 5 new fields (postal_code, address_line_1, address_line_2, latitude, longitude)
+- **UX**: user types in a single search bar → Google suggests matches → selecting a suggestion shows `formatted_address` as a confirmed display string with lat/lng coordinates; clear button to reset
+- **Primary display field**: `formatted_address` (TEXT) — the human-readable address string from Google Places (e.g., "123 Main St, Austin, TX 78701, USA"). This is what users see everywhere: detail pages, map pins, list items
+- **Silent metadata extraction**: on place selection, the component silently extracts `city`, `state_province`, `country`, `postal_code`, `address_line_1`, `address_line_2`, `latitude`, `longitude` from Google's address_components for backend filtering/search — these fields are never shown to users as separate inputs
+- **Migration 00035** adds `formatted_address TEXT` column to venues, organizations, leagues, users tables with backfill from existing address fields
+- **Entities with full address support**: Venues, Organizations (migration 00033+00035), Leagues (migration 00033+00035), Players/Users (migration 00033+00035, private)
+- **All address fields**: formatted_address (TEXT, primary display), address_line_1, address_line_2, city, state_province, country, postal_code, latitude (DOUBLE PRECISION), longitude (DOUBLE PRECISION)
+- **Backend handlers updated**: all Create/Update for venues, orgs, leagues, and player UpdateProfile accept `formatted_address` alongside existing metadata fields
 - **Forms using AddressInput**: VenueForm, OrgForm, LeagueCreate
 - **PlayerForm**: still a stub; backend ready, form needs building
 - Tournaments inherit venue address (no separate address fields)
 - **Business search in address bar** — AddressInput uses `types: ['establishment', 'geocode']` so users can search by business name (e.g., "All In Pickleball") and get the full address auto-filled from Google Maps
-- If no street number parsed from a business result, the business `name` field is used as address_line_1
+- If Google returns a named place, the business name is prepended to `formatted_address` (e.g., "All In Pickleball, 123 Main St, Austin, TX 78701, USA")
+- **Detail pages and list views** use `formatted_address` with fallback to `[city, state_province].filter(Boolean).join(', ')` for pre-migration data
 
 ### Google Maps View on Venue + Org Lists (Added Post-Phase 7)
 - **MapView component** (`frontend/src/components/MapView.tsx`) — shared Google Maps renderer with pin markers, info windows, click-to-navigate
@@ -1470,6 +1472,6 @@ GitHub Actions:
 12. **Community theme presets** — popular palettes (Catppuccin, Dracula, Nord, etc.) ship out of the box for app UI and overlay color customization
 13. **Multi-manager venues** — venue_managers RBAC allows multiple operators per venue with admin/manager roles, unlike competitors with single-owner models
 14. **Operator hub** — dedicated /manage page shows all assets a user controls (venues, tournaments, leagues, orgs) in one view
-15. **Google Places address standardization** — all entities use the same AddressInput with autocomplete, structured address components, and lat/lng for future proximity search
+15. **Google Places address standardization** — single search bar with formatted_address display, silent metadata extraction for filtering, and lat/lng for future proximity search
 16. **Admin user impersonation** — platform admins can "view as" any user for troubleshooting and support, with full audit trail and safety guardrails
 17. **Map view on venue/org directories** — Google Maps integration shows all venues and organizations with addresses as interactive pins, with list/map toggle

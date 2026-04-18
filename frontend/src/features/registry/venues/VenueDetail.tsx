@@ -57,9 +57,10 @@ export function VenueDetail({ venueId }: VenueDetailProps) {
     )
   }
 
-  const address = [venue.address_line_1, venue.city, venue.state_province, venue.postal_code, venue.country]
-    .filter(Boolean)
-    .join(', ')
+  const address = venue.formatted_address
+    || [venue.address_line_1, venue.city, venue.state_province, venue.postal_code, venue.country]
+      .filter(Boolean)
+      .join(', ')
 
   return (
     <div>

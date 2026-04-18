@@ -27,11 +27,12 @@ export function VenueForm({ venue }: VenueFormProps) {
 
   const [name, setName] = useState(venue?.name ?? '')
   const [address, setAddress] = useState<Partial<AddressData>>({
+    formatted_address: venue?.formatted_address ?? '',
     address_line_1: venue?.address_line_1 ?? '',
     address_line_2: venue?.address_line_2 ?? '',
     city: venue?.city ?? '',
     state_province: venue?.state_province ?? '',
-    country: venue?.country ?? 'US',
+    country: venue?.country ?? '',
     postal_code: venue?.postal_code ?? '',
     latitude: venue?.latitude ?? undefined,
     longitude: venue?.longitude ?? undefined,
@@ -61,6 +62,7 @@ export function VenueForm({ venue }: VenueFormProps) {
 
     const payload = {
       name: name.trim(),
+      formatted_address: address.formatted_address?.trim() || null,
       address_line_1: address.address_line_1?.trim() || null,
       address_line_2: address.address_line_2?.trim() || null,
       city: address.city?.trim() || null,

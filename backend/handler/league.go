@@ -67,6 +67,7 @@ func (h *LeagueHandler) CreateLeague(w http.ResponseWriter, r *http.Request) {
 		PostalCode       *string         `json:"postal_code"`
 		AddressLine1     *string         `json:"address_line_1"`
 		AddressLine2     *string         `json:"address_line_2"`
+		FormattedAddress *string         `json:"formatted_address"`
 		Latitude         *float64        `json:"latitude"`
 		Longitude        *float64        `json:"longitude"`
 		RulesDocumentURL *string         `json:"rules_document_url"`
@@ -94,6 +95,7 @@ func (h *LeagueHandler) CreateLeague(w http.ResponseWriter, r *http.Request) {
 		PostalCode:       body.PostalCode,
 		AddressLine1:     body.AddressLine1,
 		AddressLine2:     body.AddressLine2,
+		FormattedAddress: body.FormattedAddress,
 		RulesDocumentUrl: body.RulesDocumentURL,
 		Notes:            body.Notes,
 		SocialLinks:      body.SocialLinks,
@@ -188,6 +190,7 @@ func (h *LeagueHandler) UpdateLeague(w http.ResponseWriter, r *http.Request) {
 		PostalCode       *string         `json:"postal_code"`
 		AddressLine1     *string         `json:"address_line_1"`
 		AddressLine2     *string         `json:"address_line_2"`
+		FormattedAddress *string         `json:"formatted_address"`
 		Latitude         *float64        `json:"latitude"`
 		Longitude        *float64        `json:"longitude"`
 		RulesDocumentURL *string         `json:"rules_document_url"`
@@ -215,6 +218,7 @@ func (h *LeagueHandler) UpdateLeague(w http.ResponseWriter, r *http.Request) {
 		PostalCode:       body.PostalCode,
 		AddressLine1:     body.AddressLine1,
 		AddressLine2:     body.AddressLine2,
+		FormattedAddress: body.FormattedAddress,
 		RulesDocumentUrl: body.RulesDocumentURL,
 		Notes:            body.Notes,
 		SocialLinks:      body.SocialLinks,
