@@ -431,6 +431,71 @@ export function useCreateLeagueAnnouncement(leagueId: number) {
 }
 
 // ---------------------------------------------------------------------------
+// Standings
+// ---------------------------------------------------------------------------
+
+export interface StandingsEntry {
+  id: number
+  season_id: number
+  division_id: number
+  team_id: number
+  wins: number
+  losses: number
+  draws: number
+  points_for: number
+  points_against: number
+  point_differential: number
+  matches_played: number
+  standing_points: number
+  override_points?: number
+  override_reason?: string
+  is_withdrawn: boolean
+  withdrawn_at?: string
+  rank: number
+  created_at: string
+  updated_at: string
+}
+
+export function useListStandingsBySeason(seasonId: number | null) {
+  return useQuery<StandingsEntry[]>({
+    queryKey: ['standings', 'season', seasonId],
+    queryFn: () =>
+      apiGet<StandingsEntry[]>(`/api/v1/standings/seasons/${seasonId}`),
+    enabled: seasonId != null,
+  })
+}
+
+export function useListStandingsByDivision(
+  seasonId: number,
+  divisionId: number,
+  limit = 50,
+  offset = 0,
+) {
+  return useQuery<PaginatedData<StandingsEntry>>({
+    queryKey: ['standings', 'division', seasonId, divisionId, { limit, offset }],
+    queryFn: () =>
+      apiGetPaginated<StandingsEntry>(
+        `/api/v1/standings/seasons/${seasonId}/divisions/${divisionId}${buildQueryString({ limit, offset })}`,
+      ),
+    enabled: seasonId > 0 && divisionId > 0,
+  })
+}
+
+export function useRecomputeStandings(seasonId: number, divisionId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiPost<StandingsEntry[]>(
+        `/api/v1/standings/seasons/${seasonId}/divisions/${divisionId}/recompute`,
+        {},
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['standings'] })
+    },
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Tournament list (filtered by season) for SeasonDetail
 // ---------------------------------------------------------------------------
 

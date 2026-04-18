@@ -6,6 +6,7 @@ import {
   useListSeasonConfirmations,
   useListTournamentsBySeason,
 } from './hooks'
+import { StandingsView } from './StandingsView'
 import { Skeleton } from '../../components/Skeleton'
 import { EmptyState } from '../../components/EmptyState'
 import { Button } from '../../components/Button'
@@ -16,7 +17,7 @@ import { Badge } from '../../components/Badge'
 import { Modal } from '../../components/Modal'
 import { SeasonForm } from './SeasonForm'
 import { useToast } from '../../components/Toast'
-import { ChevronLeft, Trophy, CheckCircle2, XCircle } from 'lucide-react'
+import { ChevronLeft, Trophy, CheckCircle2, XCircle, BarChart3 } from 'lucide-react'
 import { formatDate } from '../../lib/formatters'
 
 interface Props {
@@ -200,6 +201,18 @@ export function SeasonDetail({ leagueId, seasonId }: Props) {
                 ))}
               </div>
             )}
+          </div>
+        </Card>
+
+        <Card>
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="h-5 w-5 text-(--color-text-secondary)" />
+              <h2 className="text-lg font-semibold text-(--color-text-primary)">
+                Standings
+              </h2>
+            </div>
+            <StandingsView seasonId={seasonIdNum} />
           </div>
         </Card>
 

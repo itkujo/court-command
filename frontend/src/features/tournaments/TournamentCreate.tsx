@@ -7,6 +7,10 @@ import {
   type League,
   type Season,
 } from './hooks'
+import {
+  useListDivisionTemplates,
+  type DivisionTemplate,
+} from '../leagues/hooks'
 import type { SponsorEntry } from '../../components/SponsorEditor'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useToast } from '../../components/Toast'
@@ -23,7 +27,7 @@ import { SponsorEditor } from '../../components/SponsorEditor'
 import { ScoringPresetPicker } from '../../components/ScoringPresetPicker'
 import { cn } from '../../lib/cn'
 import { formatDate } from '../../lib/formatters'
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Check, FileDown } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -97,6 +101,23 @@ const EMPTY_DIVISION: DivisionDraft = {
   auto_approve: false,
   registration_mode: 'team',
   seed_method: 'manual',
+}
+
+function templateToDraft(t: DivisionTemplate): DivisionDraft {
+  return {
+    name: t.name,
+    format: t.format,
+    gender_restriction: t.gender_restriction,
+    bracket_format: t.bracket_format,
+    scoring_preset_id: t.scoring_preset_id,
+    max_teams: t.max_teams != null ? String(t.max_teams) : '',
+    max_roster_size: t.max_roster_size != null ? String(t.max_roster_size) : '',
+    entry_fee_amount: t.entry_fee_amount ?? '',
+    entry_fee_currency: t.entry_fee_currency || 'USD',
+    auto_approve: t.auto_approve,
+    registration_mode: t.registration_mode || 'team',
+    seed_method: t.seed_method || 'manual',
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -360,6 +381,89 @@ function DivisionCard({
 }
 
 // ---------------------------------------------------------------------------
+// Template picker for importing division templates
+// ---------------------------------------------------------------------------
+
+function TemplatePicker({
+  templates,
+  onImport,
+  onCancel,
+}: {
+  templates: DivisionTemplate[]
+  onImport: (selected: DivisionTemplate[]) => void
+  onCancel: () => void
+}) {
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+
+  function toggle(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function selectAll() {
+    setSelected(new Set(templates.map((t) => t.id)))
+  }
+
+  return (
+    <Card>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="font-medium text-(--color-text-primary)">Select Templates to Import</h4>
+          <button
+            type="button"
+            onClick={selectAll}
+            className="text-xs text-cyan-500 hover:text-cyan-400"
+          >
+            Select All
+          </button>
+        </div>
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {templates.map((t) => {
+            const fmt = FORMAT_OPTIONS.find((o) => o.value === t.format)?.label ?? t.format
+            const bracket = BRACKET_FORMAT_OPTIONS.find((o) => o.value === t.bracket_format)?.label ?? t.bracket_format
+            return (
+              <label
+                key={t.id}
+                className="flex items-center gap-3 p-2 rounded-md hover:bg-(--color-bg-hover) cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.has(t.id)}
+                  onChange={() => toggle(t.id)}
+                  className="rounded border-(--color-border)"
+                />
+                <div>
+                  <p className="text-sm font-medium text-(--color-text-primary)">{t.name}</p>
+                  <p className="text-xs text-(--color-text-secondary)">
+                    {fmt} &middot; {bracket}
+                  </p>
+                </div>
+              </label>
+            )
+          })}
+        </div>
+        <div className="flex justify-end gap-2 pt-2 border-t border-(--color-border)">
+          <Button variant="secondary" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            disabled={selected.size === 0}
+            onClick={() => onImport(templates.filter((t) => selected.has(t.id)))}
+          >
+            Import {selected.size > 0 ? `(${selected.size})` : ''}
+          </Button>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // League picker (inline searchable)
 // ---------------------------------------------------------------------------
 
@@ -548,6 +652,17 @@ export function TournamentCreate() {
   function handleCancelDivision() {
     setShowDivisionForm(false)
     setEditingDivisionIndex(null)
+  }
+
+  // Division templates
+  const templates = useListDivisionTemplates(form.league_id)
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+
+  function handleImportTemplates(selected: DivisionTemplate[]) {
+    const drafts = selected.map(templateToDraft)
+    setDivisions((prev) => [...prev, ...drafts])
+    setShowTemplatePicker(false)
+    toast('success', `Imported ${selected.length} division${selected.length !== 1 ? 's' : ''} from templates`)
   }
 
   // Submit
@@ -746,9 +861,24 @@ export function TournamentCreate() {
               onCancel={handleCancelDivision}
             />
           ) : (
-            <Button variant="secondary" onClick={handleAddDivision}>
-              <Plus className="h-4 w-4" /> Add Division
-            </Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="secondary" onClick={handleAddDivision}>
+                <Plus className="h-4 w-4" /> Add Division
+              </Button>
+              {form.league_id && templates.data && templates.data.length > 0 && (
+                <Button variant="secondary" onClick={() => setShowTemplatePicker(true)}>
+                  <FileDown className="h-4 w-4" /> Import from Templates
+                </Button>
+              )}
+            </div>
+          )}
+
+          {showTemplatePicker && templates.data && (
+            <TemplatePicker
+              templates={templates.data}
+              onImport={handleImportTemplates}
+              onCancel={() => setShowTemplatePicker(false)}
+            />
           )}
 
           <div className="flex justify-between pt-4">

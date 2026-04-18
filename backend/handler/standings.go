@@ -26,6 +26,7 @@ func (h *StandingsHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 
 	// Public read endpoints
+	r.Get("/seasons/{seasonID}", h.ListStandingsBySeason)
 	r.Get("/seasons/{seasonID}/divisions/{divisionID}", h.ListStandings)
 	r.Get("/seasons/{seasonID}/divisions/{divisionID}/teams/{teamID}", h.GetStandingsEntry)
 
@@ -49,6 +50,23 @@ func parseStandingsIDs(r *http.Request) (seasonID, divisionID int64, err error) 
 		return 0, 0, err
 	}
 	return seasonID, divisionID, nil
+}
+
+// ListStandingsBySeason returns all standings entries for a season.
+func (h *StandingsHandler) ListStandingsBySeason(w http.ResponseWriter, r *http.Request) {
+	seasonID, err := strconv.ParseInt(chi.URLParam(r, "seasonID"), 10, 64)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid season ID")
+		return
+	}
+
+	entries, err := h.standingsSvc.ListBySeason(r.Context(), seasonID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, entries)
 }
 
 // ListStandings returns standings for a division within a season.

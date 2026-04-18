@@ -259,11 +259,21 @@ func (h *LeagueHandler) DeleteLeague(w http.ResponseWriter, r *http.Request) {
 	Success(w, map[string]string{"message": "league deleted"})
 }
 
-// ListLeagues lists leagues with pagination.
+// ListLeagues lists leagues with pagination and optional search.
 func (h *LeagueHandler) ListLeagues(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
+	query := r.URL.Query().Get("query")
 
-	leagues, total, err := h.leagueSvc.List(r.Context(), limit, offset)
+	var leagues []service.LeagueResponse
+	var total int64
+	var err error
+
+	if query != "" {
+		leagues, total, err = h.leagueSvc.Search(r.Context(), query, limit, offset)
+	} else {
+		leagues, total, err = h.leagueSvc.List(r.Context(), limit, offset)
+	}
+
 	if err != nil {
 		HandleServiceError(w, err)
 		return

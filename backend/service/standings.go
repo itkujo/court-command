@@ -270,6 +270,21 @@ func (svc *StandingsService) RecomputeStandings(ctx context.Context, seasonID, d
 
 // ---------- CRUD ----------
 
+// ListBySeason returns all standings entries for a season, ordered by division_id and rank.
+func (svc *StandingsService) ListBySeason(ctx context.Context, seasonID int64) ([]StandingsEntryResponse, error) {
+	entries, err := svc.queries.ListStandingsBySeason(ctx, seasonID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list standings by season: %w", err)
+	}
+
+	results := make([]StandingsEntryResponse, len(entries))
+	for i, e := range entries {
+		results[i] = toStandingsEntryResponse(e)
+	}
+
+	return results, nil
+}
+
 // ListByDivision returns standings entries for a division within a season.
 func (svc *StandingsService) ListByDivision(ctx context.Context, seasonID, divisionID int64, limit, offset int32) ([]StandingsEntryResponse, int64, error) {
 	entries, err := svc.queries.ListStandingsByDivision(ctx, generated.ListStandingsByDivisionParams{
