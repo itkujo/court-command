@@ -73,7 +73,7 @@ DECLARE
   -- League registrations (2)
   lr1_id BIGINT; lr2_id BIGINT;
 
-  pw_hash TEXT := '$2a$10$rQZ8K8YxHi3VBhDBqMCJh.JZwJ3rYPnSn6X5B4r3G5P5oQv0e5tIi';
+  pw_hash TEXT := '$2a$10$/gWAyV6CPKiin37643WZ9etvC/Vg2S6/F3xftSbZwJ2DzSdUonMiS';
   daniel_pw TEXT := '$2a$10$PWhdJ2i9ZwvfYY8qlrjBBeADmp2y0Q2N8xE0dDT0gbuAc32.3TnWK';
 BEGIN
 
