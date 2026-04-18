@@ -53,9 +53,8 @@ export function DivisionList({ tournamentId, divisions }: DivisionListProps) {
         {divisions.map((div) => (
           <Link
             key={div.id}
-            to="/tournaments/$tournamentId"
-            params={{ tournamentId }}
-            search={{ division: String(div.id) }}
+            to="/tournaments/$tournamentId/divisions/$divisionId"
+            params={{ tournamentId, divisionId: String(div.id) }}
             className="block"
           >
             <Card className="h-full hover:border-cyan-500/50 transition-colors">

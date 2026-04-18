@@ -302,9 +302,11 @@ func (h *TournamentHandler) DeleteTournament(w http.ResponseWriter, r *http.Requ
 	Success(w, map[string]string{"message": "tournament deleted"})
 }
 
-// ListTournaments lists tournaments with pagination.
+// ListTournaments lists tournaments with pagination, optional search and status filtering.
 func (h *TournamentHandler) ListTournaments(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
+	query := r.URL.Query().Get("query")
+	status := r.URL.Query().Get("status")
 
 	// Check for league_id filter
 	if lid := r.URL.Query().Get("league_id"); lid != "" {
@@ -324,7 +326,21 @@ func (h *TournamentHandler) ListTournaments(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	tournaments, total, err := h.tournamentSvc.List(r.Context(), limit, offset)
+	var tournaments []service.TournamentResponse
+	var total int64
+	var err error
+
+	switch {
+	case query != "" && status != "":
+		tournaments, total, err = h.tournamentSvc.SearchByStatus(r.Context(), query, status, limit, offset)
+	case query != "":
+		tournaments, total, err = h.tournamentSvc.Search(r.Context(), query, limit, offset)
+	case status != "":
+		tournaments, total, err = h.tournamentSvc.ListByStatus(r.Context(), status, limit, offset)
+	default:
+		tournaments, total, err = h.tournamentSvc.List(r.Context(), limit, offset)
+	}
+
 	if err != nil {
 		HandleServiceError(w, err)
 		return

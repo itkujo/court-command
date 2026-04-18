@@ -90,8 +90,8 @@ func (s *RegistrationService) Register(ctx context.Context, params generated.Cre
 		return RegistrationResponse{}, &NotFoundError{Message: "division not found"}
 	}
 
-	// Division must be in reg_open status
-	if division.Status != "reg_open" {
+	// Division must be in registration_open status
+	if division.Status != "registration_open" {
 		return RegistrationResponse{}, &ValidationError{Message: "division is not open for registration"}
 	}
 

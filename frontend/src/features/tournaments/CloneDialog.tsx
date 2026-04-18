@@ -24,8 +24,17 @@ export function CloneDialog({ tournament, open, onClose }: CloneDialogProps) {
   const [endDate, setEndDate] = useState('')
 
   async function handleClone() {
+    if (!name.trim()) {
+      toast('error', 'Name is required')
+      return
+    }
     try {
-      const cloned = await cloneMutation.mutateAsync()
+      const payload: { name: string; start_date?: string; end_date?: string } = {
+        name: name.trim(),
+      }
+      if (startDate) payload.start_date = startDate
+      if (endDate) payload.end_date = endDate
+      const cloned = await cloneMutation.mutateAsync(payload)
       toast('success', 'Tournament cloned successfully')
       onClose()
       navigate({

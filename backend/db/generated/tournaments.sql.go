@@ -28,6 +28,28 @@ func (q *Queries) CountSearchTournaments(ctx context.Context, searchTerm string)
 	return count, err
 }
 
+const countSearchTournamentsByStatus = `-- name: CountSearchTournamentsByStatus :one
+SELECT COUNT(*) FROM tournaments
+WHERE deleted_at IS NULL
+  AND status = $1::TEXT
+  AND (
+    name ILIKE '%' || $2::TEXT || '%'
+    OR description ILIKE '%' || $2::TEXT || '%'
+  )
+`
+
+type CountSearchTournamentsByStatusParams struct {
+	Status     string `json:"status"`
+	SearchTerm string `json:"search_term"`
+}
+
+func (q *Queries) CountSearchTournamentsByStatus(ctx context.Context, arg CountSearchTournamentsByStatusParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countSearchTournamentsByStatus, arg.Status, arg.SearchTerm)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countTournaments = `-- name: CountTournaments :one
 SELECT COUNT(*) FROM tournaments WHERE deleted_at IS NULL
 `
@@ -635,6 +657,81 @@ type SearchTournamentsParams struct {
 
 func (q *Queries) SearchTournaments(ctx context.Context, arg SearchTournamentsParams) ([]Tournament, error) {
 	rows, err := q.db.Query(ctx, searchTournaments, arg.Limit, arg.Offset, arg.SearchTerm)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Tournament{}
+	for rows.Next() {
+		var i Tournament
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.Slug,
+			&i.Status,
+			&i.StartDate,
+			&i.EndDate,
+			&i.VenueID,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.Description,
+			&i.LogoUrl,
+			&i.BannerUrl,
+			&i.ContactEmail,
+			&i.ContactPhone,
+			&i.WebsiteUrl,
+			&i.RegistrationOpenAt,
+			&i.RegistrationCloseAt,
+			&i.MaxParticipants,
+			&i.RulesDocumentUrl,
+			&i.CancellationReason,
+			&i.SocialLinks,
+			&i.Notes,
+			&i.SponsorInfo,
+			&i.ShowRegistrations,
+			&i.CreatedByUserID,
+			&i.TdUserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchTournamentsByStatus = `-- name: SearchTournamentsByStatus :many
+SELECT id, public_id, name, slug, status, start_date, end_date, venue_id, league_id, season_id, description, logo_url, banner_url, contact_email, contact_phone, website_url, registration_open_at, registration_close_at, max_participants, rules_document_url, cancellation_reason, social_links, notes, sponsor_info, show_registrations, created_by_user_id, td_user_id, created_at, updated_at, deleted_at FROM tournaments
+WHERE deleted_at IS NULL
+  AND status = $3::TEXT
+  AND (
+    name ILIKE '%' || $4::TEXT || '%'
+    OR description ILIKE '%' || $4::TEXT || '%'
+  )
+ORDER BY start_date DESC
+LIMIT $1 OFFSET $2
+`
+
+type SearchTournamentsByStatusParams struct {
+	Limit      int32  `json:"limit"`
+	Offset     int32  `json:"offset"`
+	Status     string `json:"status"`
+	SearchTerm string `json:"search_term"`
+}
+
+func (q *Queries) SearchTournamentsByStatus(ctx context.Context, arg SearchTournamentsByStatusParams) ([]Tournament, error) {
+	rows, err := q.db.Query(ctx, searchTournamentsByStatus,
+		arg.Limit,
+		arg.Offset,
+		arg.Status,
+		arg.SearchTerm,
+	)
 	if err != nil {
 		return nil, err
 	}

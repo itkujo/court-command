@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   useListRegistrations,
   type Registration,
 } from './hooks'
+import { apiPatch } from '../../lib/api'
 import { useToast } from '../../components/Toast'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
@@ -22,7 +24,9 @@ interface SeedRow {
 
 export function DivisionSeeds({ divisionId }: DivisionSeedsProps) {
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [locked, setLocked] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   // Fetch approved + checked_in registrations
   const { data: approved, isLoading: loadingApproved } = useListRegistrations(
@@ -89,7 +93,7 @@ export function DivisionSeeds({ divisionId }: DivisionSeedsProps) {
       next[r.id] = i + 1
     })
     setLocalSeeds(next)
-    toast('info', 'Auto-seeded (placeholder ordering — real ratings in Phase 3)')
+    toast('info', 'Auto-seeded (placeholder ordering — real ratings coming soon)')
   }
 
   function randomize() {
@@ -101,13 +105,53 @@ export function DivisionSeeds({ divisionId }: DivisionSeedsProps) {
     setLocalSeeds(next)
   }
 
-  function lockSeeds() {
-    setLocked(true)
-    toast(
-      'success',
-      'Seeds locked. (Persisting seeds to server happens per-registration via PATCH .../seed)',
-    )
+  async function saveAndLockSeeds() {
+    setSaving(true)
+    try {
+      // Persist each changed seed to the server
+      const currentSeeds = { ...initializedFromServer, ...localSeeds }
+      const updates: Promise<unknown>[] = []
+
+      for (const reg of combinedRegs) {
+        const newSeed = currentSeeds[reg.id] ?? null
+        // Only update if seed actually changed from server value
+        if (newSeed !== reg.seed) {
+          updates.push(
+            apiPatch(
+              `/api/v1/divisions/${divisionId}/registrations/${reg.id}/seed`,
+              { seed: newSeed },
+            ),
+          )
+        }
+      }
+
+      if (updates.length > 0) {
+        await Promise.all(updates)
+      }
+
+      // Invalidate registrations cache to reflect saved seeds
+      queryClient.invalidateQueries({
+        queryKey: ['divisions', divisionId, 'registrations'],
+      })
+
+      setLocked(true)
+      toast('success', `Seeds saved and locked (${updates.length} updated)`)
+    } catch (err) {
+      toast('error', `Failed to save seeds: ${(err as Error).message}`)
+    } finally {
+      setSaving(false)
+    }
   }
+
+  // Check if there are unsaved changes
+  const hasChanges = useMemo(() => {
+    if (Object.keys(localSeeds).length === 0) return false
+    for (const reg of combinedRegs) {
+      const current = localSeeds[reg.id]
+      if (current !== undefined && current !== reg.seed) return true
+    }
+    return false
+  }, [localSeeds, combinedRegs])
 
   const isLoading = loadingApproved || loadingChecked
 
@@ -121,25 +165,31 @@ export function DivisionSeeds({ divisionId }: DivisionSeedsProps) {
           <Button
             variant="secondary"
             onClick={autoSeedByRating}
-            disabled={locked || rows.length === 0}
+            disabled={locked || saving || rows.length === 0}
           >
             Auto-Seed by Rating
           </Button>
           <Button
             variant="secondary"
             onClick={randomize}
-            disabled={locked || rows.length === 0}
+            disabled={locked || saving || rows.length === 0}
           >
             Randomize
           </Button>
           <Button
-            onClick={lockSeeds}
-            disabled={locked || rows.length === 0}
+            onClick={saveAndLockSeeds}
+            disabled={locked || saving || rows.length === 0}
           >
-            {locked ? 'Seeds Locked' : 'Lock Seeds'}
+            {saving ? 'Saving...' : locked ? 'Seeds Locked' : 'Save & Lock Seeds'}
           </Button>
         </div>
       </div>
+
+      {hasChanges && !locked && (
+        <p className="text-sm text-amber-600 mb-3">
+          You have unsaved seed changes. Click "Save & Lock Seeds" to persist them.
+        </p>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">
@@ -167,7 +217,7 @@ export function DivisionSeeds({ divisionId }: DivisionSeedsProps) {
                   onChange={(e) => updateSeed(row.registration.id, e.target.value)}
                   placeholder="—"
                   className="w-20"
-                  disabled={locked}
+                  disabled={locked || saving}
                 />
                 <div className="flex-1">
                   <p className="text-sm text-(--color-text-primary)">
@@ -189,7 +239,7 @@ export function DivisionSeeds({ divisionId }: DivisionSeedsProps) {
 
       <p className="text-xs text-(--color-text-secondary) mt-3">
         {locked
-          ? 'Seeds locked — ready for bracket generation.'
+          ? 'Seeds saved and locked — ready for bracket generation.'
           : 'Draft seeds. Lock seeds before generating the bracket.'}
       </p>
     </div>

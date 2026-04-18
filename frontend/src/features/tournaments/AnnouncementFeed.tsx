@@ -18,6 +18,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { EmptyState } from '../../components/EmptyState'
 import { Skeleton } from '../../components/Skeleton'
 import { formatDateTime } from '../../lib/formatters'
+import { RichTextDisplay } from '../../components/RichTextDisplay'
 import { Megaphone, Pin, PinOff, Edit2, Trash2, Plus } from 'lucide-react'
 
 interface AnnouncementFeedProps {
@@ -233,9 +234,10 @@ export function AnnouncementFeed({
                 </div>
               </div>
               {a.body && (
-                <p className="text-sm text-(--color-text-secondary) whitespace-pre-wrap mb-2">
-                  {a.body}
-                </p>
+                <RichTextDisplay
+                  html={a.body}
+                  className="text-sm text-(--color-text-secondary) mb-2"
+                />
               )}
               <div className="flex items-center gap-3 text-xs text-(--color-text-secondary)">
                 <span>{formatDateTime(a.created_at)}</span>

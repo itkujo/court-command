@@ -160,12 +160,13 @@ export function useListTournaments(
   status?: string,
   limit?: number,
   offset?: number,
+  leagueId?: string,
 ) {
   return useQuery<PaginatedData<Tournament>>({
-    queryKey: ['tournaments', 'list', { query, status, limit, offset }],
+    queryKey: ['tournaments', 'list', { query, status, limit, offset, leagueId }],
     queryFn: () =>
       apiGetPaginated<Tournament>(
-        `/api/v1/tournaments${buildQueryString({ query, status, limit, offset })}`,
+        `/api/v1/tournaments${buildQueryString({ query, status, limit, offset, league_id: leagueId })}`,
       ),
     staleTime: 5 * 60 * 1000,
   })
@@ -226,7 +227,8 @@ export function useUpdateTournamentStatus(id: string) {
 export function useCloneTournament(id: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => apiPost<Tournament>(`/api/v1/tournaments/${id}/clone`),
+    mutationFn: (data: { name: string; start_date?: string; end_date?: string }) =>
+      apiPost<Tournament>(`/api/v1/tournaments/${id}/clone`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tournaments'] })
     },

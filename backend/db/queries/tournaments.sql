@@ -117,3 +117,23 @@ LIMIT $2 OFFSET $3;
 -- name: CountTournamentsByStatus :one
 SELECT COUNT(*) FROM tournaments
 WHERE status = $1 AND deleted_at IS NULL;
+
+-- name: SearchTournamentsByStatus :many
+SELECT * FROM tournaments
+WHERE deleted_at IS NULL
+  AND status = @status::TEXT
+  AND (
+    name ILIKE '%' || @search_term::TEXT || '%'
+    OR description ILIKE '%' || @search_term::TEXT || '%'
+  )
+ORDER BY start_date DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountSearchTournamentsByStatus :one
+SELECT COUNT(*) FROM tournaments
+WHERE deleted_at IS NULL
+  AND status = @status::TEXT
+  AND (
+    name ILIKE '%' || @search_term::TEXT || '%'
+    OR description ILIKE '%' || @search_term::TEXT || '%'
+  );

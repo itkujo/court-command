@@ -259,6 +259,58 @@ func (s *TournamentService) ListByCreator(ctx context.Context, userID int64, lim
 	return result, count, nil
 }
 
+// ListByStatus returns tournaments filtered by status.
+func (s *TournamentService) ListByStatus(ctx context.Context, status string, limit, offset int32) ([]TournamentResponse, int64, error) {
+	tournaments, err := s.queries.ListTournamentsByStatus(ctx, generated.ListTournamentsByStatusParams{
+		Status: status,
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list tournaments by status: %w", err)
+	}
+
+	count, err := s.queries.CountTournamentsByStatus(ctx, status)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count tournaments by status: %w", err)
+	}
+
+	result := make([]TournamentResponse, len(tournaments))
+	for i, t := range tournaments {
+		result[i] = toTournamentResponse(t)
+	}
+
+	return result, count, nil
+}
+
+// SearchByStatus searches tournaments by term and status.
+func (s *TournamentService) SearchByStatus(ctx context.Context, term, status string, limit, offset int32) ([]TournamentResponse, int64, error) {
+	tournaments, err := s.queries.SearchTournamentsByStatus(ctx, generated.SearchTournamentsByStatusParams{
+		Limit:      limit,
+		Offset:     offset,
+		Status:     status,
+		SearchTerm: term,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to search tournaments by status: %w", err)
+	}
+
+	count, err := s.queries.CountSearchTournamentsByStatus(ctx, generated.CountSearchTournamentsByStatusParams{
+		SearchTerm: term,
+		Status:     status,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count search results by status: %w", err)
+	}
+
+	result := make([]TournamentResponse, len(tournaments))
+	for i, t := range tournaments {
+		result[i] = toTournamentResponse(t)
+	}
+
+	return result, count, nil
+}
+
 // Search searches tournaments by term.
 func (s *TournamentService) Search(ctx context.Context, term string, limit, offset int32) ([]TournamentResponse, int64, error) {
 	tournaments, err := s.queries.SearchTournaments(ctx, generated.SearchTournamentsParams{
@@ -308,6 +360,7 @@ var validTournamentTransitions = map[string][]string{
 	"registration_closed": {"in_progress", "cancelled"},
 	"in_progress":         {"completed", "cancelled"},
 	"completed":           {"archived"},
+	"cancelled":           {"archived"},
 }
 
 // UpdateStatus transitions a tournament to a new status.

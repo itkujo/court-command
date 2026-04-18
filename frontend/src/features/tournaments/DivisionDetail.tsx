@@ -91,6 +91,7 @@ export function DivisionDetail({
           <DivisionRegistrations
             tournamentId={tournamentId}
             divisionId={divisionId}
+            division={division}
           />
         )}
         {activeTab === 'seeds' && (

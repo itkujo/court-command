@@ -27,7 +27,11 @@ const TOURNAMENT_STATUSES = [
   { value: 'cancelled', label: 'Cancelled' },
 ]
 
-export function TournamentList() {
+interface TournamentListProps {
+  leagueId?: string
+}
+
+export function TournamentList({ leagueId }: TournamentListProps = {}) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const debouncedSearch = useDebounce(search)
@@ -38,6 +42,7 @@ export function TournamentList() {
     statusFilter || undefined,
     pagination.limit,
     pagination.offset,
+    leagueId,
   )
 
   const tournaments = data?.items ?? []
