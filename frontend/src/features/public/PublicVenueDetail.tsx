@@ -1,11 +1,26 @@
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Building2, MapPin, ArrowLeft } from 'lucide-react'
-import { usePublicVenueBySlug } from './hooks'
+import {
+  Building2,
+  MapPin,
+  ArrowLeft,
+  Monitor,
+  Radio,
+} from 'lucide-react'
+import {
+  usePublicVenueBySlug,
+  usePublicVenueCourts,
+  type PublicCourt,
+} from './hooks'
 import { Card } from '../../components/Card'
 import { InfoRow } from '../../components/InfoRow'
 import { AdSlot } from '../../components/AdSlot'
 import { SkeletonRow } from '../../components/Skeleton'
+import { TabLayout } from '../../components/TabLayout'
+import { StreamEmbed } from '../../components/StreamEmbed'
+import { EmptyState } from '../../components/EmptyState'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { cn } from '../../lib/cn'
 
 interface PublicVenueDetailProps {
   slug: string
@@ -13,7 +28,13 @@ interface PublicVenueDetailProps {
 
 export function PublicVenueDetail({ slug }: PublicVenueDetailProps) {
   const { data: venue, isLoading, isError } = usePublicVenueBySlug(slug)
+  const [activeTab, setActiveTab] = useState('overview')
   usePageTitle(venue?.name ?? 'Venue')
+
+  const {
+    data: courts,
+    isLoading: courtsLoading,
+  } = usePublicVenueCourts(slug)
 
   if (isLoading) {
     return (
@@ -48,6 +69,13 @@ export function PublicVenueDetail({ slug }: PublicVenueDetailProps) {
     )
   }
 
+  const activeCourts = courts?.filter((c) => c.active_match) ?? []
+
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'courts', label: 'Courts', count: courts?.length },
+  ]
+
   return (
     <div className="space-y-6">
       <Link
@@ -58,6 +86,7 @@ export function PublicVenueDetail({ slug }: PublicVenueDetailProps) {
         Back to Venues
       </Link>
 
+      {/* Header */}
       <Card>
         <div className="flex items-start gap-4">
           {venue.photo_url ? (
@@ -85,47 +114,223 @@ export function PublicVenueDetail({ slug }: PublicVenueDetailProps) {
                 </span>
               </div>
             )}
+            {activeCourts.length > 0 && (
+              <div className="mt-1 flex items-center gap-1 text-sm text-green-400">
+                <Radio className="h-4 w-4" />
+                <span>
+                  {activeCourts.length} active match
+                  {activeCourts.length !== 1 ? 'es' : ''}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </Card>
 
-      {/* Venue photo banner */}
+      {/* Photo banner */}
       {venue.photo_url && (
         <div className="overflow-hidden rounded-xl border border-(--color-border)">
           <img
             src={venue.photo_url}
-            alt={`${venue.name}`}
+            alt={venue.name}
             className="w-full h-48 object-cover"
           />
         </div>
       )}
 
-      {/* Details */}
-      <Card>
-        <h2 className="text-lg font-semibold text-(--color-text-primary) mb-4">
-          Details
-        </h2>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <InfoRow
-            label="Location"
-            value={
-              [venue.city, venue.state_province, venue.country]
-                .filter(Boolean)
-                .join(', ') || null
-            }
+      {/* Tabs */}
+      <TabLayout tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
+        {activeTab === 'overview' && <OverviewTab venue={venue} />}
+        {activeTab === 'courts' && (
+          <CourtsTab
+            courts={courts ?? []}
+            isLoading={courtsLoading}
           />
-          <InfoRow
-            label="Courts"
-            value={
-              venue.court_count != null
-                ? `${venue.court_count} court${venue.court_count !== 1 ? 's' : ''}`
-                : null
-            }
-          />
-        </dl>
-      </Card>
+        )}
+      </TabLayout>
 
       <AdSlot size="medium-rectangle" slot="venue-detail-bottom" />
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Overview Tab
+// ---------------------------------------------------------------------------
+
+function OverviewTab({
+  venue,
+}: {
+  venue: {
+    city?: string
+    state_province?: string
+    country?: string
+    court_count?: number
+  }
+}) {
+  return (
+    <Card>
+      <h2 className="text-lg font-semibold text-(--color-text-primary) mb-4">
+        Details
+      </h2>
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <InfoRow
+          label="Location"
+          value={
+            [venue.city, venue.state_province, venue.country]
+              .filter(Boolean)
+              .join(', ') || null
+          }
+        />
+        <InfoRow
+          label="Courts"
+          value={
+            venue.court_count != null
+              ? `${venue.court_count} court${venue.court_count !== 1 ? 's' : ''}`
+              : null
+          }
+        />
+      </dl>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Courts Tab
+// ---------------------------------------------------------------------------
+
+function CourtsTab({
+  courts,
+  isLoading,
+}: {
+  courts: PublicCourt[]
+  isLoading: boolean
+}) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i}>
+            <SkeletonRow />
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  if (courts.length === 0) {
+    return (
+      <EmptyState
+        icon={<Monitor size={32} />}
+        title="No courts listed"
+        description="Courts will appear here when added to this venue."
+      />
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {courts.map((court) => (
+        <VenueCourtCard key={court.id} court={court} />
+      ))}
+    </div>
+  )
+}
+
+function VenueCourtCard({ court }: { court: PublicCourt }) {
+  const hasLive = court.active_match?.status === 'in_progress'
+  const hasStream = court.stream_url && court.stream_is_live
+
+  return (
+    <Card className={cn(
+      'transition-colors',
+      hasLive && 'border-green-500/30',
+    )}>
+      <div className="space-y-3">
+        {/* Court header */}
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-(--color-text-primary)">
+            {court.name}
+          </h3>
+          <div className="flex items-center gap-1.5">
+            {court.is_show_court && (
+              <span className="text-xs bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded">
+                Show Court
+              </span>
+            )}
+            {hasLive && (
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Surface type */}
+        {court.surface_type && (
+          <span className="text-xs text-(--color-text-muted)">
+            {court.surface_type}
+          </span>
+        )}
+
+        {/* Active match */}
+        {court.active_match && (
+          <Link
+            to="/matches/$publicId"
+            params={{ publicId: court.active_match.public_id }}
+            className="block"
+          >
+            <div className="bg-(--color-bg-hover) rounded-lg p-2.5 hover:bg-(--color-bg-hover)/80 transition-colors">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className={cn(
+                  'font-medium',
+                  hasLive ? 'text-green-400' : 'text-(--color-text-muted)',
+                )}>
+                  {hasLive ? 'LIVE' : court.active_match.status.replace(/_/g, ' ').toUpperCase()}
+                </span>
+                {court.active_match.tournament_name && (
+                  <span className="text-(--color-text-muted) truncate ml-2">
+                    {court.active_match.tournament_name}
+                  </span>
+                )}
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="truncate text-(--color-text-primary)">
+                    {court.active_match.team_1?.name ?? 'TBD'}
+                  </span>
+                  <span className="font-mono tabular-nums font-semibold text-(--color-text-primary)">
+                    {court.active_match.team_1_score}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="truncate text-(--color-text-primary)">
+                    {court.active_match.team_2?.name ?? 'TBD'}
+                  </span>
+                  <span className="font-mono tabular-nums font-semibold text-(--color-text-primary)">
+                    {court.active_match.team_2_score}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        )}
+
+        {/* On-deck match */}
+        {court.on_deck_match && !court.active_match && (
+          <div className="text-xs text-(--color-text-muted)">
+            <span className="font-medium">On deck:</span>{' '}
+            {court.on_deck_match.team_1?.name ?? 'TBD'} vs{' '}
+            {court.on_deck_match.team_2?.name ?? 'TBD'}
+          </div>
+        )}
+
+        {/* Stream */}
+        {hasStream && court.stream_url && (
+          <StreamEmbed url={court.stream_url} type={court.stream_type ?? null} title={court.stream_title ?? court.name} />
+        )}
+      </div>
+    </Card>
   )
 }

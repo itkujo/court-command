@@ -25,6 +25,18 @@ func (q *Queries) ClearCourtQueuePositions(ctx context.Context, courtID pgtype.I
 	return err
 }
 
+const countLiveMatches = `-- name: CountLiveMatches :one
+SELECT count(*) FROM matches
+WHERE status IN ('warmup', 'in_progress', 'paused')
+`
+
+func (q *Queries) CountLiveMatches(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countLiveMatches)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countMatches = `-- name: CountMatches :one
 SELECT count(*) FROM matches
 `
@@ -880,6 +892,89 @@ WHERE match_type = 'quick'
 
 func (q *Queries) ListExpiredQuickMatches(ctx context.Context) ([]Match, error) {
 	rows, err := q.db.Query(ctx, listExpiredQuickMatches)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Match{}
+	for rows.Next() {
+		var i Match
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.TournamentID,
+			&i.DivisionID,
+			&i.PodID,
+			&i.CourtID,
+			&i.CreatedByUserID,
+			&i.MatchType,
+			&i.Round,
+			&i.RoundName,
+			&i.MatchNumber,
+			&i.Team1ID,
+			&i.Team2ID,
+			&i.Team1Seed,
+			&i.Team2Seed,
+			&i.ScoringPresetID,
+			&i.GamesPerSet,
+			&i.SetsToWin,
+			&i.PointsToWin,
+			&i.WinBy,
+			&i.MaxPoints,
+			&i.RallyScoring,
+			&i.TimeoutsPerGame,
+			&i.TimeoutDurationSec,
+			&i.FreezeAt,
+			&i.Team1Score,
+			&i.Team2Score,
+			&i.CurrentSet,
+			&i.CurrentGame,
+			&i.ServingTeam,
+			&i.ServerNumber,
+			&i.SetScores,
+			&i.Status,
+			&i.StartedAt,
+			&i.CompletedAt,
+			&i.WinnerTeamID,
+			&i.LoserTeamID,
+			&i.WinReason,
+			&i.NextMatchID,
+			&i.NextMatchSlot,
+			&i.LoserNextMatchID,
+			&i.LoserNextMatchSlot,
+			&i.RefereeUserID,
+			&i.Notes,
+			&i.ExpiresAt,
+			&i.ScheduledAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.MatchSeriesID,
+			&i.CourtQueuePosition,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveMatches = `-- name: ListLiveMatches :many
+SELECT id, public_id, tournament_id, division_id, pod_id, court_id, created_by_user_id, match_type, round, round_name, match_number, team1_id, team2_id, team1_seed, team2_seed, scoring_preset_id, games_per_set, sets_to_win, points_to_win, win_by, max_points, rally_scoring, timeouts_per_game, timeout_duration_sec, freeze_at, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, status, started_at, completed_at, winner_team_id, loser_team_id, win_reason, next_match_id, next_match_slot, loser_next_match_id, loser_next_match_slot, referee_user_id, notes, expires_at, scheduled_at, created_at, updated_at, match_series_id, court_queue_position FROM matches
+WHERE status IN ('warmup', 'in_progress', 'paused')
+ORDER BY started_at DESC NULLS LAST, created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListLiveMatchesParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListLiveMatches(ctx context.Context, arg ListLiveMatchesParams) ([]Match, error) {
+	rows, err := q.db.Query(ctx, listLiveMatches, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

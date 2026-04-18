@@ -1,6 +1,8 @@
 import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Sidebar } from '../components/Sidebar'
+import { PublicTopBar } from '../components/PublicTopBar'
+import { PublicBottomTabs } from '../components/PublicBottomTabs'
 import { ImpersonationBanner } from '../components/ImpersonationBanner'
 import { AuthGuard } from '../features/auth/AuthGuard'
 import { useAuth, useLogout } from '../features/auth/hooks'
@@ -17,6 +19,8 @@ const PUBLIC_ROUTE_PATTERNS: RegExp[] = [
   /^\/public(\/|$)/,
   /^\/matches\/[^/]+$/,
   /^\/match-series\/[^/]+$/,
+  /^\/live$/,
+  /^\/events$/,
 ]
 
 // Routes that always render with no shell at all (no sidebar, no auth).
@@ -96,9 +100,8 @@ function AuthenticatedLayout() {
 
 /**
  * Layout for routes that work for both anonymous and authenticated users.
- * Shows the sidebar when logged in; otherwise renders the page full-width
- * with no chrome. The page itself is responsible for showing its own
- * navigation/back affordances when running anonymously.
+ * Authenticated users get the full sidebar. Anonymous users get a minimal
+ * top bar + bottom tab bar (mobile-app style navigation).
  */
 function PublicLayout() {
   const { user, isLoading } = useAuth()
@@ -115,21 +118,36 @@ function PublicLayout() {
     return () => window.removeEventListener('storage', handler)
   }, [])
 
-  // Always render sidebar on public routes — show anonymous nav immediately,
-  // upgrade to authenticated nav once auth resolves. No blank-page flash.
+  // Authenticated users get the regular sidebar experience
+  if (!isLoading && user) {
+    return (
+      <>
+        <ImpersonationBanner />
+        <a href="#main-content" className="skip-to-content">Skip to content</a>
+        <Sidebar
+          user={user}
+          onLogout={() => logout.mutate()}
+        />
+        <main id="main-content" className={cn('min-h-screen transition-[margin] duration-200 ease-in-out', isMobile ? 'pt-14' : expanded ? 'ml-[220px]' : 'ml-14')}>
+          <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+            <Outlet />
+          </div>
+        </main>
+      </>
+    )
+  }
+
+  // Anonymous users: top bar + bottom tabs (mobile-app style)
   return (
     <>
-      <ImpersonationBanner />
       <a href="#main-content" className="skip-to-content">Skip to content</a>
-      <Sidebar
-        user={isLoading ? undefined : (user ?? undefined)}
-        onLogout={user && !isLoading ? () => logout.mutate() : undefined}
-      />
-      <main id="main-content" className={cn('min-h-screen transition-[margin] duration-200 ease-in-out', isMobile ? 'pt-14' : expanded ? 'ml-[220px]' : 'ml-14')}>
+      <PublicTopBar />
+      <main id="main-content" className="min-h-screen pt-14 pb-16">
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
           <Outlet />
         </div>
       </main>
+      <PublicBottomTabs />
     </>
   )
 }

@@ -1102,6 +1102,29 @@ func (s *MatchService) GetActiveMatchOnCourt(ctx context.Context, courtID int64)
 	return &resp, nil
 }
 
+// ListLive returns all currently live matches (warmup, in_progress, paused)
+// with enriched team/tournament/court names for public spectator views.
+func (s *MatchService) ListLive(ctx context.Context, limit, offset int32) ([]MatchResponse, int64, error) {
+	matches, err := s.queries.ListLiveMatches(ctx, generated.ListLiveMatchesParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list live matches: %w", err)
+	}
+
+	count, err := s.queries.CountLiveMatches(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count live matches: %w", err)
+	}
+
+	result := make([]MatchResponse, len(matches))
+	for i, m := range matches {
+		result[i] = s.enrichedMatchResponse(ctx, m)
+	}
+	return result, count, nil
+}
+
 // CompleteMatch marks a match as completed with a result.
 func (s *MatchService) CompleteMatch(ctx context.Context, matchID int64, winnerTeamID, loserTeamID int64, winReason string) (MatchResponse, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)

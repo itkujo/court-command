@@ -146,6 +146,11 @@ func main() {
 	dashboardHandler := handler.NewDashboardHandler(dashboardService)
 	searchHandler := handler.NewSearchHandler(searchService)
 	publicHandler := handler.NewPublicHandler(queries)
+	publicHandler.SetMatchService(matchService)
+	publicHandler.SetDivisionService(divisionService)
+	publicHandler.SetVenueService(venueService)
+	publicHandler.SetSeasonService(seasonService)
+	publicHandler.SetTournamentService(tournamentService)
 
 	// Phase 8: Admin & Platform Management
 	activityLogService := service.NewActivityLogService(queries)

@@ -125,3 +125,239 @@ export function usePublicVenueBySlug(slug: string) {
     staleTime: 2 * 60 * 1000,
   })
 }
+
+// ---------------------------------------------------------------------------
+// Live Matches — mirrors backend service.MatchResponse
+// ---------------------------------------------------------------------------
+
+export interface TeamSummary {
+  id: number
+  name: string
+  short_name?: string
+  primary_color?: string
+  logo_url?: string | null
+  players?: PlayerSummary[]
+}
+
+export interface PlayerSummary {
+  id: number
+  name: string
+  jersey_number?: string
+}
+
+export interface LiveMatch {
+  id: number
+  public_id: string
+  tournament_id?: number
+  tournament_name?: string
+  division_id?: number
+  division_name?: string
+  court_id?: number
+  court_name?: string
+  match_type: string
+  is_quick_match: boolean
+  round?: number
+  round_name?: string
+  match_number?: number
+  team_1?: TeamSummary
+  team_2?: TeamSummary
+  team_1_seed?: number
+  team_2_seed?: number
+  scoring_type: string
+  games_per_set: number
+  sets_to_win: number
+  best_of: number
+  points_to_win: number
+  win_by: number
+  max_points?: number
+  rally_scoring: boolean
+  team_1_score: number
+  team_2_score: number
+  team_1_games_won: number
+  team_2_games_won: number
+  current_set: number
+  current_game: number
+  serving_team?: number
+  set_scores: Array<{ team1: number; team2: number }>
+  status: string
+  is_paused: boolean
+  started_at?: string
+  scheduled_at?: string
+  created_at: string
+}
+
+export function useLiveMatches(params: { limit: number; offset: number }) {
+  return useQuery<PaginatedData<LiveMatch>>({
+    queryKey: ['public-live-matches', params],
+    queryFn: () =>
+      apiGetPaginated<LiveMatch>(
+        `/api/v1/public/live${buildQueryString({
+          limit: params.limit,
+          offset: params.offset,
+        })}`,
+      ),
+    staleTime: 15 * 1000, // 15s — live data should be relatively fresh
+    refetchInterval: 30 * 1000, // auto-refetch every 30s
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tournament Sub-Resources — divisions, matches, courts
+// ---------------------------------------------------------------------------
+
+export interface PublicDivision {
+  id: number
+  tournament_id: number
+  name: string
+  slug: string
+  format: string
+  bracket_format: string
+  scoring_format?: string
+  status: string
+  gender_restriction?: string
+  skill_min?: number
+  skill_max?: number
+  rating_system?: string
+  max_teams?: number
+  max_roster_size?: number
+  entry_fee_currency?: string
+  seed_method?: string
+  sort_order?: number
+  notes?: string
+  auto_approve: boolean
+  registration_mode?: string
+  auto_promote_waitlist: boolean
+  current_phase?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface PublicCourt {
+  id: number
+  name: string
+  slug: string
+  venue_id?: number
+  venue_name?: string
+  surface_type?: string
+  is_show_court: boolean
+  is_active: boolean
+  is_temporary: boolean
+  sort_order: number
+  notes?: string
+  stream_url?: string
+  stream_type?: string
+  stream_is_live: boolean
+  stream_title?: string
+  active_match?: LiveMatch
+  on_deck_match?: LiveMatch
+  created_at: string
+  updated_at: string
+}
+
+export function usePublicTournamentDivisions(slug: string) {
+  return useQuery<PublicDivision[]>({
+    queryKey: ['public-tournament-divisions', slug],
+    queryFn: () =>
+      apiGet<PublicDivision[]>(`/api/v1/public/tournaments/${slug}/divisions`),
+    enabled: !!slug,
+    staleTime: 2 * 60 * 1000,
+  })
+}
+
+export function usePublicTournamentMatches(
+  slug: string,
+  params: { limit: number; offset: number },
+) {
+  return useQuery<LiveMatch[]>({
+    queryKey: ['public-tournament-matches', slug, params],
+    queryFn: () =>
+      apiGet<LiveMatch[]>(
+        `/api/v1/public/tournaments/${slug}/matches${buildQueryString({
+          limit: params.limit,
+          offset: params.offset,
+        })}`,
+      ),
+    enabled: !!slug,
+    staleTime: 30 * 1000, // 30s — matches update frequently
+  })
+}
+
+export function usePublicTournamentCourts(slug: string) {
+  return useQuery<PublicCourt[]>({
+    queryKey: ['public-tournament-courts', slug],
+    queryFn: () =>
+      apiGet<PublicCourt[]>(`/api/v1/public/tournaments/${slug}/courts`),
+    enabled: !!slug,
+    staleTime: 30 * 1000, // 30s — court status changes with matches
+  })
+}
+
+// ---------------------------------------------------------------------------
+// League Sub-Resources — seasons, tournaments
+// ---------------------------------------------------------------------------
+
+export interface PublicSeason {
+  id: number
+  name: string
+  slug: string
+  league_id: number
+  status: string
+  start_date?: string
+  end_date?: string
+  description?: string
+  notes?: string
+  roster_confirmation_deadline?: string
+  standings_method?: string
+  created_at: string
+  updated_at: string
+}
+
+export function usePublicLeagueSeasons(
+  slug: string,
+  params: { limit: number; offset: number },
+) {
+  return useQuery<PaginatedData<PublicSeason>>({
+    queryKey: ['public-league-seasons', slug, params],
+    queryFn: () =>
+      apiGetPaginated<PublicSeason>(
+        `/api/v1/public/leagues/${slug}/seasons${buildQueryString({
+          limit: params.limit,
+          offset: params.offset,
+        })}`,
+      ),
+    enabled: !!slug,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function usePublicLeagueTournaments(
+  slug: string,
+  params: { limit: number; offset: number },
+) {
+  return useQuery<PaginatedData<PublicTournament>>({
+    queryKey: ['public-league-tournaments', slug, params],
+    queryFn: () =>
+      apiGetPaginated<PublicTournament>(
+        `/api/v1/public/leagues/${slug}/tournaments${buildQueryString({
+          limit: params.limit,
+          offset: params.offset,
+        })}`,
+      ),
+    enabled: !!slug,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Venue Sub-Resources — courts
+// ---------------------------------------------------------------------------
+
+export function usePublicVenueCourts(slug: string) {
+  return useQuery<PublicCourt[]>({
+    queryKey: ['public-venue-courts', slug],
+    queryFn: () =>
+      apiGet<PublicCourt[]>(`/api/v1/public/venues/${slug}/courts`),
+    enabled: !!slug,
+    staleTime: 30 * 1000,
+  })
+}

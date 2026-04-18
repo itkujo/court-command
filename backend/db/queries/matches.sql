@@ -294,3 +294,13 @@ SELECT count(*) FROM matches;
 
 -- name: CountMatchesByStatus :one
 SELECT count(*) FROM matches WHERE status = $1;
+
+-- name: ListLiveMatches :many
+SELECT * FROM matches
+WHERE status IN ('warmup', 'in_progress', 'paused')
+ORDER BY started_at DESC NULLS LAST, created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountLiveMatches :one
+SELECT count(*) FROM matches
+WHERE status IN ('warmup', 'in_progress', 'paused');
