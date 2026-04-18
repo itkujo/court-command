@@ -323,6 +323,13 @@ func New(cfg *Config) chi.Router {
 
 		// --- Phase 8 routes ---
 
+		// Stop impersonation — must be OUTSIDE admin group because
+		// the impersonated session has the target user's role (not platform_admin)
+		r.Route("/admin/stop-impersonation", func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.SessionStore))
+			r.Post("/", cfg.AdminHandler.StopImpersonation)
+		})
+
 		// Admin routes (authenticated + platform_admin only)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(middleware.RequireAuth(cfg.SessionStore))

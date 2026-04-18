@@ -63,9 +63,8 @@ func (h *AdminHandler) Routes() chi.Router {
 	r.Post("/api-keys", h.CreateApiKey)
 	r.Delete("/api-keys/{keyID}", h.RevokeApiKey)
 
-	// Impersonation
+	// Impersonation (start only — stop is registered outside admin group in router.go)
 	r.Post("/impersonate/{userID}", h.StartImpersonation)
-	r.Post("/stop-impersonation", h.StopImpersonation)
 
 	return r
 }
