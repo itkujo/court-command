@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -10,6 +11,91 @@ import (
 	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/service"
 )
+
+// rawOrEmptyObj converts a []byte JSONB value to json.RawMessage, defaulting to "{}".
+func rawOrEmptyObj(b []byte) json.RawMessage {
+	if len(b) > 0 {
+		return json.RawMessage(b)
+	}
+	return json.RawMessage("{}")
+}
+
+// rawOrEmptyArr converts a []byte JSONB value to json.RawMessage, defaulting to "[]".
+func rawOrEmptyArr(b []byte) json.RawMessage {
+	if len(b) > 0 {
+		return json.RawMessage(b)
+	}
+	return json.RawMessage("[]")
+}
+
+// publicTournament wraps generated.Tournament with properly serialized JSONB fields.
+type publicTournament struct {
+	generated.Tournament
+	SocialLinks json.RawMessage `json:"social_links"`
+	SponsorInfo json.RawMessage `json:"sponsor_info"`
+}
+
+func toPublicTournament(t generated.Tournament) publicTournament {
+	return publicTournament{
+		Tournament:  t,
+		SocialLinks: rawOrEmptyObj(t.SocialLinks),
+		SponsorInfo: rawOrEmptyArr(t.SponsorInfo),
+	}
+}
+
+func toPublicTournaments(ts []generated.Tournament) []publicTournament {
+	result := make([]publicTournament, len(ts))
+	for i, t := range ts {
+		result[i] = toPublicTournament(t)
+	}
+	return result
+}
+
+// publicLeague wraps generated.League with properly serialized JSONB fields.
+type publicLeague struct {
+	generated.League
+	SocialLinks json.RawMessage `json:"social_links"`
+	SponsorInfo json.RawMessage `json:"sponsor_info"`
+}
+
+func toPublicLeague(l generated.League) publicLeague {
+	return publicLeague{
+		League:      l,
+		SocialLinks: rawOrEmptyObj(l.SocialLinks),
+		SponsorInfo: rawOrEmptyArr(l.SponsorInfo),
+	}
+}
+
+func toPublicLeagues(ls []generated.League) []publicLeague {
+	result := make([]publicLeague, len(ls))
+	for i, l := range ls {
+		result[i] = toPublicLeague(l)
+	}
+	return result
+}
+
+// publicVenue wraps generated.Venue with properly serialized JSONB fields.
+type publicVenue struct {
+	generated.Venue
+	SurfaceTypes json.RawMessage `json:"surface_types"`
+	Amenities    json.RawMessage `json:"amenities"`
+}
+
+func toPublicVenue(v generated.Venue) publicVenue {
+	return publicVenue{
+		Venue:        v,
+		SurfaceTypes: rawOrEmptyArr(v.SurfaceTypes),
+		Amenities:    rawOrEmptyArr(v.Amenities),
+	}
+}
+
+func toPublicVenues(vs []generated.Venue) []publicVenue {
+	result := make([]publicVenue, len(vs))
+	for i, v := range vs {
+		result[i] = toPublicVenue(v)
+	}
+	return result
+}
 
 // PublicHandler handles unauthenticated public directory endpoints.
 type PublicHandler struct {
@@ -156,7 +242,7 @@ func (h *PublicHandler) ListTournaments(w http.ResponseWriter, r *http.Request) 
 	}
 
 	total, _ := h.queries.CountTournaments(r.Context())
-	Paginated(w, tournaments, total, int(limit), int(offset))
+	Paginated(w, toPublicTournaments(tournaments), total, int(limit), int(offset))
 }
 
 // GetTournamentBySlug handles GET /api/v1/public/tournaments/{slug}
@@ -175,7 +261,7 @@ func (h *PublicHandler) GetTournamentBySlug(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	Success(w, tournament)
+	Success(w, toPublicTournament(tournament))
 }
 
 // ListLeagues handles GET /api/v1/public/leagues
@@ -196,7 +282,7 @@ func (h *PublicHandler) ListLeagues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	total, _ := h.queries.CountLeagues(r.Context())
-	Paginated(w, leagues, total, int(limit), int(offset))
+	Paginated(w, toPublicLeagues(leagues), total, int(limit), int(offset))
 }
 
 // GetLeagueBySlug handles GET /api/v1/public/leagues/{slug}
@@ -214,7 +300,7 @@ func (h *PublicHandler) GetLeagueBySlug(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	Success(w, league)
+	Success(w, toPublicLeague(league))
 }
 
 // ListVenues handles GET /api/v1/public/venues
@@ -238,7 +324,7 @@ func (h *PublicHandler) ListVenues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	total, _ := h.queries.CountVenues(r.Context(), &published)
-	Paginated(w, venues, total, int(limit), int(offset))
+	Paginated(w, toPublicVenues(venues), total, int(limit), int(offset))
 }
 
 // GetVenueBySlug handles GET /api/v1/public/venues/{slug}
@@ -256,7 +342,7 @@ func (h *PublicHandler) GetVenueBySlug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Success(w, venue)
+	Success(w, toPublicVenue(venue))
 }
 
 // ListLiveMatches handles GET /api/v1/public/live
@@ -333,7 +419,7 @@ func (h *PublicHandler) ListTournamentMatches(w http.ResponseWriter, r *http.Req
 	}
 
 	// ListByTournament doesn't return a total count; use slice length as total
-	Success(w, matches)
+	Paginated(w, matches, int64(len(matches)), int(limit), int(offset))
 }
 
 // ListTournamentCourts handles GET /api/v1/public/tournaments/{slug}/courts

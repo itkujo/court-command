@@ -233,6 +233,50 @@ func (q *Queries) GetCourtBySlug(ctx context.Context, arg GetCourtBySlugParams) 
 	return i, err
 }
 
+const getCourtsByIDs = `-- name: GetCourtsByIDs :many
+SELECT id, name, slug, venue_id, surface_type, is_show_court, is_active, is_temporary, sort_order, notes, stream_url, stream_type, stream_is_live, stream_title, created_by_user_id, created_at, updated_at, deleted_at FROM courts
+WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL
+`
+
+func (q *Queries) GetCourtsByIDs(ctx context.Context, dollar_1 []int64) ([]Court, error) {
+	rows, err := q.db.Query(ctx, getCourtsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Court{}
+	for rows.Next() {
+		var i Court
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.VenueID,
+			&i.SurfaceType,
+			&i.IsShowCourt,
+			&i.IsActive,
+			&i.IsTemporary,
+			&i.SortOrder,
+			&i.Notes,
+			&i.StreamUrl,
+			&i.StreamType,
+			&i.StreamIsLive,
+			&i.StreamTitle,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getFloatingCourtBySlug = `-- name: GetFloatingCourtBySlug :one
 SELECT id, name, slug, venue_id, surface_type, is_show_court, is_active, is_temporary, sort_order, notes, stream_url, stream_type, stream_is_live, stream_title, created_by_user_id, created_at, updated_at, deleted_at FROM courts
 WHERE slug = $1 AND venue_id IS NULL AND deleted_at IS NULL

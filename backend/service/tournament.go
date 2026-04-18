@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -170,7 +172,10 @@ func (s *TournamentService) Create(ctx context.Context, params generated.CreateT
 func (s *TournamentService) GetByID(ctx context.Context, id int64) (TournamentResponse, error) {
 	tournament, err := s.queries.GetTournamentByID(ctx, id)
 	if err != nil {
-		return TournamentResponse{}, &NotFoundError{Message: "tournament not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return TournamentResponse{}, &NotFoundError{Message: "tournament not found"}
+		}
+		return TournamentResponse{}, fmt.Errorf("get tournament by id: %w", err)
 	}
 	return toTournamentResponse(tournament), nil
 }
@@ -179,7 +184,10 @@ func (s *TournamentService) GetByID(ctx context.Context, id int64) (TournamentRe
 func (s *TournamentService) GetBySlug(ctx context.Context, slug string) (TournamentResponse, error) {
 	tournament, err := s.queries.GetTournamentBySlug(ctx, slug)
 	if err != nil {
-		return TournamentResponse{}, &NotFoundError{Message: "tournament not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return TournamentResponse{}, &NotFoundError{Message: "tournament not found"}
+		}
+		return TournamentResponse{}, fmt.Errorf("get tournament by slug: %w", err)
 	}
 	return toTournamentResponse(tournament), nil
 }
@@ -188,7 +196,10 @@ func (s *TournamentService) GetBySlug(ctx context.Context, slug string) (Tournam
 func (s *TournamentService) GetByPublicID(ctx context.Context, publicID string) (TournamentResponse, error) {
 	tournament, err := s.queries.GetTournamentByPublicID(ctx, publicID)
 	if err != nil {
-		return TournamentResponse{}, &NotFoundError{Message: "tournament not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return TournamentResponse{}, &NotFoundError{Message: "tournament not found"}
+		}
+		return TournamentResponse{}, fmt.Errorf("get tournament by public id: %w", err)
 	}
 	return toTournamentResponse(tournament), nil
 }
@@ -347,7 +358,10 @@ func (s *TournamentService) Update(ctx context.Context, id int64, params generat
 
 	tournament, err := s.queries.UpdateTournament(ctx, params)
 	if err != nil {
-		return TournamentResponse{}, &NotFoundError{Message: "tournament not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return TournamentResponse{}, &NotFoundError{Message: "tournament not found"}
+		}
+		return TournamentResponse{}, fmt.Errorf("update tournament: %w", err)
 	}
 
 	return toTournamentResponse(tournament), nil
@@ -373,7 +387,10 @@ var validTournamentTransitions = map[string][]string{
 func (s *TournamentService) UpdateStatus(ctx context.Context, id int64, newStatus string) (TournamentResponse, error) {
 	tournament, err := s.queries.GetTournamentByID(ctx, id)
 	if err != nil {
-		return TournamentResponse{}, &NotFoundError{Message: "tournament not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return TournamentResponse{}, &NotFoundError{Message: "tournament not found"}
+		}
+		return TournamentResponse{}, fmt.Errorf("get tournament for status update: %w", err)
 	}
 
 	allowed, ok := validTournamentTransitions[tournament.Status]
@@ -407,7 +424,10 @@ func (s *TournamentService) UpdateStatus(ctx context.Context, id int64, newStatu
 func (s *TournamentService) IsTD(ctx context.Context, tournamentID, userID int64) (bool, error) {
 	tournament, err := s.queries.GetTournamentByID(ctx, tournamentID)
 	if err != nil {
-		return false, &NotFoundError{Message: "tournament not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, &NotFoundError{Message: "tournament not found"}
+		}
+		return false, fmt.Errorf("get tournament for td check: %w", err)
 	}
 
 	if tournament.CreatedByUserID == userID {
@@ -425,7 +445,10 @@ func (s *TournamentService) IsTD(ctx context.Context, tournamentID, userID int64
 func (s *TournamentService) Clone(ctx context.Context, sourceTournamentID int64, newName string, createdByUserID int64, includeRegistrations bool) (TournamentResponse, error) {
 	source, err := s.queries.GetTournamentByID(ctx, sourceTournamentID)
 	if err != nil {
-		return TournamentResponse{}, &NotFoundError{Message: "source tournament not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return TournamentResponse{}, &NotFoundError{Message: "source tournament not found"}
+		}
+		return TournamentResponse{}, fmt.Errorf("get source tournament for clone: %w", err)
 	}
 
 	slug, err := s.generateUniqueSlug(ctx, newName)

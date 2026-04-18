@@ -75,6 +75,10 @@ WHERE deleted_at IS NULL
   AND (sqlc.narg('org_id')::BIGINT IS NULL OR org_id = sqlc.narg('org_id')::BIGINT)
   AND (sqlc.narg('city')::TEXT IS NULL OR city ILIKE sqlc.narg('city')::TEXT);
 
+-- name: GetTeamsByIDs :many
+SELECT * FROM teams
+WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL;
+
 -- name: CheckTeamSlugExists :one
 SELECT count(*) FROM teams
 WHERE slug = $1 AND deleted_at IS NULL;

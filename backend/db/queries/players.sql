@@ -85,3 +85,10 @@ WHERE dupr_id = $1 AND deleted_at IS NULL;
 -- name: GetPlayerByVairID :one
 SELECT * FROM users
 WHERE vair_id = $1 AND deleted_at IS NULL;
+
+-- name: ListPlayers :many
+SELECT * FROM users
+WHERE deleted_at IS NULL
+  AND status != 'merged'
+ORDER BY display_name ASC NULLS LAST, last_name ASC, first_name ASC
+LIMIT $1 OFFSET $2;

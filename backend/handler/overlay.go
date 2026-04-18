@@ -25,8 +25,17 @@ func NewOverlayHandler(overlayService *service.OverlayService, sourceProfileServ
 	}
 }
 
+// parseCourtID extracts the court identifier from the URL. It accepts either
+// a numeric ID (e.g. "7") or a court slug (e.g. "court-1"). Slugs are resolved
+// to numeric IDs via the database so callers always receive an int64.
 func (h *OverlayHandler) parseCourtID(r *http.Request) (int64, error) {
-	return strconv.ParseInt(chi.URLParam(r, "courtID"), 10, 64)
+	raw := chi.URLParam(r, "courtID")
+	// Fast path: numeric ID.
+	if id, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		return id, nil
+	}
+	// Slow path: treat the value as a slug and resolve via DB.
+	return h.overlayService.ResolveCourtIDBySlug(r.Context(), raw)
 }
 
 // requireSession checks that the request has a valid session and returns it.
@@ -38,6 +47,30 @@ func (h *OverlayHandler) requireSession(w http.ResponseWriter, r *http.Request) 
 		return nil
 	}
 	return sess
+}
+
+// ResolveCourtSlug handles GET /api/v1/overlay/court/{courtID}/resolve
+// Public endpoint — resolves a court slug (or numeric ID) to its canonical
+// court_id and slug. Used by the frontend to map URL slugs to numeric IDs
+// without requiring authentication (unlike GET /api/v1/courts).
+func (h *OverlayHandler) ResolveCourtSlug(w http.ResponseWriter, r *http.Request) {
+	courtID, err := h.parseCourtID(r)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	// Fetch the court record to return both ID and slug.
+	slug, err := h.overlayService.GetCourtSlug(r.Context(), courtID)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Success(w, map[string]interface{}{
+		"court_id": courtID,
+		"slug":     slug,
+	})
 }
 
 // GetOverlayData handles GET /api/v1/overlay/court/{courtID}/data

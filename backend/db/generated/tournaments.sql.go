@@ -326,6 +326,62 @@ func (q *Queries) GetTournamentBySlug(ctx context.Context, slug string) (Tournam
 	return i, err
 }
 
+const getTournamentsByIDs = `-- name: GetTournamentsByIDs :many
+SELECT id, public_id, name, slug, status, start_date, end_date, venue_id, league_id, season_id, description, logo_url, banner_url, contact_email, contact_phone, website_url, registration_open_at, registration_close_at, max_participants, rules_document_url, cancellation_reason, social_links, notes, sponsor_info, show_registrations, created_by_user_id, td_user_id, created_at, updated_at, deleted_at FROM tournaments
+WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL
+`
+
+func (q *Queries) GetTournamentsByIDs(ctx context.Context, dollar_1 []int64) ([]Tournament, error) {
+	rows, err := q.db.Query(ctx, getTournamentsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Tournament{}
+	for rows.Next() {
+		var i Tournament
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Name,
+			&i.Slug,
+			&i.Status,
+			&i.StartDate,
+			&i.EndDate,
+			&i.VenueID,
+			&i.LeagueID,
+			&i.SeasonID,
+			&i.Description,
+			&i.LogoUrl,
+			&i.BannerUrl,
+			&i.ContactEmail,
+			&i.ContactPhone,
+			&i.WebsiteUrl,
+			&i.RegistrationOpenAt,
+			&i.RegistrationCloseAt,
+			&i.MaxParticipants,
+			&i.RulesDocumentUrl,
+			&i.CancellationReason,
+			&i.SocialLinks,
+			&i.Notes,
+			&i.SponsorInfo,
+			&i.ShowRegistrations,
+			&i.CreatedByUserID,
+			&i.TdUserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTournaments = `-- name: ListTournaments :many
 SELECT id, public_id, name, slug, status, start_date, end_date, venue_id, league_id, season_id, description, logo_url, banner_url, contact_email, contact_phone, website_url, registration_open_at, registration_close_at, max_participants, rules_document_url, cancellation_reason, social_links, notes, sponsor_info, show_registrations, created_by_user_id, td_user_id, created_at, updated_at, deleted_at FROM tournaments
 WHERE deleted_at IS NULL

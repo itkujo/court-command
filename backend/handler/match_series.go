@@ -21,18 +21,26 @@ func NewMatchSeriesHandler(seriesService *service.MatchSeriesService) *MatchSeri
 	return &MatchSeriesHandler{seriesService: seriesService}
 }
 
-// Routes returns the match series routes.
+// Routes returns the auth-gated match series routes.
 func (h *MatchSeriesHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Post("/", h.Create)
 	r.Get("/{seriesID}", h.Get)
-	r.Get("/public/{publicID}", h.GetByPublicID)
 	r.Post("/{seriesID}/start", h.Start)
 	r.Post("/{seriesID}/record-result", h.RecordResult)
 	r.Post("/{seriesID}/forfeit", h.Forfeit)
 	r.Post("/{seriesID}/cancel", h.Cancel)
 	r.Post("/{seriesID}/matches", h.CreateChildMatch)
+
+	return r
+}
+
+// PublicRoutes returns publicly accessible match series routes (no auth).
+func (h *MatchSeriesHandler) PublicRoutes() chi.Router {
+	r := chi.NewRouter()
+
+	r.Get("/public/{publicID}", h.GetByPublicID)
 
 	return r
 }

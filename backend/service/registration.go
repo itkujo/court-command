@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/court-command/court-command/db/generated"
@@ -87,7 +89,10 @@ func (s *RegistrationService) Register(ctx context.Context, params generated.Cre
 	// Get division to check status and capacity
 	division, err := s.queries.GetDivisionByID(ctx, params.DivisionID)
 	if err != nil {
-		return RegistrationResponse{}, &NotFoundError{Message: "division not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return RegistrationResponse{}, &NotFoundError{Message: "division not found"}
+		}
+		return RegistrationResponse{}, fmt.Errorf("get division for registration: %w", err)
 	}
 
 	// Division must be in registration_open status
@@ -131,7 +136,10 @@ func (s *RegistrationService) Register(ctx context.Context, params generated.Cre
 func (s *RegistrationService) GetByID(ctx context.Context, id int64) (RegistrationResponse, error) {
 	reg, err := s.queries.GetRegistrationByID(ctx, id)
 	if err != nil {
-		return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		}
+		return RegistrationResponse{}, fmt.Errorf("get registration by id: %w", err)
 	}
 	return toRegistrationResponse(reg), nil
 }
@@ -192,7 +200,10 @@ func (s *RegistrationService) ListByDivisionAndStatus(ctx context.Context, divis
 func (s *RegistrationService) UpdateStatus(ctx context.Context, id int64, newStatus string) (RegistrationResponse, error) {
 	reg, err := s.queries.GetRegistrationByID(ctx, id)
 	if err != nil {
-		return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		}
+		return RegistrationResponse{}, fmt.Errorf("get registration for status update: %w", err)
 	}
 
 	updated, err := s.queries.UpdateRegistrationStatus(ctx, generated.UpdateRegistrationStatusParams{
@@ -227,7 +238,10 @@ func (s *RegistrationService) UpdateSeed(ctx context.Context, id int64, seed pgt
 		Seed: seed,
 	})
 	if err != nil {
-		return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		}
+		return RegistrationResponse{}, fmt.Errorf("update registration seed: %w", err)
 	}
 	return toRegistrationResponse(reg), nil
 }
@@ -239,7 +253,10 @@ func (s *RegistrationService) UpdatePlacement(ctx context.Context, id int64, pla
 		FinalPlacement: placement,
 	})
 	if err != nil {
-		return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		}
+		return RegistrationResponse{}, fmt.Errorf("update registration placement: %w", err)
 	}
 	return toRegistrationResponse(reg), nil
 }
@@ -268,7 +285,10 @@ func (s *RegistrationService) ListSeekingPartner(ctx context.Context, divisionID
 func (s *RegistrationService) CheckIn(ctx context.Context, id int64) (RegistrationResponse, error) {
 	reg, err := s.queries.GetRegistrationByID(ctx, id)
 	if err != nil {
-		return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		}
+		return RegistrationResponse{}, fmt.Errorf("get registration for check-in: %w", err)
 	}
 
 	if reg.Status != "approved" {
@@ -290,7 +310,10 @@ func (s *RegistrationService) CheckIn(ctx context.Context, id int64) (Registrati
 func (s *RegistrationService) WithdrawMidTournament(ctx context.Context, id int64) (RegistrationResponse, error) {
 	reg, err := s.queries.GetRegistrationByID(ctx, id)
 	if err != nil {
-		return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		}
+		return RegistrationResponse{}, fmt.Errorf("get registration for withdrawal: %w", err)
 	}
 
 	if reg.Status != "checked_in" && reg.Status != "approved" {
@@ -315,7 +338,10 @@ func (s *RegistrationService) UpdateAdminNotes(ctx context.Context, id int64, no
 		AdminNotes: notes,
 	})
 	if err != nil {
-		return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return RegistrationResponse{}, &NotFoundError{Message: "registration not found"}
+		}
+		return RegistrationResponse{}, fmt.Errorf("update registration admin notes: %w", err)
 	}
 
 	return toRegistrationResponse(updated), nil

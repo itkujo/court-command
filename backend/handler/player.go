@@ -28,6 +28,7 @@ func NewPlayerHandler(playerService *service.PlayerService) *PlayerHandler {
 func (h *PlayerHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 
+	r.Get("/", h.ListPlayers)
 	r.Get("/search", h.SearchPlayers)
 	r.Get("/me", h.GetMyProfile)
 	r.Patch("/me", h.UpdateMyProfile)
@@ -36,6 +37,25 @@ func (h *PlayerHandler) Routes() chi.Router {
 	r.Get("/by-public-id/{publicID}", h.GetPlayerByPublicID)
 
 	return r
+}
+
+// ListPlayers returns a paginated list of all players.
+func (h *PlayerHandler) ListPlayers(w http.ResponseWriter, r *http.Request) {
+	data := session.SessionData(r.Context())
+	if data == nil {
+		WriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Not authenticated")
+		return
+	}
+
+	limit, offset := parseLimitOffset(r, 20, 100)
+
+	players, err := h.playerService.ListPlayers(r.Context(), limit, offset)
+	if err != nil {
+		HandleServiceError(w, err)
+		return
+	}
+
+	Paginated(w, players, int64(len(players)), int(limit), int(offset))
 }
 
 // GetMyProfile returns the authenticated user's own profile.

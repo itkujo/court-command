@@ -15,9 +15,9 @@ import (
 func TestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 
-	databaseURL := os.Getenv("DATABASE_URL")
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {
-		databaseURL = "postgres://courtcommand:courtcommand@localhost:5432/courtcommand?sslmode=disable"
+		databaseURL = "postgres://courtcommand:courtcommand@localhost:5432/courtcommand_test?sslmode=disable"
 	}
 
 	ctx := context.Background()

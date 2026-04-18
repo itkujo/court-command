@@ -305,3 +305,44 @@ func (q *Queries) ListMatchEventsByType(ctx context.Context, arg ListMatchEvents
 	}
 	return items, nil
 }
+
+const listTimeoutEventsByMatchIDs = `-- name: ListTimeoutEventsByMatchIDs :many
+SELECT id, match_id, sequence_id, event_type, team1_score, team2_score, current_set, current_game, serving_team, server_number, set_scores, payload, created_by_user_id, created_at FROM match_events
+WHERE match_id = ANY($1::bigint[]) AND event_type = 'timeout'
+ORDER BY match_id, sequence_id ASC
+`
+
+func (q *Queries) ListTimeoutEventsByMatchIDs(ctx context.Context, dollar_1 []int64) ([]MatchEvent, error) {
+	rows, err := q.db.Query(ctx, listTimeoutEventsByMatchIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MatchEvent{}
+	for rows.Next() {
+		var i MatchEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.SequenceID,
+			&i.EventType,
+			&i.Team1Score,
+			&i.Team2Score,
+			&i.CurrentSet,
+			&i.CurrentGame,
+			&i.ServingTeam,
+			&i.ServerNumber,
+			&i.SetScores,
+			&i.Payload,
+			&i.CreatedByUserID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

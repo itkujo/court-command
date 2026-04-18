@@ -274,6 +274,36 @@ func (s *OverlayService) broadcastConfigChange(ctx context.Context, courtID int6
 	_ = s.ps.Publish(ctx, channel, "config_update", ToOverlayConfigResponse(config))
 }
 
+// ResolveCourtIDBySlug looks up a court by its slug and returns its numeric ID.
+// Slugs are unique per-venue but not globally, so this returns the first active
+// match ordered by ID (deterministic, lowest-ID wins). Returns NotFoundError
+// when no court matches the slug.
+func (s *OverlayService) ResolveCourtIDBySlug(ctx context.Context, slug string) (int64, error) {
+	var courtID int64
+	err := s.pool.QueryRow(ctx,
+		`SELECT id FROM courts WHERE slug = $1 AND deleted_at IS NULL ORDER BY id LIMIT 1`,
+		slug,
+	).Scan(&courtID)
+	if err != nil {
+		return 0, &NotFoundError{Message: fmt.Sprintf("court not found for slug: %s", slug)}
+	}
+	return courtID, nil
+}
+
+// GetCourtSlug returns the slug for a court by its numeric ID.
+// Returns NotFoundError when the court doesn't exist.
+func (s *OverlayService) GetCourtSlug(ctx context.Context, courtID int64) (string, error) {
+	var slug string
+	err := s.pool.QueryRow(ctx,
+		`SELECT slug FROM courts WHERE id = $1 AND deleted_at IS NULL`,
+		courtID,
+	).Scan(&slug)
+	if err != nil {
+		return "", &NotFoundError{Message: "court not found"}
+	}
+	return slug, nil
+}
+
 func generateSecureToken() (string, error) {
 	bytes := make([]byte, 32)
 	if _, err := rand.Read(bytes); err != nil {

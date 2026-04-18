@@ -60,6 +60,10 @@ LIMIT $1 OFFSET $2;
 SELECT count(*) FROM courts
 WHERE venue_id IS NULL AND deleted_at IS NULL;
 
+-- name: GetCourtsByIDs :many
+SELECT * FROM courts
+WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL;
+
 -- name: CheckCourtSlugInVenue :one
 SELECT count(*) FROM courts
 WHERE slug = $1 AND venue_id = $2 AND deleted_at IS NULL;

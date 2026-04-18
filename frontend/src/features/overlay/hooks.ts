@@ -10,7 +10,7 @@
 //   ['overlay', 'demo']                    — OverlayData (demo fallback)
 //   ['overlay', 'themes']                  — Theme[]
 //   ['overlay', 'theme', themeID]          — Theme
-//   ['overlay', 'courts']                  — CourtSummary[] (alias of scoring's list)
+//   ['overlay', 'resolve', slug]            — { court_id, slug } (public resolve)
 //   ['source-profiles']                    — SourceProfile[] (mine)
 //   ['source-profiles', profileID]         — SourceProfile
 //
@@ -21,11 +21,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   apiDelete,
   apiGet,
-  apiGetPaginated,
   apiPost,
   apiPut,
 } from '../../lib/api'
-import type { CourtSummary } from '../scoring/types'
 import type {
   ColorOverrides,
   CourtOverlayConfig,
@@ -88,33 +86,39 @@ export function useOverlayData(
   })
 }
 
+/** Response shape from GET /api/v1/overlay/court/{slug}/resolve. */
+interface CourtResolveResult {
+  court_id: number
+  slug: string
+}
+
 /**
- * Resolves an overlay by the court's slug. Uses the tournament-director
- * court list to map slug→ID, then delegates to useOverlayData. Returns
- * the resolved courtID alongside so callers can pass it to
- * useOverlayWebSocket and other courtID-keyed hooks.
+ * Resolves an overlay by the court's slug. Uses the public
+ * /resolve endpoint to map slug→ID server-side, then delegates
+ * to useOverlayData. Returns the resolved courtID alongside so
+ * callers can pass it to useOverlayWebSocket and other
+ * courtID-keyed hooks.
+ *
+ * Unlike the previous implementation that fetched the entire
+ * courts list (authenticated), this uses a lightweight public
+ * endpoint — no auth required, making it usable from OBS.
  */
 export function useOverlayDataBySlug(
   slug: string | undefined,
   opts: OverlayDataOptions = {},
 ) {
-  const courts = useQuery<CourtSummary[]>({
-    queryKey: ['overlay', 'courts'],
-    queryFn: async () => {
-      const page = await apiGetPaginated<CourtSummary>(
-        '/api/v1/courts?limit=500&offset=0',
-      )
-      return page.items
-    },
+  const courtsQuery = useQuery<CourtResolveResult>({
+    queryKey: ['overlay', 'resolve', slug],
+    queryFn: () =>
+      apiGet<CourtResolveResult>(`/api/v1/overlay/court/${slug}/resolve`),
     enabled: !!slug,
+    staleTime: 5 * 60 * 1000,
   })
-  const courtID = slug
-    ? (courts.data?.find((c) => c.slug === slug)?.id ?? null)
-    : null
+  const courtID = courtsQuery.data?.court_id ?? null
   const overlay = useOverlayData(courtID, opts)
   return {
     courtID,
-    courtsQuery: courts,
+    courtsQuery,
     overlayQuery: overlay,
   }
 }

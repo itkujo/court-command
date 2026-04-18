@@ -1,5 +1,5 @@
 # Makefile
-.PHONY: dev dev-frontend dev-all up down full full-down build migrate-up migrate-down migrate-create sqlc test seed backup backup-full restore restore-db backup-list backup-before-deploy
+.PHONY: dev dev-frontend dev-all up down full full-down build migrate-up migrate-down migrate-create sqlc test test-db seed backup backup-full restore restore-db backup-list backup-before-deploy
 
 # Start Docker services (db + redis only)
 up:
@@ -49,8 +49,15 @@ migrate-create:
 sqlc:
 	cd backend && sqlc generate
 
-# Run tests
-test: up
+# Create test database (idempotent — safe to run repeatedly)
+test-db: up
+	@echo "Creating test database..."
+	@docker compose exec -T db psql -U courtcommand -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'courtcommand_test'" | grep -q 1 || \
+		docker compose exec -T db psql -U courtcommand -d postgres -c "CREATE DATABASE courtcommand_test OWNER courtcommand;"
+	@echo "Test database ready."
+
+# Run tests (creates test-db first, migrations run automatically via TestDB)
+test: test-db
 	cd backend && go test ./... -v -count=1
 
 # Seed development data (all entity types — run after migrations)

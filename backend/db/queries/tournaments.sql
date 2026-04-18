@@ -101,6 +101,10 @@ UPDATE tournaments SET
 WHERE id = @id AND deleted_at IS NULL
 RETURNING *;
 
+-- name: GetTournamentsByIDs :many
+SELECT * FROM tournaments
+WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL;
+
 -- name: SoftDeleteTournament :exec
 UPDATE tournaments SET deleted_at = NOW(), updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL;

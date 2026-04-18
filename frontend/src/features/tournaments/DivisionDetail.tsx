@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useAuth } from '../auth/hooks'
 import { useGetDivision, useGetTournament } from './hooks'
 import { TabLayout } from '../../components/TabLayout'
 import { Skeleton } from '../../components/Skeleton'
 import { EmptyState } from '../../components/EmptyState'
 import { Button } from '../../components/Button'
+import { Card } from '../../components/Card'
 import { StatusBadge } from '../../components/StatusBadge'
 import { DivisionOverview } from './DivisionOverview'
 import { DivisionRegistrations } from './DivisionRegistrations'
 import { DivisionSeeds } from './DivisionSeeds'
 import { DivisionBracket } from './DivisionBracket'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Users } from 'lucide-react'
 
 interface DivisionDetailProps {
   tournamentId: string
@@ -22,6 +24,8 @@ export function DivisionDetail({
   divisionId,
 }: DivisionDetailProps) {
   const [activeTab, setActiveTab] = useState('overview')
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'tournament_director' || user?.role === 'admin'
   const { data: tournament } = useGetTournament(tournamentId)
   const {
     data: division,
@@ -53,12 +57,14 @@ export function DivisionDetail({
     )
   }
 
-  const tabs = [
+  const allTabs = [
     { id: 'overview', label: 'Overview' },
-    { id: 'registrations', label: 'Registrations' },
-    { id: 'seeds', label: 'Seeds' },
+    { id: 'registrations', label: 'Registrations', adminOnly: true },
+    { id: 'seeds', label: 'Seeds', adminOnly: true },
     { id: 'bracket', label: 'Bracket' },
   ]
+
+  const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin)
 
   return (
     <div>
@@ -79,6 +85,28 @@ export function DivisionDetail({
         </div>
       </div>
 
+      {/* Registration CTA — visible to players when registration is open */}
+      {!isAdmin && tournament?.status === 'registration_open' && (
+        <Card className="mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-(--color-accent)" />
+              <p className="text-sm font-medium text-(--color-text-primary)">
+                Registration is open for this tournament
+              </p>
+            </div>
+            <Link
+              to="/tournaments/$tournamentId"
+              params={{ tournamentId }}
+            >
+              <Button variant="primary" size="sm">
+                Register Now
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      )}
+
       <TabLayout tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
         {activeTab === 'overview' && (
           <DivisionOverview
@@ -87,14 +115,14 @@ export function DivisionDetail({
             division={division}
           />
         )}
-        {activeTab === 'registrations' && (
+        {isAdmin && activeTab === 'registrations' && (
           <DivisionRegistrations
             tournamentId={tournamentId}
             divisionId={divisionId}
             division={division}
           />
         )}
-        {activeTab === 'seeds' && (
+        {isAdmin && activeTab === 'seeds' && (
           <DivisionSeeds divisionId={divisionId} />
         )}
         {activeTab === 'bracket' && (

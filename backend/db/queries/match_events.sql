@@ -46,6 +46,11 @@ SELECT COALESCE(MAX(sequence_id), 0) + 1 AS next_seq
 FROM match_events
 WHERE match_id = $1;
 
+-- name: ListTimeoutEventsByMatchIDs :many
+SELECT * FROM match_events
+WHERE match_id = ANY($1::bigint[]) AND event_type = 'timeout'
+ORDER BY match_id, sequence_id ASC;
+
 -- name: DeleteMatchEventsAfterSequence :exec
 DELETE FROM match_events
 WHERE match_id = $1 AND sequence_id > $2;

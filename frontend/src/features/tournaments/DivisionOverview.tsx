@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useAuth } from '../auth/hooks'
 import {
   useUpdateDivisionStatus,
   useDeleteDivision,
@@ -41,6 +42,8 @@ export function DivisionOverview({
   division,
 }: DivisionOverviewProps) {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'tournament_director' || user?.role === 'admin'
   const { toast } = useToast()
   const statusMutation = useUpdateDivisionStatus(tournamentId, divisionId)
   const deleteMutation = useDeleteDivision(tournamentId, divisionId)
@@ -121,66 +124,72 @@ export function DivisionOverview({
         </div>
       </Card>
 
-      <Card>
-        <h2 className="text-lg font-semibold text-(--color-text-primary) mb-4">
-          Actions
-        </h2>
-        <div className="flex flex-wrap gap-3">
-          {transitions.map((t) => (
-            <Button
-              key={t.next}
-              onClick={() => handleStatus(t.next)}
-              loading={statusMutation.isPending}
-            >
-              {t.label}
+      {isAdmin && (
+        <Card>
+          <h2 className="text-lg font-semibold text-(--color-text-primary) mb-4">
+            Actions
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            {transitions.map((t) => (
+              <Button
+                key={t.next}
+                onClick={() => handleStatus(t.next)}
+                loading={statusMutation.isPending}
+              >
+                {t.label}
+              </Button>
+            ))}
+            <Button variant="secondary" onClick={() => setEditOpen(true)}>
+              Edit Division
             </Button>
-          ))}
-          <Button variant="secondary" onClick={() => setEditOpen(true)}>
-            Edit Division
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => setDeleteOpen(true)}
-            disabled={!canDelete}
-            title={!canDelete ? 'Cannot delete division with registrations' : ''}
-          >
-            Delete Division
-          </Button>
-        </div>
-        {!canDelete && (
-          <p className="text-xs text-(--color-text-secondary) mt-3">
-            Division has {regCount} registration{regCount !== 1 ? 's' : ''}.
-            Remove all registrations before deleting.
-          </p>
-        )}
-      </Card>
+            <Button
+              variant="danger"
+              onClick={() => setDeleteOpen(true)}
+              disabled={!canDelete}
+              title={!canDelete ? 'Cannot delete division with registrations' : ''}
+            >
+              Delete Division
+            </Button>
+          </div>
+          {!canDelete && (
+            <p className="text-xs text-(--color-text-secondary) mt-3">
+              Division has {regCount} registration{regCount !== 1 ? 's' : ''}.
+              Remove all registrations before deleting.
+            </p>
+          )}
+        </Card>
+      )}
 
       <AdSlot size="medium-rectangle" slot="division-detail" className="mt-6" />
 
-      <Modal
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        title="Edit Division"
-        className="max-w-2xl"
-      >
-        <DivisionForm
-          tournamentId={tournamentId}
-          division={division}
-          onSuccess={() => setEditOpen(false)}
-          onCancel={() => setEditOpen(false)}
-        />
-      </Modal>
+      {isAdmin && (
+        <Modal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          title="Edit Division"
+          className="max-w-2xl"
+        >
+          <DivisionForm
+            tournamentId={tournamentId}
+            division={division}
+            onSuccess={() => setEditOpen(false)}
+            onCancel={() => setEditOpen(false)}
+          />
+        </Modal>
+      )}
 
-      <ConfirmDialog
-        open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={handleDelete}
-        title="Delete Division"
-        message="Are you sure you want to delete this division? This action cannot be undone."
-        confirmText="Delete"
-        variant="danger"
-        loading={deleteMutation.isPending}
-      />
+      {isAdmin && (
+        <ConfirmDialog
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={handleDelete}
+          title="Delete Division"
+          message="Are you sure you want to delete this division? This action cannot be undone."
+          confirmText="Delete"
+          variant="danger"
+          loading={deleteMutation.isPending}
+        />
+      )}
     </div>
   )
 }

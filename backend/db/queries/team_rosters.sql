@@ -48,6 +48,13 @@ WHERE player_id = $1
     SELECT id FROM teams WHERE org_id = $2 AND deleted_at IS NULL
   );
 
+-- name: GetActiveRostersByTeamIDs :many
+SELECT tr.team_id, tr.player_id, u.first_name, u.last_name, u.display_name, u.public_id, u.avatar_url
+FROM team_rosters tr
+JOIN users u ON u.id = tr.player_id
+WHERE tr.team_id = ANY($1::bigint[]) AND tr.left_at IS NULL AND u.deleted_at IS NULL
+ORDER BY tr.team_id, tr.role, u.last_name;
+
 -- name: CountActiveRoster :one
 SELECT count(*) FROM team_rosters
 WHERE team_id = $1 AND left_at IS NULL;

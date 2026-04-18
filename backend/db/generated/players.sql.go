@@ -302,6 +302,77 @@ func (q *Queries) GetPlayerProfile(ctx context.Context, id int64) (User, error) 
 	return i, err
 }
 
+const listPlayers = `-- name: ListPlayers :many
+SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM users
+WHERE deleted_at IS NULL
+  AND status != 'merged'
+ORDER BY display_name ASC NULLS LAST, last_name ASC, first_name ASC
+LIMIT $1 OFFSET $2
+`
+
+type ListPlayersParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListPlayers(ctx context.Context, arg ListPlayersParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, listPlayers, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.Email,
+			&i.PasswordHash,
+			&i.FirstName,
+			&i.LastName,
+			&i.DateOfBirth,
+			&i.DisplayName,
+			&i.Status,
+			&i.MergedIntoID,
+			&i.Role,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.Gender,
+			&i.Handedness,
+			&i.AvatarUrl,
+			&i.Bio,
+			&i.City,
+			&i.StateProvince,
+			&i.Country,
+			&i.Phone,
+			&i.PaddleBrand,
+			&i.PaddleModel,
+			&i.DuprID,
+			&i.VairID,
+			&i.EmergencyContactName,
+			&i.EmergencyContactPhone,
+			&i.MedicalNotes,
+			&i.WaiverAcceptedAt,
+			&i.IsProfileHidden,
+			&i.AddressLine1,
+			&i.AddressLine2,
+			&i.PostalCode,
+			&i.Latitude,
+			&i.Longitude,
+			&i.FormattedAddress,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const searchPlayers = `-- name: SearchPlayers :many
 SELECT id, public_id, email, password_hash, first_name, last_name, date_of_birth, display_name, status, merged_into_id, role, created_at, updated_at, deleted_at, gender, handedness, avatar_url, bio, city, state_province, country, phone, paddle_brand, paddle_model, dupr_id, vair_id, emergency_contact_name, emergency_contact_phone, medical_notes, waiver_accepted_at, is_profile_hidden, address_line_1, address_line_2, postal_code, latitude, longitude, formatted_address FROM users
 WHERE deleted_at IS NULL

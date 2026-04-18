@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/court-command/court-command/db/generated"
 )
@@ -112,7 +115,10 @@ func (svc *SeasonService) Create(ctx context.Context, params generated.CreateSea
 func (svc *SeasonService) GetByID(ctx context.Context, id int64) (SeasonResponse, error) {
 	season, err := svc.queries.GetSeasonByID(ctx, id)
 	if err != nil {
-		return SeasonResponse{}, &NotFoundError{Message: "season not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return SeasonResponse{}, &NotFoundError{Message: "season not found"}
+		}
+		return SeasonResponse{}, fmt.Errorf("get season by id: %w", err)
 	}
 	return toSeasonResponse(season), nil
 }
@@ -124,7 +130,10 @@ func (svc *SeasonService) GetBySlug(ctx context.Context, leagueID int64, slug st
 		Slug:     slug,
 	})
 	if err != nil {
-		return SeasonResponse{}, &NotFoundError{Message: "season not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return SeasonResponse{}, &NotFoundError{Message: "season not found"}
+		}
+		return SeasonResponse{}, fmt.Errorf("get season by slug: %w", err)
 	}
 	return toSeasonResponse(season), nil
 }
@@ -159,7 +168,10 @@ func (svc *SeasonService) Update(ctx context.Context, id int64, params generated
 
 	season, err := svc.queries.UpdateSeason(ctx, params)
 	if err != nil {
-		return SeasonResponse{}, &NotFoundError{Message: "season not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return SeasonResponse{}, &NotFoundError{Message: "season not found"}
+		}
+		return SeasonResponse{}, fmt.Errorf("update season: %w", err)
 	}
 
 	return toSeasonResponse(season), nil
@@ -181,7 +193,10 @@ var validSeasonTransitions = map[string][]string{
 func (svc *SeasonService) UpdateStatus(ctx context.Context, id int64, newStatus string) (SeasonResponse, error) {
 	season, err := svc.queries.GetSeasonByID(ctx, id)
 	if err != nil {
-		return SeasonResponse{}, &NotFoundError{Message: "season not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return SeasonResponse{}, &NotFoundError{Message: "season not found"}
+		}
+		return SeasonResponse{}, fmt.Errorf("get season for status update: %w", err)
 	}
 
 	allowed, ok := validSeasonTransitions[season.Status]

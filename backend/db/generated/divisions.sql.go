@@ -243,6 +243,66 @@ func (q *Queries) GetDivisionBySlug(ctx context.Context, arg GetDivisionBySlugPa
 	return i, err
 }
 
+const getDivisionsByIDs = `-- name: GetDivisionsByIDs :many
+SELECT id, tournament_id, name, slug, format, gender_restriction, age_restriction, skill_min, skill_max, rating_system, bracket_format, scoring_format, max_teams, max_roster_size, entry_fee_amount, entry_fee_currency, check_in_open, allow_self_check_in, status, seed_method, sort_order, notes, auto_approve, registration_mode, auto_promote_waitlist, grand_finals_reset, advancement_count, current_phase, report_to_dupr, report_to_vair, allow_ref_player_add, created_at, updated_at, deleted_at FROM divisions
+WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL
+`
+
+func (q *Queries) GetDivisionsByIDs(ctx context.Context, dollar_1 []int64) ([]Division, error) {
+	rows, err := q.db.Query(ctx, getDivisionsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Division{}
+	for rows.Next() {
+		var i Division
+		if err := rows.Scan(
+			&i.ID,
+			&i.TournamentID,
+			&i.Name,
+			&i.Slug,
+			&i.Format,
+			&i.GenderRestriction,
+			&i.AgeRestriction,
+			&i.SkillMin,
+			&i.SkillMax,
+			&i.RatingSystem,
+			&i.BracketFormat,
+			&i.ScoringFormat,
+			&i.MaxTeams,
+			&i.MaxRosterSize,
+			&i.EntryFeeAmount,
+			&i.EntryFeeCurrency,
+			&i.CheckInOpen,
+			&i.AllowSelfCheckIn,
+			&i.Status,
+			&i.SeedMethod,
+			&i.SortOrder,
+			&i.Notes,
+			&i.AutoApprove,
+			&i.RegistrationMode,
+			&i.AutoPromoteWaitlist,
+			&i.GrandFinalsReset,
+			&i.AdvancementCount,
+			&i.CurrentPhase,
+			&i.ReportToDupr,
+			&i.ReportToVair,
+			&i.AllowRefPlayerAdd,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDivisionsByTournament = `-- name: ListDivisionsByTournament :many
 SELECT id, tournament_id, name, slug, format, gender_restriction, age_restriction, skill_min, skill_max, rating_system, bracket_format, scoring_format, max_teams, max_roster_size, entry_fee_amount, entry_fee_currency, check_in_open, allow_self_check_in, status, seed_method, sort_order, notes, auto_approve, registration_mode, auto_promote_waitlist, grand_finals_reset, advancement_count, current_phase, report_to_dupr, report_to_vair, allow_ref_player_add, created_at, updated_at, deleted_at FROM divisions
 WHERE tournament_id = $1 AND deleted_at IS NULL

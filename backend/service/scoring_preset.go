@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/court-command/court-command/db/generated"
 )
@@ -106,7 +109,10 @@ func (s *ScoringPresetService) Create(ctx context.Context, params generated.Crea
 func (s *ScoringPresetService) GetByID(ctx context.Context, id int64) (ScoringPresetResponse, error) {
 	preset, err := s.queries.GetScoringPreset(ctx, id)
 	if err != nil {
-		return ScoringPresetResponse{}, &NotFoundError{Message: "scoring preset not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringPresetResponse{}, &NotFoundError{Message: "scoring preset not found"}
+		}
+		return ScoringPresetResponse{}, fmt.Errorf("get scoring preset by id: %w", err)
 	}
 	return toScoringPresetResponse(preset), nil
 }
@@ -143,7 +149,10 @@ func (s *ScoringPresetService) ListAll(ctx context.Context) ([]ScoringPresetResp
 func (s *ScoringPresetService) Update(ctx context.Context, id int64, params generated.UpdateScoringPresetParams) (ScoringPresetResponse, error) {
 	existing, err := s.queries.GetScoringPreset(ctx, id)
 	if err != nil {
-		return ScoringPresetResponse{}, &NotFoundError{Message: "scoring preset not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringPresetResponse{}, &NotFoundError{Message: "scoring preset not found"}
+		}
+		return ScoringPresetResponse{}, fmt.Errorf("get scoring preset for update: %w", err)
 	}
 	if existing.IsSystem {
 		return ScoringPresetResponse{}, &ForbiddenError{Message: "system presets cannot be modified"}
@@ -162,7 +171,10 @@ func (s *ScoringPresetService) Update(ctx context.Context, id int64, params gene
 func (s *ScoringPresetService) Deactivate(ctx context.Context, id int64) error {
 	existing, err := s.queries.GetScoringPreset(ctx, id)
 	if err != nil {
-		return &NotFoundError{Message: "scoring preset not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &NotFoundError{Message: "scoring preset not found"}
+		}
+		return fmt.Errorf("get scoring preset for deactivation: %w", err)
 	}
 	if existing.IsSystem {
 		return &ForbiddenError{Message: "system presets cannot be deactivated"}
@@ -175,7 +187,10 @@ func (s *ScoringPresetService) Deactivate(ctx context.Context, id int64) error {
 func (s *ScoringPresetService) Activate(ctx context.Context, id int64) error {
 	_, err := s.queries.GetScoringPreset(ctx, id)
 	if err != nil {
-		return &NotFoundError{Message: "scoring preset not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &NotFoundError{Message: "scoring preset not found"}
+		}
+		return fmt.Errorf("get scoring preset for activation: %w", err)
 	}
 
 	return s.queries.ActivateScoringPreset(ctx, id)
@@ -185,7 +200,10 @@ func (s *ScoringPresetService) Activate(ctx context.Context, id int64) error {
 func (s *ScoringPresetService) GetRawPreset(ctx context.Context, id int64) (generated.ScoringPreset, error) {
 	preset, err := s.queries.GetScoringPreset(ctx, id)
 	if err != nil {
-		return generated.ScoringPreset{}, &NotFoundError{Message: "scoring preset not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return generated.ScoringPreset{}, &NotFoundError{Message: "scoring preset not found"}
+		}
+		return generated.ScoringPreset{}, fmt.Errorf("get raw scoring preset: %w", err)
 	}
 	return preset, nil
 }

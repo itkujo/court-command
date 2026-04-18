@@ -409,6 +409,237 @@ func (s *MatchService) enrichedMatchResponse(ctx context.Context, m generated.Ma
 	return resp
 }
 
+// enrichMatchesBatch builds enriched MatchResponse slices for list endpoints
+// using batch queries instead of per-match sub-queries. This reduces the
+// query count from ~8N to a fixed 6 queries regardless of list size.
+//
+// Best-effort: any batch-fetch failure is logged and the corresponding fields
+// are left at zero values, matching enrichedMatchResponse semantics.
+func (s *MatchService) enrichMatchesBatch(ctx context.Context, matches []generated.Match) []MatchResponse {
+	n := len(matches)
+	if n == 0 {
+		return []MatchResponse{}
+	}
+
+	// --- 1. Collect unique IDs ---------------------------------------------------
+	matchIDs := make([]int64, n)
+	teamIDSet := make(map[int64]bool)
+	courtIDSet := make(map[int64]bool)
+	divisionIDSet := make(map[int64]bool)
+	tournamentIDSet := make(map[int64]bool)
+
+	for i, m := range matches {
+		matchIDs[i] = m.ID
+		if m.Team1ID.Valid {
+			teamIDSet[m.Team1ID.Int64] = true
+		}
+		if m.Team2ID.Valid {
+			teamIDSet[m.Team2ID.Int64] = true
+		}
+		if m.CourtID.Valid {
+			courtIDSet[m.CourtID.Int64] = true
+		}
+		if m.DivisionID.Valid {
+			divisionIDSet[m.DivisionID.Int64] = true
+		}
+		if m.TournamentID.Valid {
+			tournamentIDSet[m.TournamentID.Int64] = true
+		}
+	}
+
+	teamIDs := setToSlice(teamIDSet)
+	courtIDs := setToSlice(courtIDSet)
+	divisionIDs := setToSlice(divisionIDSet)
+	tournamentIDs := setToSlice(tournamentIDSet)
+
+	// --- 2. Batch fetch (best-effort, each failure is independent) ---------------
+
+	// Teams by ID → lookup map
+	teamMap := make(map[int64]generated.Team)
+	if len(teamIDs) > 0 {
+		teams, err := s.queries.GetTeamsByIDs(ctx, teamIDs)
+		if err != nil {
+			s.logger.Warn("batch enrichment: GetTeamsByIDs failed", "error", err)
+		} else {
+			for _, t := range teams {
+				teamMap[t.ID] = t
+			}
+		}
+	}
+
+	// Rosters by team ID → lookup map
+	rosterMap := make(map[int64][]PlayerSummary)
+	if len(teamIDs) > 0 {
+		rosterRows, err := s.queries.GetActiveRostersByTeamIDs(ctx, teamIDs)
+		if err != nil {
+			s.logger.Warn("batch enrichment: GetActiveRostersByTeamIDs failed", "error", err)
+		} else {
+			for _, r := range rosterRows {
+				display := ""
+				if r.DisplayName != nil && *r.DisplayName != "" {
+					display = *r.DisplayName
+				} else {
+					display = fmt.Sprintf("%s %s", r.FirstName, r.LastName)
+				}
+				rosterMap[r.TeamID] = append(rosterMap[r.TeamID], PlayerSummary{
+					ID:          r.PlayerID,
+					PublicID:    r.PublicID,
+					DisplayName: display,
+					AvatarURL:   r.AvatarUrl,
+				})
+			}
+		}
+	}
+
+	// Courts by ID → name lookup
+	courtNameMap := make(map[int64]string)
+	if len(courtIDs) > 0 {
+		courts, err := s.queries.GetCourtsByIDs(ctx, courtIDs)
+		if err != nil {
+			s.logger.Warn("batch enrichment: GetCourtsByIDs failed", "error", err)
+		} else {
+			for _, c := range courts {
+				courtNameMap[c.ID] = c.Name
+			}
+		}
+	}
+
+	// Divisions by ID → name lookup
+	divisionNameMap := make(map[int64]string)
+	if len(divisionIDs) > 0 {
+		divisions, err := s.queries.GetDivisionsByIDs(ctx, divisionIDs)
+		if err != nil {
+			s.logger.Warn("batch enrichment: GetDivisionsByIDs failed", "error", err)
+		} else {
+			for _, d := range divisions {
+				divisionNameMap[d.ID] = d.Name
+			}
+		}
+	}
+
+	// Tournaments by ID → name lookup
+	tournamentNameMap := make(map[int64]string)
+	if len(tournamentIDs) > 0 {
+		tournaments, err := s.queries.GetTournamentsByIDs(ctx, tournamentIDs)
+		if err != nil {
+			s.logger.Warn("batch enrichment: GetTournamentsByIDs failed", "error", err)
+		} else {
+			for _, t := range tournaments {
+				tournamentNameMap[t.ID] = t.Name
+			}
+		}
+	}
+
+	// Timeout events by match ID → count per team
+	type timeoutCounts struct {
+		team1 int32
+		team2 int32
+	}
+	timeoutMap := make(map[int64]timeoutCounts)
+	if len(matchIDs) > 0 {
+		events, err := s.queries.ListTimeoutEventsByMatchIDs(ctx, matchIDs)
+		if err != nil {
+			s.logger.Warn("batch enrichment: ListTimeoutEventsByMatchIDs failed", "error", err)
+		} else {
+			for _, ev := range events {
+				if len(ev.Payload) == 0 {
+					continue
+				}
+				var payload struct {
+					Team int32 `json:"team"`
+				}
+				if err := json.Unmarshal(ev.Payload, &payload); err != nil {
+					continue
+				}
+				tc := timeoutMap[ev.MatchID]
+				switch payload.Team {
+				case 1:
+					tc.team1++
+				case 2:
+					tc.team2++
+				}
+				timeoutMap[ev.MatchID] = tc
+			}
+		}
+	}
+
+	// --- 3. Assemble responses from lookup maps ----------------------------------
+	result := make([]MatchResponse, n)
+	for i, m := range matches {
+		resp := toMatchResponse(m)
+
+		// Team 1
+		if m.Team1ID.Valid {
+			if t, ok := teamMap[m.Team1ID.Int64]; ok {
+				summary := &TeamSummary{
+					ID:           t.ID,
+					Name:         t.Name,
+					ShortName:    t.ShortName,
+					PrimaryColor: t.PrimaryColor,
+					LogoURL:      t.LogoUrl,
+					Players:      rosterMap[t.ID],
+				}
+				resp.Team1 = summary
+			}
+		}
+
+		// Team 2
+		if m.Team2ID.Valid {
+			if t, ok := teamMap[m.Team2ID.Int64]; ok {
+				summary := &TeamSummary{
+					ID:           t.ID,
+					Name:         t.Name,
+					ShortName:    t.ShortName,
+					PrimaryColor: t.PrimaryColor,
+					LogoURL:      t.LogoUrl,
+					Players:      rosterMap[t.ID],
+				}
+				resp.Team2 = summary
+			}
+		}
+
+		// Division name
+		if m.DivisionID.Valid {
+			if name, ok := divisionNameMap[m.DivisionID.Int64]; ok {
+				resp.DivisionName = &name
+			}
+		}
+
+		// Tournament name
+		if m.TournamentID.Valid {
+			if name, ok := tournamentNameMap[m.TournamentID.Int64]; ok {
+				resp.TournamentName = &name
+			}
+		}
+
+		// Court name
+		if m.CourtID.Valid {
+			if name, ok := courtNameMap[m.CourtID.Int64]; ok {
+				resp.CourtName = &name
+			}
+		}
+
+		// Timeouts used
+		if tc, ok := timeoutMap[m.ID]; ok {
+			resp.Team1TimeoutsUsed = tc.team1
+			resp.Team2TimeoutsUsed = tc.team2
+		}
+
+		result[i] = resp
+	}
+
+	return result
+}
+
+// setToSlice converts a set (map[int64]bool) to a sorted slice.
+func setToSlice(s map[int64]bool) []int64 {
+	out := make([]int64, 0, len(s))
+	for id := range s {
+		out = append(out, id)
+	}
+	return out
+}
+
 // loadTeamSummary fetches a team plus its active roster and shapes the
 // public summary. Returns (nil, err) when the team itself can't be loaded
 // so callers can log with field-specific context. A missing roster is
@@ -528,7 +759,10 @@ func (s *MatchService) Create(ctx context.Context, params generated.CreateMatchP
 func (s *MatchService) GetByID(ctx context.Context, id int64) (MatchResponse, error) {
 	match, err := s.queries.GetMatch(ctx, id)
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return MatchResponse{}, fmt.Errorf("get match by id: %w", err)
 	}
 	return s.enrichedMatchResponse(ctx, match), nil
 }
@@ -537,7 +771,10 @@ func (s *MatchService) GetByID(ctx context.Context, id int64) (MatchResponse, er
 func (s *MatchService) GetByPublicID(ctx context.Context, publicID string) (MatchResponse, error) {
 	match, err := s.queries.GetMatchByPublicID(ctx, publicID)
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return MatchResponse{}, fmt.Errorf("get match by public id: %w", err)
 	}
 	return s.enrichedMatchResponse(ctx, match), nil
 }
@@ -559,11 +796,7 @@ func (s *MatchService) ListByDivision(ctx context.Context, divisionID int64, lim
 		return nil, 0, fmt.Errorf("failed to count matches: %w", err)
 	}
 
-	result := make([]MatchResponse, len(matches))
-	for i, m := range matches {
-		result[i] = s.enrichedMatchResponse(ctx, m)
-	}
-	return result, count, nil
+	return s.enrichMatchesBatch(ctx, matches), count, nil
 }
 
 // ListByPod returns paginated matches for a pod.
@@ -577,11 +810,7 @@ func (s *MatchService) ListByPod(ctx context.Context, podID int64, limit, offset
 		return nil, fmt.Errorf("failed to list matches: %w", err)
 	}
 
-	result := make([]MatchResponse, len(matches))
-	for i, m := range matches {
-		result[i] = s.enrichedMatchResponse(ctx, m)
-	}
-	return result, nil
+	return s.enrichMatchesBatch(ctx, matches), nil
 }
 
 // ListByCourt returns paginated matches for a court.
@@ -595,11 +824,7 @@ func (s *MatchService) ListByCourt(ctx context.Context, courtID int64, limit, of
 		return nil, fmt.Errorf("failed to list matches: %w", err)
 	}
 
-	result := make([]MatchResponse, len(matches))
-	for i, m := range matches {
-		result[i] = s.enrichedMatchResponse(ctx, m)
-	}
-	return result, nil
+	return s.enrichMatchesBatch(ctx, matches), nil
 }
 
 // ListByTeam returns paginated matches for a team.
@@ -619,11 +844,7 @@ func (s *MatchService) ListByTeam(ctx context.Context, teamID int64, limit, offs
 		return nil, 0, fmt.Errorf("failed to count matches: %w", err)
 	}
 
-	result := make([]MatchResponse, len(matches))
-	for i, m := range matches {
-		result[i] = s.enrichedMatchResponse(ctx, m)
-	}
-	return result, count, nil
+	return s.enrichMatchesBatch(ctx, matches), count, nil
 }
 
 // ListByTournament returns paginated matches for a tournament.
@@ -637,11 +858,7 @@ func (s *MatchService) ListByTournament(ctx context.Context, tournamentID int64,
 		return nil, fmt.Errorf("failed to list matches: %w", err)
 	}
 
-	result := make([]MatchResponse, len(matches))
-	for i, m := range matches {
-		result[i] = s.enrichedMatchResponse(ctx, m)
-	}
-	return result, nil
+	return s.enrichMatchesBatch(ctx, matches), nil
 }
 
 // ListQuickMatches returns paginated quick matches for a user.
@@ -655,18 +872,17 @@ func (s *MatchService) ListQuickMatches(ctx context.Context, userID int64, limit
 		return nil, fmt.Errorf("failed to list quick matches: %w", err)
 	}
 
-	result := make([]MatchResponse, len(matches))
-	for i, m := range matches {
-		result[i] = s.enrichedMatchResponse(ctx, m)
-	}
-	return result, nil
+	return s.enrichMatchesBatch(ctx, matches), nil
 }
 
 // UpdateStatus transitions a match to a new status.
 func (s *MatchService) UpdateStatus(ctx context.Context, id int64, newStatus string) (MatchResponse, error) {
 	match, err := s.queries.GetMatch(ctx, id)
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return MatchResponse{}, fmt.Errorf("get match for status update: %w", err)
 	}
 
 	allowed, ok := validMatchTransitions[match.Status]
@@ -725,7 +941,10 @@ func (s *MatchService) StartMatch(ctx context.Context, matchID int64, userID int
 
 	match, err := qtx.GetMatchForUpdate(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for start: %w", err)
 	}
 
 	if match.Status != "scheduled" && match.Status != "warmup" {
@@ -820,7 +1039,10 @@ func (s *MatchService) RecordEvent(ctx context.Context, matchID int64, eventType
 
 	match, err := qtx.GetMatchForUpdate(ctx, matchID)
 	if err != nil {
-		return MatchEventResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return MatchEventResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return MatchEventResponse{}, fmt.Errorf("get match for event recording: %w", err)
 	}
 
 	if match.Status != "in_progress" {
@@ -922,7 +1144,10 @@ func (s *MatchService) Undo(ctx context.Context, matchID int64, userID int64) (S
 
 	match, err := qtx.GetMatchForUpdate(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for undo: %w", err)
 	}
 
 	if match.Status != "in_progress" {
@@ -998,7 +1223,10 @@ func (s *MatchService) GetMatchEvents(ctx context.Context, matchID int64) ([]Mat
 	// Verify match exists
 	_, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return nil, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &NotFoundError{Message: "match not found"}
+		}
+		return nil, fmt.Errorf("get match for events: %w", err)
 	}
 
 	events, err := s.queries.ListMatchEvents(ctx, matchID)
@@ -1017,7 +1245,10 @@ func (s *MatchService) GetMatchEvents(ctx context.Context, matchID int64) ([]Mat
 func (s *MatchService) AssignToCourt(ctx context.Context, matchID int64, courtID int64) (MatchResponse, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return MatchResponse{}, fmt.Errorf("get match for court assignment: %w", err)
 	}
 
 	if match.Status == "completed" || match.Status == "cancelled" || match.Status == "forfeited" {
@@ -1041,7 +1272,10 @@ func (s *MatchService) AssignToCourt(ctx context.Context, matchID int64, courtID
 func (s *MatchService) UpdateScoringConfig(ctx context.Context, matchID int64, params generated.UpdateMatchScoringConfigParams) (MatchResponse, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return MatchResponse{}, fmt.Errorf("get match for scoring config update: %w", err)
 	}
 
 	if match.Status != "scheduled" && match.Status != "warmup" {
@@ -1066,7 +1300,10 @@ func (s *MatchService) UpdateNotes(ctx context.Context, matchID int64, notes *st
 		Notes: notes,
 	})
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return MatchResponse{}, fmt.Errorf("update match notes: %w", err)
 	}
 
 	return s.enrichedMatchResponse(ctx, updated), nil
@@ -1084,7 +1321,10 @@ func (s *MatchService) UpdateReferee(ctx context.Context, matchID int64, referee
 		RefereeUserID: refID,
 	})
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return MatchResponse{}, fmt.Errorf("update match referee: %w", err)
 	}
 
 	return s.enrichedMatchResponse(ctx, updated), nil
@@ -1118,18 +1358,17 @@ func (s *MatchService) ListLive(ctx context.Context, limit, offset int32) ([]Mat
 		return nil, 0, fmt.Errorf("failed to count live matches: %w", err)
 	}
 
-	result := make([]MatchResponse, len(matches))
-	for i, m := range matches {
-		result[i] = s.enrichedMatchResponse(ctx, m)
-	}
-	return result, count, nil
+	return s.enrichMatchesBatch(ctx, matches), count, nil
 }
 
 // CompleteMatch marks a match as completed with a result.
 func (s *MatchService) CompleteMatch(ctx context.Context, matchID int64, winnerTeamID, loserTeamID int64, winReason string) (MatchResponse, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return MatchResponse{}, fmt.Errorf("get match for completion: %w", err)
 	}
 
 	if match.Status != "in_progress" && match.Status != "paused" {
@@ -1162,7 +1401,10 @@ func (s *MatchService) UpdateTeams(ctx context.Context, matchID int64, params ge
 
 	updated, err := s.queries.UpdateMatchTeams(ctx, params)
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return MatchResponse{}, fmt.Errorf("update match teams: %w", err)
 	}
 
 	return s.enrichedMatchResponse(ctx, updated), nil
@@ -1174,7 +1416,10 @@ func (s *MatchService) UpdateBracketWiring(ctx context.Context, matchID int64, p
 
 	updated, err := s.queries.UpdateMatchBracketWiring(ctx, params)
 	if err != nil {
-		return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return MatchResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return MatchResponse{}, fmt.Errorf("update match bracket wiring: %w", err)
 	}
 
 	return s.enrichedMatchResponse(ctx, updated), nil
@@ -1270,7 +1515,10 @@ func (s *MatchService) applyEngineResult(
 
 	match, err := qtx.GetMatchForUpdate(ctx, matchID)
 	if err != nil {
-		return generated.Match{}, generated.MatchEvent{}, MatchResponse{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return generated.Match{}, generated.MatchEvent{}, MatchResponse{}, &NotFoundError{Message: "match not found"}
+		}
+		return generated.Match{}, generated.MatchEvent{}, MatchResponse{}, fmt.Errorf("get match for engine result: %w", err)
 	}
 
 	// Encode completed games as set_scores JSON.
@@ -1362,7 +1610,10 @@ func (s *MatchService) applyEngineResult(
 func (s *MatchService) ScorePoint(ctx context.Context, matchID int64, team int32, userID int64) (ScoringActionResult, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for score point: %w", err)
 	}
 
 	cfg := matchToScoringConfig(match)
@@ -1396,7 +1647,10 @@ func (s *MatchService) ScorePoint(ctx context.Context, matchID int64, team int32
 func (s *MatchService) SideOut(ctx context.Context, matchID int64, userID int64) (ScoringActionResult, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for side out: %w", err)
 	}
 
 	cfg := matchToScoringConfig(match)
@@ -1424,7 +1678,10 @@ func (s *MatchService) SideOut(ctx context.Context, matchID int64, userID int64)
 func (s *MatchService) RemovePoint(ctx context.Context, matchID int64, team int32, userID int64) (ScoringActionResult, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for remove point: %w", err)
 	}
 
 	cfg := matchToScoringConfig(match)
@@ -1454,7 +1711,10 @@ func (s *MatchService) RemovePoint(ctx context.Context, matchID int64, team int3
 func (s *MatchService) ConfirmGameOver(ctx context.Context, matchID int64, userID int64) (ScoringActionResult, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for confirm game over: %w", err)
 	}
 
 	cfg := matchToScoringConfig(match)
@@ -1482,7 +1742,10 @@ func (s *MatchService) ConfirmGameOver(ctx context.Context, matchID int64, userI
 func (s *MatchService) ConfirmMatchOver(ctx context.Context, matchID int64, winnerTeamID, loserTeamID int64, userID int64) (ScoringActionResult, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for confirm match over: %w", err)
 	}
 
 	cfg := matchToScoringConfig(match)
@@ -1566,7 +1829,10 @@ func (s *MatchService) ConfirmMatchOver(ctx context.Context, matchID int64, winn
 func (s *MatchService) CallTimeout(ctx context.Context, matchID int64, team int32, userID int64) (ScoringActionResult, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for timeout: %w", err)
 	}
 
 	cfg := matchToScoringConfig(match)
@@ -1595,7 +1861,10 @@ func (s *MatchService) CallTimeout(ctx context.Context, matchID int64, team int3
 func (s *MatchService) PauseMatch(ctx context.Context, matchID int64, userID int64) (ScoringActionResult, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for pause: %w", err)
 	}
 
 	cfg := matchToScoringConfig(match)
@@ -1622,7 +1891,10 @@ func (s *MatchService) PauseMatch(ctx context.Context, matchID int64, userID int
 func (s *MatchService) ResumeMatch(ctx context.Context, matchID int64, userID int64) (ScoringActionResult, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for resume: %w", err)
 	}
 
 	cfg := matchToScoringConfig(match)
@@ -1649,7 +1921,10 @@ func (s *MatchService) ResumeMatch(ctx context.Context, matchID int64, userID in
 func (s *MatchService) DeclareForfeit(ctx context.Context, matchID int64, forfeitingTeam int32, winnerTeamID, loserTeamID int64, userID int64) (ScoringActionResult, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for forfeit: %w", err)
 	}
 
 	cfg := matchToScoringConfig(match)
@@ -1735,7 +2010,10 @@ func (s *MatchService) OverrideScore(
 
 	match, err := qtx.GetMatchForUpdate(ctx, matchID)
 	if err != nil {
-		return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ScoringActionResult{}, &NotFoundError{Message: "match not found"}
+		}
+		return ScoringActionResult{}, fmt.Errorf("get match for score override: %w", err)
 	}
 
 	// Capture previous state for the audit event.

@@ -161,6 +161,52 @@ func (q *Queries) GetActiveRoster(ctx context.Context, teamID int64) ([]GetActiv
 	return items, nil
 }
 
+const getActiveRostersByTeamIDs = `-- name: GetActiveRostersByTeamIDs :many
+SELECT tr.team_id, tr.player_id, u.first_name, u.last_name, u.display_name, u.public_id, u.avatar_url
+FROM team_rosters tr
+JOIN users u ON u.id = tr.player_id
+WHERE tr.team_id = ANY($1::bigint[]) AND tr.left_at IS NULL AND u.deleted_at IS NULL
+ORDER BY tr.team_id, tr.role, u.last_name
+`
+
+type GetActiveRostersByTeamIDsRow struct {
+	TeamID      int64   `json:"team_id"`
+	PlayerID    int64   `json:"player_id"`
+	FirstName   string  `json:"first_name"`
+	LastName    string  `json:"last_name"`
+	DisplayName *string `json:"display_name"`
+	PublicID    string  `json:"public_id"`
+	AvatarUrl   *string `json:"avatar_url"`
+}
+
+func (q *Queries) GetActiveRostersByTeamIDs(ctx context.Context, dollar_1 []int64) ([]GetActiveRostersByTeamIDsRow, error) {
+	rows, err := q.db.Query(ctx, getActiveRostersByTeamIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetActiveRostersByTeamIDsRow{}
+	for rows.Next() {
+		var i GetActiveRostersByTeamIDsRow
+		if err := rows.Scan(
+			&i.TeamID,
+			&i.PlayerID,
+			&i.FirstName,
+			&i.LastName,
+			&i.DisplayName,
+			&i.PublicID,
+			&i.AvatarUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPlayerTeams = `-- name: GetPlayerTeams :many
 SELECT t.id, t.name, t.short_name, t.slug, t.logo_url, t.primary_color, t.secondary_color, t.org_id, t.city, t.founded_year, t.bio, t.created_at, t.updated_at, t.deleted_at, tr.role AS roster_role, tr.jersey_number, tr.joined_at AS roster_joined_at, tr.status AS roster_status
 FROM team_rosters tr

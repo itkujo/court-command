@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useAuth } from '../auth/hooks'
 import { useGetTournament, useListDivisions } from './hooks'
 import { TabLayout } from '../../components/TabLayout'
 import { Skeleton } from '../../components/Skeleton'
@@ -21,6 +22,8 @@ interface TournamentDetailProps {
 
 export function TournamentDetail({ tournamentId }: TournamentDetailProps) {
   const [activeTab, setActiveTab] = useState('overview')
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'tournament_director' || user?.role === 'admin'
   const { data: tournament, isLoading, error } = useGetTournament(tournamentId)
   const { data: divisions } = useListDivisions(tournamentId)
 
@@ -50,15 +53,17 @@ export function TournamentDetail({ tournamentId }: TournamentDetailProps) {
 
   const divisionCount = divisions?.length ?? 0
 
-  const tabs = [
+  const allTabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'divisions', label: 'Divisions', count: divisionCount },
     { id: 'courts', label: 'Courts' },
-    { id: 'registrations', label: 'Registrations' },
-    { id: 'announcements', label: 'Announcements' },
-    { id: 'staff', label: 'Staff' },
-    { id: 'settings', label: 'Settings' },
+    { id: 'registrations', label: 'Registrations', adminOnly: true },
+    { id: 'announcements', label: 'Announcements', adminOnly: true },
+    { id: 'staff', label: 'Staff', adminOnly: true },
+    { id: 'settings', label: 'Settings', adminOnly: true },
   ]
+
+  const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin)
 
   return (
     <div>
@@ -94,19 +99,19 @@ export function TournamentDetail({ tournamentId }: TournamentDetailProps) {
         {activeTab === 'courts' && (
           <TournamentCourts tournamentId={tournament.id} venueId={tournament.venue_id} />
         )}
-        {activeTab === 'registrations' && (
+        {isAdmin && activeTab === 'registrations' && (
           <RegistrationTable
             tournamentId={tournamentId}
             divisions={divisions ?? []}
           />
         )}
-        {activeTab === 'announcements' && (
+        {isAdmin && activeTab === 'announcements' && (
           <AnnouncementFeed tournamentId={tournamentId} />
         )}
-        {activeTab === 'staff' && tournament && (
+        {isAdmin && activeTab === 'staff' && tournament && (
           <TournamentStaff tournamentId={tournament.id} />
         )}
-        {activeTab === 'settings' && (
+        {isAdmin && activeTab === 'settings' && (
           <TournamentSettings
             tournament={tournament}
             tournamentId={tournamentId}

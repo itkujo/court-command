@@ -2,9 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/court-command/court-command/db/generated"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AdService struct {
@@ -78,7 +82,10 @@ func (s *AdService) ListAll(ctx context.Context) ([]AdResponse, error) {
 func (s *AdService) GetByID(ctx context.Context, id int64) (AdResponse, error) {
 	a, err := s.queries.GetAdByID(ctx, id)
 	if err != nil {
-		return AdResponse{}, &NotFoundError{Message: "ad not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AdResponse{}, &NotFoundError{Message: "ad not found"}
+		}
+		return AdResponse{}, fmt.Errorf("get ad by id: %w", err)
 	}
 	return toAdResponse(a), nil
 }
@@ -101,7 +108,10 @@ func (s *AdService) Update(ctx context.Context, id int64, params generated.Updat
 	params.ID = id
 	a, err := s.queries.UpdateAd(ctx, params)
 	if err != nil {
-		return AdResponse{}, &NotFoundError{Message: "ad not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AdResponse{}, &NotFoundError{Message: "ad not found"}
+		}
+		return AdResponse{}, fmt.Errorf("update ad: %w", err)
 	}
 	return toAdResponse(a), nil
 }
@@ -116,7 +126,10 @@ func (s *AdService) ToggleActive(ctx context.Context, id int64, active bool) (Ad
 		IsActive: pgtype.Bool{Bool: active, Valid: true},
 	})
 	if err != nil {
-		return AdResponse{}, &NotFoundError{Message: "ad not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AdResponse{}, &NotFoundError{Message: "ad not found"}
+		}
+		return AdResponse{}, fmt.Errorf("toggle ad active: %w", err)
 	}
 	return toAdResponse(a), nil
 }

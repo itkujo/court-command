@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/court-command/court-command/db/generated"
@@ -144,7 +146,10 @@ func (s *DivisionService) Create(ctx context.Context, params generated.CreateDiv
 func (s *DivisionService) GetByID(ctx context.Context, id int64) (DivisionResponse, error) {
 	division, err := s.queries.GetDivisionByID(ctx, id)
 	if err != nil {
-		return DivisionResponse{}, &NotFoundError{Message: "division not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return DivisionResponse{}, &NotFoundError{Message: "division not found"}
+		}
+		return DivisionResponse{}, fmt.Errorf("get division by id: %w", err)
 	}
 	return toDivisionResponse(division), nil
 }
@@ -156,7 +161,10 @@ func (s *DivisionService) GetBySlug(ctx context.Context, tournamentID int64, slu
 		Slug:         slug,
 	})
 	if err != nil {
-		return DivisionResponse{}, &NotFoundError{Message: "division not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return DivisionResponse{}, &NotFoundError{Message: "division not found"}
+		}
+		return DivisionResponse{}, fmt.Errorf("get division by slug: %w", err)
 	}
 	return toDivisionResponse(division), nil
 }
@@ -187,7 +195,10 @@ func (s *DivisionService) Update(ctx context.Context, id int64, params generated
 
 	division, err := s.queries.UpdateDivision(ctx, params)
 	if err != nil {
-		return DivisionResponse{}, &NotFoundError{Message: "division not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return DivisionResponse{}, &NotFoundError{Message: "division not found"}
+		}
+		return DivisionResponse{}, fmt.Errorf("update division: %w", err)
 	}
 
 	return toDivisionResponse(division), nil
@@ -211,7 +222,10 @@ var validDivisionTransitions = map[string][]string{
 func (s *DivisionService) UpdateStatus(ctx context.Context, id int64, newStatus string) (DivisionResponse, error) {
 	division, err := s.queries.GetDivisionByID(ctx, id)
 	if err != nil {
-		return DivisionResponse{}, &NotFoundError{Message: "division not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return DivisionResponse{}, &NotFoundError{Message: "division not found"}
+		}
+		return DivisionResponse{}, fmt.Errorf("get division for status update: %w", err)
 	}
 
 	allowed, ok := validDivisionTransitions[division.Status]
@@ -245,7 +259,10 @@ func (s *DivisionService) UpdateStatus(ctx context.Context, id int64, newStatus 
 func (s *DivisionService) CreateFromTemplate(ctx context.Context, tournamentID int64, templateID int64) (DivisionResponse, error) {
 	tmpl, err := s.queries.GetDivisionTemplateByID(ctx, templateID)
 	if err != nil {
-		return DivisionResponse{}, &NotFoundError{Message: "division template not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return DivisionResponse{}, &NotFoundError{Message: "division template not found"}
+		}
+		return DivisionResponse{}, fmt.Errorf("get division template by id: %w", err)
 	}
 
 	slug, err := s.generateUniqueSlug(ctx, tournamentID, tmpl.Name)

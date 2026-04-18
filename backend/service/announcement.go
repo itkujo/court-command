@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/court-command/court-command/db/generated"
@@ -87,7 +89,10 @@ func (s *AnnouncementService) Create(ctx context.Context, params generated.Creat
 func (s *AnnouncementService) GetByID(ctx context.Context, id int64) (AnnouncementResponse, error) {
 	announcement, err := s.queries.GetAnnouncementByID(ctx, id)
 	if err != nil {
-		return AnnouncementResponse{}, &NotFoundError{Message: "announcement not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AnnouncementResponse{}, &NotFoundError{Message: "announcement not found"}
+		}
+		return AnnouncementResponse{}, fmt.Errorf("get announcement by id: %w", err)
 	}
 	return toAnnouncementResponse(announcement), nil
 }
@@ -148,7 +153,10 @@ func (s *AnnouncementService) Update(ctx context.Context, id int64, params gener
 
 	announcement, err := s.queries.UpdateAnnouncement(ctx, params)
 	if err != nil {
-		return AnnouncementResponse{}, &NotFoundError{Message: "announcement not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AnnouncementResponse{}, &NotFoundError{Message: "announcement not found"}
+		}
+		return AnnouncementResponse{}, fmt.Errorf("update announcement: %w", err)
 	}
 
 	return toAnnouncementResponse(announcement), nil

@@ -471,7 +471,18 @@ func (s *VenueService) GetCourt(ctx context.Context, courtID int64) (CourtRespon
 	if err != nil {
 		return CourtResponse{}, &NotFoundError{Message: "court not found"}
 	}
-	return toCourtResponse(court), nil
+
+	resp := toCourtResponse(court)
+
+	// Enrich with venue name
+	if court.VenueID.Valid {
+		venue, err := s.queries.GetVenueByID(ctx, court.VenueID.Int64)
+		if err == nil {
+			resp.VenueName = &venue.Name
+		}
+	}
+
+	return resp, nil
 }
 
 // ListCourtsByVenue lists all courts for a venue.

@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/court-command/court-command/db/generated"
 )
@@ -62,7 +65,10 @@ func (s *PodService) Create(ctx context.Context, params generated.CreatePodParam
 func (s *PodService) GetByID(ctx context.Context, id int64) (PodResponse, error) {
 	pod, err := s.queries.GetPodByID(ctx, id)
 	if err != nil {
-		return PodResponse{}, &NotFoundError{Message: "pod not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return PodResponse{}, &NotFoundError{Message: "pod not found"}
+		}
+		return PodResponse{}, fmt.Errorf("get pod by id: %w", err)
 	}
 	return toPodResponse(pod), nil
 }
@@ -93,7 +99,10 @@ func (s *PodService) Update(ctx context.Context, id int64, params generated.Upda
 
 	pod, err := s.queries.UpdatePod(ctx, params)
 	if err != nil {
-		return PodResponse{}, &NotFoundError{Message: "pod not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return PodResponse{}, &NotFoundError{Message: "pod not found"}
+		}
+		return PodResponse{}, fmt.Errorf("update pod: %w", err)
 	}
 
 	return toPodResponse(pod), nil

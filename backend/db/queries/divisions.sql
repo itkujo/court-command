@@ -60,6 +60,10 @@ UPDATE divisions SET
 WHERE id = @id AND deleted_at IS NULL
 RETURNING *;
 
+-- name: GetDivisionsByIDs :many
+SELECT * FROM divisions
+WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL;
+
 -- name: SoftDeleteDivision :exec
 UPDATE divisions SET deleted_at = NOW(), updated_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL;

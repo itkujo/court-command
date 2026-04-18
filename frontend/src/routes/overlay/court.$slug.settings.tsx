@@ -138,8 +138,8 @@ function OverlaySettingsPage() {
   if (courtsQuery.isError) {
     return (
       <ErrorCard
-        title="Could not load courts"
-        message="We couldn't fetch the court list. Check your connection and try again."
+        title="Could not resolve court"
+        message="We couldn't look up this court. Check your connection and try again."
       />
     )
   }

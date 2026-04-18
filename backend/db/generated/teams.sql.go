@@ -178,6 +178,46 @@ func (q *Queries) GetTeamBySlug(ctx context.Context, slug string) (Team, error) 
 	return i, err
 }
 
+const getTeamsByIDs = `-- name: GetTeamsByIDs :many
+SELECT id, name, short_name, slug, logo_url, primary_color, secondary_color, org_id, city, founded_year, bio, created_at, updated_at, deleted_at FROM teams
+WHERE id = ANY($1::bigint[]) AND deleted_at IS NULL
+`
+
+func (q *Queries) GetTeamsByIDs(ctx context.Context, dollar_1 []int64) ([]Team, error) {
+	rows, err := q.db.Query(ctx, getTeamsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Team{}
+	for rows.Next() {
+		var i Team
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ShortName,
+			&i.Slug,
+			&i.LogoUrl,
+			&i.PrimaryColor,
+			&i.SecondaryColor,
+			&i.OrgID,
+			&i.City,
+			&i.FoundedYear,
+			&i.Bio,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTeams = `-- name: ListTeams :many
 SELECT id, name, short_name, slug, logo_url, primary_color, secondary_color, org_id, city, founded_year, bio, created_at, updated_at, deleted_at FROM teams
 WHERE deleted_at IS NULL

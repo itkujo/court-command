@@ -3,8 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/court-command/court-command/db/generated"
 )
@@ -145,7 +148,10 @@ func (s *LeagueService) Create(ctx context.Context, params generated.CreateLeagu
 func (s *LeagueService) GetByID(ctx context.Context, id int64) (LeagueResponse, error) {
 	league, err := s.queries.GetLeagueByID(ctx, id)
 	if err != nil {
-		return LeagueResponse{}, &NotFoundError{Message: "league not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return LeagueResponse{}, &NotFoundError{Message: "league not found"}
+		}
+		return LeagueResponse{}, fmt.Errorf("get league by id: %w", err)
 	}
 	return toLeagueResponse(league), nil
 }
@@ -154,7 +160,10 @@ func (s *LeagueService) GetByID(ctx context.Context, id int64) (LeagueResponse, 
 func (s *LeagueService) GetBySlug(ctx context.Context, slug string) (LeagueResponse, error) {
 	league, err := s.queries.GetLeagueBySlug(ctx, slug)
 	if err != nil {
-		return LeagueResponse{}, &NotFoundError{Message: "league not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return LeagueResponse{}, &NotFoundError{Message: "league not found"}
+		}
+		return LeagueResponse{}, fmt.Errorf("get league by slug: %w", err)
 	}
 	return toLeagueResponse(league), nil
 }
@@ -163,7 +172,10 @@ func (s *LeagueService) GetBySlug(ctx context.Context, slug string) (LeagueRespo
 func (s *LeagueService) GetByPublicID(ctx context.Context, publicID string) (LeagueResponse, error) {
 	league, err := s.queries.GetLeagueByPublicID(ctx, publicID)
 	if err != nil {
-		return LeagueResponse{}, &NotFoundError{Message: "league not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return LeagueResponse{}, &NotFoundError{Message: "league not found"}
+		}
+		return LeagueResponse{}, fmt.Errorf("get league by public id: %w", err)
 	}
 	return toLeagueResponse(league), nil
 }
@@ -221,7 +233,10 @@ func (s *LeagueService) Update(ctx context.Context, id int64, params generated.U
 
 	league, err := s.queries.UpdateLeague(ctx, params)
 	if err != nil {
-		return LeagueResponse{}, &NotFoundError{Message: "league not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return LeagueResponse{}, &NotFoundError{Message: "league not found"}
+		}
+		return LeagueResponse{}, fmt.Errorf("update league: %w", err)
 	}
 
 	return toLeagueResponse(league), nil
@@ -243,7 +258,10 @@ var validLeagueTransitions = map[string][]string{
 func (s *LeagueService) UpdateStatus(ctx context.Context, id int64, newStatus string) (LeagueResponse, error) {
 	league, err := s.queries.GetLeagueByID(ctx, id)
 	if err != nil {
-		return LeagueResponse{}, &NotFoundError{Message: "league not found"}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return LeagueResponse{}, &NotFoundError{Message: "league not found"}
+		}
+		return LeagueResponse{}, fmt.Errorf("get league for status update: %w", err)
 	}
 
 	allowed, ok := validLeagueTransitions[league.Status]

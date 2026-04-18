@@ -256,10 +256,17 @@ func New(cfg *Config) chi.Router {
 
 		// --- Phase 4E routes ---
 
-		// Match series (authenticated)
+		// Match series: split auth posture. Public reads for broadcast
+		// overlay and spectator views must NOT sit behind RequireAuth.
 		r.Route("/match-series", func(r chi.Router) {
-			r.Use(middleware.RequireAuth(cfg.SessionStore))
-			r.Mount("/", cfg.MatchSeriesHandler.Routes())
+			// Public reads (no auth) — registered directly like /matches.
+			r.Get("/public/{publicID}", cfg.MatchSeriesHandler.GetByPublicID)
+
+			// Authenticated writes/reads.
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireAuth(cfg.SessionStore))
+				r.Mount("/", cfg.MatchSeriesHandler.Routes())
+			})
 		})
 
 		// Division-scoped match series
@@ -302,8 +309,9 @@ func New(cfg *Config) chi.Router {
 
 		// Overlay routes (mixed public and authenticated)
 		r.Route("/overlay", func(r chi.Router) {
-			// Public routes (overlay data, themes, demo, webhook)
+			// Public routes (overlay data, themes, demo, webhook, slug resolution)
 			r.Get("/court/{courtID}/data", cfg.OverlayHandler.GetOverlayData)
+			r.Get("/court/{courtID}/resolve", cfg.OverlayHandler.ResolveCourtSlug)
 			r.Get("/themes", cfg.OverlayHandler.ListThemes)
 			r.Get("/themes/{themeID}", cfg.OverlayHandler.GetTheme)
 			r.Get("/demo-data", cfg.OverlayHandler.GetDemoData)

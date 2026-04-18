@@ -177,6 +177,33 @@ func (s *PlayerService) AcceptWaiver(ctx context.Context, userID int64) (Private
 	return toPrivateProfile(user), nil
 }
 
+// ListPlayers returns a paginated list of all (non-deleted, non-merged) players.
+func (s *PlayerService) ListPlayers(ctx context.Context, limit, offset int32) ([]PlayerProfileResponse, error) {
+	players, err := s.queries.ListPlayers(ctx, generated.ListPlayersParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list players: %w", err)
+	}
+
+	profiles := make([]PlayerProfileResponse, len(players))
+	for i, p := range players {
+		if p.IsProfileHidden {
+			profiles[i] = PlayerProfileResponse{
+				ID:        p.ID,
+				PublicID:  p.PublicID,
+				FirstName: p.FirstName,
+				LastName:  p.LastName,
+			}
+		} else {
+			profiles[i] = toPublicProfile(p)
+		}
+	}
+
+	return profiles, nil
+}
+
 // SearchPlayers searches for players with optional filters.
 func (s *PlayerService) SearchPlayers(ctx context.Context, params generated.SearchPlayersParams) ([]PlayerProfileResponse, int64, error) {
 	players, err := s.queries.SearchPlayers(ctx, params)
