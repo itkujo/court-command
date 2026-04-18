@@ -8,6 +8,9 @@ import {
   LayoutGrid,
   Zap,
   Megaphone,
+  Upload,
+  Key,
+  ScrollText,
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { Card } from '../../components/Card'
@@ -86,6 +89,9 @@ function getStatCards(stats: AdminStats) {
     { label: 'Total Courts', value: stats.total_courts, icon: LayoutGrid, to: '/courts' },
     { label: 'Active Matches', value: stats.active_matches, icon: Zap, to: '/ref' },
     { label: 'Ad Manager', value: -1, icon: Megaphone, to: '/admin/ads' },
+    { label: 'Uploads', value: -1, icon: Upload, to: '/admin/uploads' },
+    { label: 'API Keys', value: -1, icon: Key, to: '/admin/api-keys' },
+    { label: 'Activity Log', value: -1, icon: ScrollText, to: '/admin/activity' },
   ]
 }
 
