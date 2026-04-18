@@ -12,6 +12,7 @@ import { DivisionList } from './DivisionList'
 import { RegistrationTable } from './RegistrationTable'
 import { AnnouncementFeed } from './AnnouncementFeed'
 import { TournamentCourts } from './TournamentCourts'
+import { TournamentStaff } from './TournamentStaff'
 import { ChevronLeft } from 'lucide-react'
 
 interface TournamentDetailProps {
@@ -55,6 +56,7 @@ export function TournamentDetail({ tournamentId }: TournamentDetailProps) {
     { id: 'courts', label: 'Courts' },
     { id: 'registrations', label: 'Registrations' },
     { id: 'announcements', label: 'Announcements' },
+    { id: 'staff', label: 'Staff' },
     { id: 'settings', label: 'Settings' },
   ]
 
@@ -100,6 +102,9 @@ export function TournamentDetail({ tournamentId }: TournamentDetailProps) {
         )}
         {activeTab === 'announcements' && (
           <AnnouncementFeed tournamentId={tournamentId} />
+        )}
+        {activeTab === 'staff' && tournament && (
+          <TournamentStaff tournamentId={tournament.id} />
         )}
         {activeTab === 'settings' && (
           <TournamentSettings
