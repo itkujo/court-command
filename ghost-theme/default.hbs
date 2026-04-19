@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="{{@site.lang}}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{meta_title}}</title>
+    <link rel="stylesheet" href="{{asset "css/cc-nav.css"}}">
+    {{ghost_head}}
+</head>
+<body class="{{body_class}}">
+    {{> cc-sidebar}}
+
+    <div class="cc-layout">
+        <div class="cc-layout__main">
+            {{> cc-header}}
+            {{> cc-category-tabs}}
+            <main>
+                {{{body}}}
+            </main>
+        </div>
+    </div>
+
+    {{> cc-bottom-nav}}
+    {{ghost_foot}}
+</body>
+</html>

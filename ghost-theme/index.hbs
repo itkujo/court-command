@@ -1,0 +1,25 @@
+{{!< default}}
+
+<div class="gh-container" style="max-width: 720px; margin: 0 auto; padding: 2rem 1rem;">
+    {{#foreach posts}}
+    <article class="post-card" style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #e5e7eb;">
+        {{#if feature_image}}
+        <a href="{{url}}">
+            <img src="{{feature_image}}" alt="{{title}}" style="width: 100%; border-radius: 0.5rem; margin-bottom: 1rem;">
+        </a>
+        {{/if}}
+        <h2 style="margin: 0 0 0.5rem; font-size: 1.375rem;">
+            <a href="{{url}}" style="color: #1e293b; text-decoration: none;">{{title}}</a>
+        </h2>
+        <p style="color: #64748b; font-size: 0.9375rem; line-height: 1.6; margin: 0 0 0.75rem;">{{excerpt words="30"}}</p>
+        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: #94a3b8;">
+            {{#foreach tags limit="1"}}
+            <span style="background: rgba(34,211,238,0.1); color: #22d3ee; padding: 0.125rem 0.5rem; border-radius: 9999px;">{{name}}</span>
+            {{/foreach}}
+            <time datetime="{{date format="YYYY-MM-DD"}}">{{date format="MMM D, YYYY"}}</time>
+        </div>
+    </article>
+    {{/foreach}}
+
+    {{pagination}}
+</div>
