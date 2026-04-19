@@ -161,6 +161,10 @@ func main() {
 	uploadHandler := handler.NewUploadHandler(uploadService)
 	adHandler := handler.NewAdHandler(adService)
 
+	// CMS Settings
+	settingsService := service.NewSettingsService(pool)
+	settingsHandler := handler.NewSettingsHandler(settingsService)
+
 	// Phase 4C: WebSocket handler
 	wsHandler := ws.NewHandler(ps, logger)
 
@@ -223,6 +227,9 @@ func main() {
 		UploadHandler: uploadHandler,
 		ApiKeySvc:     apiKeyService,
 		AdHandler:     adHandler,
+
+		// CMS Settings
+		SettingsHandler: settingsHandler,
 
 		// Phase 4C
 		WSHandler: wsHandler.Routes(),
