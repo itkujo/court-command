@@ -1,8 +1,11 @@
 package testutil
 
 import (
+	"context"
+	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/court-command/court-command/db/generated"
@@ -13,6 +16,56 @@ import (
 	"github.com/court-command/court-command/session"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// TestServerWithAdmin creates an httptest.Server and a platform_admin session cookie.
+// It registers a user, promotes them to platform_admin, logs in to get a session
+// with the admin role, and returns (server, cookieHeader).
+func TestServerWithAdmin(t *testing.T, pool *pgxpool.Pool) (*httptest.Server, string) {
+	t.Helper()
+
+	ts := TestServer(t, pool)
+
+	// Register a user via the API
+	regBody := `{"email":"admin@test.com","password":"password123","first_name":"Admin","last_name":"Test","date_of_birth":"1990-01-01"}`
+	regResp, err := http.Post(ts.URL+"/api/v1/auth/register", "application/json", strings.NewReader(regBody))
+	if err != nil {
+		t.Fatalf("TestServerWithAdmin: register request failed: %v", err)
+	}
+	regResp.Body.Close()
+	if regResp.StatusCode != 201 {
+		t.Fatalf("TestServerWithAdmin: register expected 201, got %d", regResp.StatusCode)
+	}
+
+	// Promote to platform_admin in the database
+	_, err = pool.Exec(context.Background(), `UPDATE users SET role = 'platform_admin' WHERE email = 'admin@test.com'`)
+	if err != nil {
+		t.Fatalf("TestServerWithAdmin: promote to admin: %v", err)
+	}
+
+	// Login to get a session with the admin role
+	loginBody := `{"email":"admin@test.com","password":"password123"}`
+	loginResp, err := http.Post(ts.URL+"/api/v1/auth/login", "application/json", strings.NewReader(loginBody))
+	if err != nil {
+		t.Fatalf("TestServerWithAdmin: login request failed: %v", err)
+	}
+	loginResp.Body.Close()
+	if loginResp.StatusCode != 200 {
+		t.Fatalf("TestServerWithAdmin: login expected 200, got %d", loginResp.StatusCode)
+	}
+
+	var cookieHeader string
+	for _, c := range loginResp.Cookies() {
+		if c.Name == "cc_session" {
+			cookieHeader = c.Name + "=" + c.Value
+			break
+		}
+	}
+	if cookieHeader == "" {
+		t.Fatal("TestServerWithAdmin: no session cookie returned after login")
+	}
+
+	return ts, cookieHeader
+}
 
 // TestServer creates an httptest.Server wired with all real dependencies.
 // Uses Redis DB 1 to avoid colliding with dev data.
@@ -123,6 +176,10 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	adminHandler := handler.NewAdminHandler(queries, activityLogService, apiKeyService, store, uploadService)
 	uploadHandler := handler.NewUploadHandler(uploadService)
 
+	// CMS Settings
+	settingsService := service.NewSettingsService(pool)
+	settingsHandler := handler.NewSettingsHandler(settingsService)
+
 	r := router.New(&router.Config{
 		DB:             pool,
 		SessionStore:   store,
@@ -177,6 +234,9 @@ func TestServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 		AdminHandler:  adminHandler,
 		UploadHandler: uploadHandler,
 		ApiKeySvc:     apiKeyService,
+
+		// CMS Settings
+		SettingsHandler: settingsHandler,
 	})
 
 	ts := httptest.NewServer(r)
