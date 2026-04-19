@@ -1,6 +1,18 @@
 # docker-compose.yml
+# LOCAL DEV ONLY — Coolify deploys each service separately
+#
 # Development: `docker compose up` (db + redis + ghost, run backend locally)
-# Full stack: `docker compose --profile full up` (db + redis + ghost + backend)
+# Full stack:  `docker compose --profile full up` (db + redis + ghost + backend)
+#
+# Production (Coolify separate services):
+#   - PostgreSQL:  Coolify managed database
+#   - Redis:       Coolify managed database
+#   - Backend:     Docker build from backend/Dockerfile
+#   - Frontend:    Docker build from frontend/Dockerfile
+#   - Ghost:       ghost:5 image with env vars below
+#
+# See .env.example and frontend/.env.example for all environment variables.
+
 services:
   db:
     image: postgres:17-alpine
@@ -33,9 +45,10 @@ services:
     ports:
       - "2368:2368"
     environment:
-      url: http://localhost:2368
+      url: ${GHOST_URL:-http://localhost:2368}
       database__client: sqlite3
       database__connection__filename: /var/lib/ghost/content/data/ghost.db
+      NODE_ENV: development
     volumes:
       - ghost_content:/var/lib/ghost/content
 
@@ -47,11 +60,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: postgres://courtcommand:courtcommand@db:5432/courtcommand?sslmode=disable
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: ${DATABASE_URL:-postgres://courtcommand:courtcommand@db:5432/courtcommand?sslmode=disable}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       PORT: "8080"
-      ENV: production
-      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000
+      ENV: ${ENV:-production}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
     depends_on:
       db:
         condition: service_healthy
