@@ -1,4 +1,4 @@
-# docker-compose.yml
+# docker-compose.yaml
 # Complete Court Command stack — all 5 services
 #
 # Local dev:   `docker compose up db redis ghost`   (run backend + frontend locally)
@@ -7,6 +7,9 @@
 #
 # Set env vars in Coolify's UI or in a .env file locally.
 # See .env.example for all available variables.
+#
+# NOTE: No host port bindings — Coolify's proxy handles external routing.
+# For local dev, override with: docker compose -f docker-compose.yaml -f docker-compose.local.yaml up
 
 services:
   db:
@@ -15,8 +18,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-courtcommand}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-courtcommand}
       POSTGRES_DB: ${POSTGRES_DB:-courtcommand}
-    ports:
-      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -28,8 +29,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -41,14 +40,14 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "${BACKEND_PORT:-8080}:8080"
+    expose:
+      - "8080"
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgres://courtcommand:courtcommand@db:5432/courtcommand?sslmode=disable}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       PORT: "8080"
-      ENV: ${ENV:-development}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      ENV: ${ENV:-production}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://courtcommand.app,https://news.courtcommand.app}
     depends_on:
       db:
         condition: service_healthy
@@ -69,10 +68,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+        VITE_API_URL: ${VITE_API_URL:-https://api.courtcommand.app}
         VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
-    ports:
-      - "${FRONTEND_PORT:-3000}:80"
+    expose:
+      - "80"
     depends_on:
       backend:
         condition: service_healthy
@@ -80,13 +79,13 @@ services:
 
   ghost:
     image: ghost:5
-    ports:
-      - "${GHOST_PORT:-2368}:2368"
+    expose:
+      - "2368"
     environment:
-      url: ${GHOST_URL:-http://localhost:2368}
+      url: ${GHOST_URL:-https://news.courtcommand.app}
       database__client: sqlite3
       database__connection__filename: /var/lib/ghost/content/data/ghost.db
-      NODE_ENV: ${ENV:-development}
+      NODE_ENV: ${NODE_ENV:-production}
     volumes:
       - ghost_content:/var/lib/ghost/content
     restart: unless-stopped
