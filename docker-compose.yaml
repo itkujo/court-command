@@ -85,7 +85,7 @@ services:
       url: ${GHOST_URL:-https://news.courtcommand.app}
       database__client: sqlite3
       database__connection__filename: /var/lib/ghost/content/data/ghost.db
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: production
     volumes:
       - ghost_content:/var/lib/ghost/content
     restart: unless-stopped
