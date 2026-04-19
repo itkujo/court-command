@@ -9,13 +9,13 @@ up:
 down:
 	docker compose down
 
-# Run backend in development mode (db + redis in Docker, backend locally)
+# Run API in development mode (db + redis in Docker, API locally)
 dev: up
-	cd backend && go run main.go
+	cd api && go run main.go
 
-# Run frontend in development mode
+# Run web frontend in development mode
 dev-frontend:
-	cd frontend && pnpm dev
+	cd web && pnpm dev
 
 # Run backend + frontend in parallel (db + redis in Docker)
 dev-all: up
@@ -35,19 +35,19 @@ build:
 
 # Run migrations up
 migrate-up: up
-	cd backend && goose -dir db/migrations postgres "$(DATABASE_URL)" up
+	cd api && goose -dir db/migrations postgres "$(DATABASE_URL)" up
 
 # Run migrations down one step
 migrate-down:
-	cd backend && goose -dir db/migrations postgres "$(DATABASE_URL)" down
+	cd api && goose -dir db/migrations postgres "$(DATABASE_URL)" down
 
 # Create a new migration
 migrate-create:
-	cd backend && goose -dir db/migrations create $(name) sql
+	cd api && goose -dir db/migrations create $(name) sql
 
 # Generate sqlc code
 sqlc:
-	cd backend && sqlc generate
+	cd api && sqlc generate
 
 # Create test database (idempotent — safe to run repeatedly)
 test-db: up
@@ -58,12 +58,12 @@ test-db: up
 
 # Run tests (creates test-db first, migrations run automatically via TestDB)
 test: test-db
-	cd backend && go test ./... -v -count=1
+	cd api && go test ./... -v -count=1
 
 # Seed development data (all entity types — run after migrations)
 seed: up
 	@echo "Seeding development data..."
-	docker compose exec -T db psql -U courtcommand -d courtcommand < backend/db/seed.sql
+	docker compose exec -T db psql -U courtcommand -d courtcommand < api/db/seed.sql
 	@echo "Done! Login with admin@courtcommand.com / TestPass123!"
 
 # ---- Backup & Restore ----
@@ -81,8 +81,8 @@ backup-full:
 	@TIMESTAMP=$$(date +%Y%m%d-%H%M%S); \
 	docker compose exec -T db pg_dump -U courtcommand courtcommand > backups/db-$$TIMESTAMP.sql && \
 	echo "Database backup: backups/db-$$TIMESTAMP.sql"; \
-	if [ -d backend/uploads ] && [ "$$(ls -A backend/uploads 2>/dev/null)" ]; then \
-		tar czf backups/uploads-$$TIMESTAMP.tar.gz -C backend uploads && \
+	if [ -d api/uploads ] && [ "$$(ls -A api/uploads 2>/dev/null)" ]; then \
+		tar czf backups/uploads-$$TIMESTAMP.tar.gz -C api uploads && \
 		echo "Uploads backup: backups/uploads-$$TIMESTAMP.tar.gz"; \
 	else \
 		echo "No uploads to backup"; \
@@ -121,7 +121,7 @@ restore-uploads:
 		exit 1; \
 	fi
 	@echo "Restoring uploads from $(FILE)..."
-	@tar xzf $(FILE) -C backend/ && echo "Uploads restored."
+	@tar xzf $(FILE) -C api/ && echo "Uploads restored."
 
 # List all available backups
 backup-list:

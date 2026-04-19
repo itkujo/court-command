@@ -10,14 +10,14 @@ __debug_bin*
 vendor/
 tmp/
 .DS_Store
-backend/court-command
+api/court-command
 uploads/
 .superpowers/
 
-# Frontend
+# Web (frontend)
 node_modules/
-frontend/dist/
-frontend/src/routeTree.gen.ts
+web/dist/
+web/src/routeTree.gen.ts
 *.tsbuildinfo
 backups/
 ghost-theme/cc-ghost-theme.zip
