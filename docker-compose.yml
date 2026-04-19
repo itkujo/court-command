@@ -1,46 +1,54 @@
 # docker-compose.yml
-# Development: `docker compose up` (db + redis only, run backend locally)
-# Full stack: `docker compose --profile full up` (db + redis + backend)
+# Complete Court Command stack — all 5 services
+#
+# Local dev:   `docker compose up db redis ghost`   (run backend + frontend locally)
+# Full stack:  `docker compose up`                  (everything in Docker)
+# Coolify:     Deploy this file as a Docker Compose resource — one push, all services
+#
+# Set env vars in Coolify's UI or in a .env file locally.
+# See .env.example for all available variables.
+
 services:
   db:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: courtcommand
-      POSTGRES_PASSWORD: courtcommand
-      POSTGRES_DB: courtcommand
+      POSTGRES_USER: ${POSTGRES_USER:-courtcommand}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-courtcommand}
+      POSTGRES_DB: ${POSTGRES_DB:-courtcommand}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U courtcommand"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-courtcommand}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   backend:
-    profiles: ["full"]
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
     environment:
-      DATABASE_URL: postgres://courtcommand:courtcommand@db:5432/courtcommand?sslmode=disable
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: ${DATABASE_URL:-postgres://courtcommand:courtcommand@db:5432/courtcommand?sslmode=disable}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       PORT: "8080"
-      ENV: production
-      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000
+      ENV: ${ENV:-development}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
     depends_on:
       db:
         condition: service_healthy
@@ -54,7 +62,36 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+        VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ghost:
+    image: ghost:5
+    ports:
+      - "${GHOST_PORT:-2368}:2368"
+    environment:
+      url: ${GHOST_URL:-http://localhost:2368}
+      database__client: sqlite3
+      database__connection__filename: /var/lib/ghost/content/data/ghost.db
+      NODE_ENV: ${ENV:-development}
+    volumes:
+      - ghost_content:/var/lib/ghost/content
+    restart: unless-stopped
 
 volumes:
   pgdata:
   uploads:
+  ghost_content:

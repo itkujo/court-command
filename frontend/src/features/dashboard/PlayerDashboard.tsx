@@ -10,6 +10,7 @@ import { AdSlot } from '../../components/AdSlot'
 import { Card } from '../../components/Card'
 import { Skeleton } from '../../components/Skeleton'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { NewsWidget } from '../../components/NewsWidget'
 
 function DashboardSkeleton() {
   return (
@@ -115,6 +116,22 @@ export function PlayerDashboard() {
               </h2>
               <DashboardAnnouncements data={data.announcements} />
             </section>
+          </div>
+
+          {/* Two-col: News */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <NewsWidget
+              title="Tournament News"
+              tag="tournament-news"
+              limit={3}
+              viewAllUrl="https://news.courtcommand.app/tag/tournament-news"
+            />
+            <NewsWidget
+              title="League Updates"
+              tag="league-updates"
+              limit={3}
+              viewAllUrl="https://news.courtcommand.app/tag/league-updates"
+            />
           </div>
         </>
       )}

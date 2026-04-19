@@ -28,7 +28,7 @@ const TABS: TabItem[] = [
   { label: 'Home', icon: Home, path: '/' },
   { label: 'Events', icon: CalendarDays, path: '/public/events' },
   { label: 'Live', icon: Radio, path: '/public/live' },
-  { label: 'News', icon: Newspaper, href: 'https://news.courtcommand.com' },
+  { label: 'News', icon: Newspaper, href: 'https://news.courtcommand.app' },
   { label: 'More', icon: MoreHorizontal, action: 'more' },
 ]
 
@@ -136,13 +136,13 @@ export function PublicBottomTabs() {
               <MoreLink
                 icon={Info}
                 label="About"
-                href="https://courtcommand.com/about"
+                href="https://courtcommand.app/about"
                 onClick={() => setMoreOpen(false)}
               />
               <MoreLink
                 icon={Mail}
                 label="Contact"
-                href="https://courtcommand.com/contact"
+                href="https://courtcommand.app/contact"
                 onClick={() => setMoreOpen(false)}
               />
 

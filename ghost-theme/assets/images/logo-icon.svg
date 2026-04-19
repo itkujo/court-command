@@ -1,0 +1,8 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- First C (cyan, full opacity) -->
+  <path d="M22 10 C12 10, 6 17, 6 24 C6 31, 12 38, 22 38" stroke="#22d3ee" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <!-- Second C (white) -->
+  <path d="M26 10 C36 10, 42 17, 42 24 C42 31, 36 38, 26 38" stroke="#e2e8f0" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <!-- Net/divider line -->
+  <line x1="24" y1="6" x2="24" y2="42" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.4"/>
+</svg>

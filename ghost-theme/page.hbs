@@ -1,0 +1,19 @@
+{{!< default}}
+
+<article class="gh-article" style="max-width: 720px; margin: 0 auto; padding: 2rem 1rem;">
+    {{#if @page.show_title_and_feature_image}}
+    <header style="margin-bottom: 2rem;">
+        <h1 style="font-size: 2rem; font-weight: 700; color: #1e293b; margin: 0 0 1rem;">{{title}}</h1>
+    </header>
+
+    {{#if feature_image}}
+    <figure style="margin: 0 0 2rem;">
+        <img src="{{feature_image}}" alt="{{title}}" style="width: 100%; border-radius: 0.5rem;">
+    </figure>
+    {{/if}}
+    {{/if}}
+
+    <div class="gh-content" style="font-size: 1.0625rem; line-height: 1.75; color: #334155;">
+        {{content}}
+    </div>
+</article>

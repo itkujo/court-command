@@ -75,6 +75,9 @@ type Config struct {
 	// Phase 8: External API support
 	ApiKeySvc *service.ApiKeyService
 
+	// CMS Settings
+	SettingsHandler *handler.SettingsHandler
+
 	// Ads
 	AdHandler *handler.AdHandler
 
@@ -354,7 +357,16 @@ func New(cfg *Config) chi.Router {
 			if cfg.AdHandler != nil {
 				r.Mount("/ads", cfg.AdHandler.AdminRoutes())
 			}
+			if cfg.SettingsHandler != nil {
+				r.Get("/settings", cfg.SettingsHandler.GetAll)
+				r.Put("/settings", cfg.SettingsHandler.Update)
+			}
 		})
+
+		// Public settings endpoint (no auth)
+		if cfg.SettingsHandler != nil {
+			r.Get("/settings/ghost", cfg.SettingsHandler.GetGhostConfig)
+		}
 
 		// Public ads endpoint (active ads only, no auth)
 		if cfg.AdHandler != nil {

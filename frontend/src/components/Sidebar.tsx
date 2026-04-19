@@ -6,7 +6,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { Avatar } from './Avatar'
 import {
   LayoutDashboard, Trophy, Medal, MapPin, Users, UsersRound, Building2, Tv, Menu, ChevronLeft, LogOut,
-  Gavel, ClipboardList, Zap, Search, LogIn, Shield, Home, FolderKanban,
+  Gavel, ClipboardList, Zap, Search, LogIn, Shield, Home, FolderKanban, Newspaper,
 } from 'lucide-react'
 import { useSearchModal } from '../features/search/SearchContext'
 
@@ -25,7 +25,7 @@ interface SidebarProps {
 
 const STORAGE_KEY = 'cc_sidebar_expanded'
 
-interface NavItem { label: string; icon: typeof LayoutDashboard; path: string }
+interface NavItem { label: string; icon: typeof LayoutDashboard; path: string; href?: string }
 interface NavGroup { label?: string; items: NavItem[] }
 
 // Full nav for authenticated users
@@ -102,6 +102,7 @@ const publicNavGroups: NavGroup[] = [
     { label: 'Leagues', icon: Medal, path: '/public/leagues' },
     { label: 'Tournaments', icon: Trophy, path: '/public/tournaments' },
     { label: 'Venues', icon: MapPin, path: '/public/venues' },
+    { label: 'News', icon: Newspaper, path: '/news', href: 'https://news.courtcommand.app' },
   ]},
 ]
 
@@ -247,11 +248,23 @@ function NavContent({ expanded, isActive, navGroups }: { expanded: boolean; isAc
           <div className="space-y-0.5">
             {group.items.map((item) => {
               const active = isActive(item.path)
+              const classes = cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors', expanded ? '' : 'justify-center px-2',
+                active ? 'bg-cyan-500/10 text-cyan-400 font-medium' : 'text-(--color-text-secondary) hover:bg-(--color-bg-hover) hover:text-(--color-text-primary)'
+              )
+              if (item.href) {
+                return (
+                  <a key={item.path} href={item.href} target="_blank" rel="noopener noreferrer"
+                    className={classes}
+                    title={!expanded ? item.label : undefined}
+                  >
+                    <item.icon className="h-5 w-5 shrink-0" />
+                    {expanded && <span>{item.label}</span>}
+                  </a>
+                )
+              }
               return (
                 <Link key={item.path} to={item.path}
-                  className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors', expanded ? '' : 'justify-center px-2',
-                    active ? 'bg-cyan-500/10 text-cyan-400 font-medium' : 'text-(--color-text-secondary) hover:bg-(--color-bg-hover) hover:text-(--color-text-primary)'
-                  )}
+                  className={classes}
                   title={!expanded ? item.label : undefined}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />

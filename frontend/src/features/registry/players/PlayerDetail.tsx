@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { formatDate, formatPlayerName } from '../../../lib/formatters'
 import { AdSlot } from '../../../components/AdSlot'
+import { NewsWidget } from '../../../components/NewsWidget'
 
 interface PlayerDetailProps {
   playerId: string
@@ -92,6 +93,15 @@ export function PlayerDetail({ playerId }: PlayerDetailProps) {
           <InfoRow label="Profile Hidden" value={player.is_profile_hidden ? 'Yes' : 'No'} />
           <InfoRow label="Member Since" value={formatDate(player.created_at)} />
         </dl>
+      </div>
+
+      <div className="mt-6">
+        <NewsWidget
+          title="Player Headlines"
+          tag={`player-${player.public_id}`}
+          limit={3}
+          emptyMessage="No articles mentioning this player yet"
+        />
       </div>
 
       <AdSlot size="medium-rectangle" slot="player-detail-bottom" className="mt-6" />
