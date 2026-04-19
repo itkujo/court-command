@@ -6,6 +6,10 @@
     "ghost": ">=5.0.0"
   },
   "license": "MIT",
+  "author": {
+    "name": "Court Command",
+    "email": "hello@courtcommand.app"
+  },
   "config": {
     "posts_per_page": 15,
     "image_sizes": {

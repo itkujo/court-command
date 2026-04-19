@@ -111,7 +111,7 @@ export function AdminSettings() {
               type="url"
               value={ghostUrl}
               onChange={(e) => setGhostUrl(e.target.value)}
-              placeholder="https://news.courtcommand.com"
+              placeholder="https://news.courtcommand.app"
               className="w-full rounded-lg border border-(--color-border) bg-(--color-bg-primary) px-3 py-2 text-sm text-(--color-text-primary) placeholder:text-(--color-text-muted) focus:border-(--color-accent) focus:outline-none focus:ring-1 focus:ring-(--color-accent)"
             />
           </div>

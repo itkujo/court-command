@@ -83,7 +83,7 @@ func TestSettingsService_Update(t *testing.T) {
 
 	// Update ghost_url
 	err = svc.Update(context.Background(), map[string]string{
-		"ghost_url": "https://news.courtcommand.com",
+		"ghost_url": "https://news.courtcommand.app",
 	})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
@@ -94,7 +94,7 @@ func TestSettingsService_Update(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAll after update: %v", err)
 	}
-	if settings["ghost_url"] != "https://news.courtcommand.com" {
+	if settings["ghost_url"] != "https://news.courtcommand.app" {
 		t.Errorf("expected updated ghost_url, got %q", settings["ghost_url"])
 	}
 }

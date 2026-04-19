@@ -39,10 +39,10 @@ function PostCard({ post, ghostUrl }: { post: GhostPost; ghostUrl: string }) {
         <img
           src={post.feature_image}
           alt=""
-          className="h-14 w-14 shrink-0 rounded-md object-cover"
+          className="h-16 w-16 shrink-0 rounded-md object-cover"
         />
       ) : (
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-(--color-bg-primary)">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-(--color-bg-primary)">
           <Newspaper className="h-5 w-5 text-(--color-text-muted)" />
         </div>
       )}
@@ -50,6 +50,11 @@ function PostCard({ post, ghostUrl }: { post: GhostPost; ghostUrl: string }) {
         <p className="line-clamp-2 text-sm font-medium text-(--color-text-primary)">
           {post.title}
         </p>
+        {post.excerpt && (
+          <p className="mt-0.5 line-clamp-2 text-xs text-(--color-text-muted)">
+            {post.excerpt}
+          </p>
+        )}
         <div className="mt-1 flex items-center gap-2 text-xs text-(--color-text-muted)">
           {primaryTag && (
             <span className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-cyan-400">

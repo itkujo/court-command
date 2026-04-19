@@ -20,3 +20,4 @@ frontend/dist/
 frontend/src/routeTree.gen.ts
 *.tsbuildinfo
 backups/
+ghost-theme/cc-ghost-theme.zip

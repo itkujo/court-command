@@ -64,7 +64,7 @@ func TestUpdateAdminSettings(t *testing.T) {
 	ts, adminCookie := testutil.TestServerWithAdmin(t, pool)
 	defer ts.Close()
 
-	payload := `{"ghost_url":"https://news.courtcommand.com","ghost_content_api_key":"abc123"}`
+	payload := `{"ghost_url":"https://news.courtcommand.app","ghost_content_api_key":"abc123"}`
 	req, _ := http.NewRequest("PUT", ts.URL+"/api/v1/admin/settings", strings.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Cookie", adminCookie)
@@ -84,8 +84,8 @@ func TestUpdateAdminSettings(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if body.Settings["ghost_url"] != "https://news.courtcommand.com" {
-		t.Errorf("ghost_url = %q, want %q", body.Settings["ghost_url"], "https://news.courtcommand.com")
+	if body.Settings["ghost_url"] != "https://news.courtcommand.app" {
+		t.Errorf("ghost_url = %q, want %q", body.Settings["ghost_url"], "https://news.courtcommand.app")
 	}
 	if body.Settings["ghost_content_api_key"] != "abc123" {
 		t.Errorf("ghost_content_api_key = %q, want %q", body.Settings["ghost_content_api_key"], "abc123")
@@ -98,7 +98,7 @@ func TestGetGhostConfig_Public(t *testing.T) {
 	testutil.CleanTable(t, pool, "site_settings")
 
 	_, err := pool.Exec(context.Background(),
-		`INSERT INTO site_settings (key, value) VALUES ('ghost_url', 'https://news.courtcommand.com'), ('ghost_content_api_key', 'abc123')`)
+		`INSERT INTO site_settings (key, value) VALUES ('ghost_url', 'https://news.courtcommand.app'), ('ghost_content_api_key', 'abc123')`)
 	if err != nil {
 		t.Fatalf("seed site_settings: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestGetGhostConfig_Public(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if body["ghost_url"] != "https://news.courtcommand.com" {
+	if body["ghost_url"] != "https://news.courtcommand.app" {
 		t.Errorf("ghost_url = %q", body["ghost_url"])
 	}
 	if body["ghost_content_api_key"] != "abc123" {

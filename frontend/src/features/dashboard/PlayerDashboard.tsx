@@ -124,13 +124,13 @@ export function PlayerDashboard() {
               title="Tournament News"
               tag="tournament-news"
               limit={3}
-              viewAllUrl="https://news.courtcommand.com/tag/tournament-news"
+              viewAllUrl="https://news.courtcommand.app/tag/tournament-news"
             />
             <NewsWidget
               title="League Updates"
               tag="league-updates"
               limit={3}
-              viewAllUrl="https://news.courtcommand.com/tag/league-updates"
+              viewAllUrl="https://news.courtcommand.app/tag/league-updates"
             />
           </div>
         </>

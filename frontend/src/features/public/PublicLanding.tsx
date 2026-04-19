@@ -35,7 +35,7 @@ export function PublicLanding() {
       <NewsWidget
         title="Latest News"
         limit={3}
-        viewAllUrl="https://news.courtcommand.com"
+        viewAllUrl="https://news.courtcommand.app"
       />
 
       <DirectorySection

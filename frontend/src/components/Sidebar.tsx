@@ -102,7 +102,7 @@ const publicNavGroups: NavGroup[] = [
     { label: 'Leagues', icon: Medal, path: '/public/leagues' },
     { label: 'Tournaments', icon: Trophy, path: '/public/tournaments' },
     { label: 'Venues', icon: MapPin, path: '/public/venues' },
-    { label: 'News', icon: Newspaper, path: '/news', href: 'https://news.courtcommand.com' },
+    { label: 'News', icon: Newspaper, path: '/news', href: 'https://news.courtcommand.app' },
   ]},
 ]
 
