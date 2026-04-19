@@ -1,6 +1,6 @@
 # docker-compose.yml
-# Development: `docker compose up` (db + redis only, run backend locally)
-# Full stack: `docker compose --profile full up` (db + redis + backend)
+# Development: `docker compose up` (db + redis + ghost, run backend locally)
+# Full stack: `docker compose --profile full up` (db + redis + ghost + backend)
 services:
   db:
     image: postgres:17-alpine
@@ -27,6 +27,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  ghost:
+    image: ghost:5
+    ports:
+      - "2368:2368"
+    environment:
+      url: http://localhost:2368
+      database__client: sqlite3
+      database__connection__filename: /var/lib/ghost/content/data/ghost.db
+    volumes:
+      - ghost_content:/var/lib/ghost/content
 
   backend:
     profiles: ["full"]
@@ -58,3 +69,4 @@ services:
 volumes:
   pgdata:
   uploads:
+  ghost_content:
