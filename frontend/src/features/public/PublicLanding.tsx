@@ -22,6 +22,7 @@ import {
 } from './hooks'
 import { formatDate } from '../../lib/formatters'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { NewsWidget } from '../../components/NewsWidget'
 
 export function PublicLanding() {
   usePageTitle()
@@ -30,6 +31,12 @@ export function PublicLanding() {
       <PublicHero />
 
       <AdSlot size="responsive-banner" className="my-6" />
+
+      <NewsWidget
+        title="Latest News"
+        limit={3}
+        viewAllUrl="https://news.courtcommand.com"
+      />
 
       <DirectorySection
         title="Tournaments"
