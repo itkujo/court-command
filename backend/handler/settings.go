@@ -62,3 +62,13 @@ func (h *SettingsHandler) GetGhostConfig(w http.ResponseWriter, r *http.Request)
 	}
 	Success(w, config)
 }
+
+// GetGoogleMapsConfig returns the Google Maps API key (public, no auth).
+func (h *SettingsHandler) GetGoogleMapsConfig(w http.ResponseWriter, r *http.Request) {
+	config, err := h.svc.GetGoogleMapsConfig(r.Context())
+	if err != nil {
+		InternalError(w, "failed to load google maps config")
+		return
+	}
+	Success(w, config)
+}

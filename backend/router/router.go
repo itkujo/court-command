@@ -363,9 +363,10 @@ func New(cfg *Config) chi.Router {
 			}
 		})
 
-		// Public settings endpoint (no auth)
+		// Public settings endpoints (no auth)
 		if cfg.SettingsHandler != nil {
 			r.Get("/settings/ghost", cfg.SettingsHandler.GetGhostConfig)
+			r.Get("/settings/google-maps", cfg.SettingsHandler.GetGoogleMapsConfig)
 		}
 
 		// Public ads endpoint (active ads only, no auth)

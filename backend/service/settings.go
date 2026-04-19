@@ -56,6 +56,26 @@ func (s *SettingsService) GetGhostConfig(ctx context.Context) (map[string]string
 	return config, rows.Err()
 }
 
+// GetGoogleMapsConfig returns the Google Maps API key setting.
+func (s *SettingsService) GetGoogleMapsConfig(ctx context.Context) (map[string]string, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT key, value FROM site_settings WHERE key = 'google_maps_api_key'`)
+	if err != nil {
+		return nil, fmt.Errorf("query google maps config: %w", err)
+	}
+	defer rows.Close()
+
+	config := make(map[string]string)
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			return nil, fmt.Errorf("scan google maps config row: %w", err)
+		}
+		config[k] = v
+	}
+	return config, rows.Err()
+}
+
 // Update updates one or more settings. Returns an error if any key does not exist.
 func (s *SettingsService) Update(ctx context.Context, updates map[string]string) error {
 	tx, err := s.pool.Begin(ctx)

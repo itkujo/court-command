@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Settings, Save, AlertCircle, Loader2 } from 'lucide-react'
+import { Settings, Save, AlertCircle, Loader2, MapPin } from 'lucide-react'
 import { Card } from '../../components/Card'
 import { Skeleton } from '../../components/Skeleton'
 import { useToast } from '../../components/Toast'
@@ -35,11 +35,13 @@ export function AdminSettings() {
   const mutation = useUpdateSettings()
   const [ghostUrl, setGhostUrl] = useState('')
   const [ghostApiKey, setGhostApiKey] = useState('')
+  const [googleMapsApiKey, setGoogleMapsApiKey] = useState('')
 
   useEffect(() => {
     if (data?.settings) {
       setGhostUrl(data.settings.ghost_url ?? '')
       setGhostApiKey(data.settings.ghost_content_api_key ?? '')
+      setGoogleMapsApiKey(data.settings.google_maps_api_key ?? '')
     }
   }, [data])
 
@@ -49,6 +51,7 @@ export function AdminSettings() {
       {
         ghost_url: ghostUrl.trim(),
         ghost_content_api_key: ghostApiKey.trim(),
+        google_maps_api_key: googleMapsApiKey.trim(),
       },
       {
         onSuccess: () => toast('success', 'Settings saved'),
@@ -133,6 +136,33 @@ export function AdminSettings() {
             />
             <p className="mt-1 text-xs text-(--color-text-muted)">
               Found in Ghost Admin under Settings &rarr; Integrations &rarr; Custom
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 border-b border-(--color-border) pb-3 pt-4">
+            <MapPin className="h-5 w-5 text-(--color-text-muted)" />
+            <h2 className="text-lg font-semibold text-(--color-text-primary)">
+              Google Maps
+            </h2>
+          </div>
+
+          <div>
+            <label
+              htmlFor="google-maps-api-key"
+              className="mb-1 block text-sm font-medium text-(--color-text-secondary)"
+            >
+              API Key
+            </label>
+            <input
+              id="google-maps-api-key"
+              type="text"
+              value={googleMapsApiKey}
+              onChange={(e) => setGoogleMapsApiKey(e.target.value)}
+              placeholder="Google Maps API key"
+              className="w-full rounded-lg border border-(--color-border) bg-(--color-bg-primary) px-3 py-2 text-sm text-(--color-text-primary) placeholder:text-(--color-text-muted) focus:border-(--color-accent) focus:outline-none focus:ring-1 focus:ring-(--color-accent)"
+            />
+            <p className="mt-1 text-xs text-(--color-text-muted)">
+              From Google Cloud Console &rarr; APIs &amp; Services &rarr; Credentials
             </p>
           </div>
 
