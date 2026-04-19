@@ -9,18 +9,20 @@ FROM node:20-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
-# Declare build args — Vite reads these as env vars during build
+# Only declare the build args we actually need.
+# Coolify injects many others (DATABASE_URL, POSTGRES_PASSWORD, etc.) but we
+# intentionally do NOT declare them as ARG so they're ignored in this stage.
 ARG VITE_API_URL
 ARG VITE_GOOGLE_MAPS_API_KEY
 
 COPY package.json pnpm-lock.yaml ./
-# Coolify injects ARG NODE_ENV=production which causes pnpm to skip devDependencies.
-# Override inline to ensure Vite, TypeScript, etc. are installed for the build.
 RUN NODE_ENV=development pnpm install --frozen-lockfile
 COPY . .
-# Debug: show what Vite will see
-RUN echo "VITE_API_URL=$VITE_API_URL" && echo "node=$(node -v)" && echo "pnpm=$(pnpm -v)"
-RUN NODE_ENV=production pnpm build
+# Use shell form with explicit env to avoid any leaked ARGs interfering
+RUN set -e; \
+    export NODE_ENV=production; \
+    export NODE_OPTIONS="--max-old-space-size=512"; \
+    pnpm build
 
 FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf

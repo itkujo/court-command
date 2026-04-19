@@ -28,7 +28,7 @@ func Load() (*Config, error) {
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		RedisURL:    os.Getenv("REDIS_URL"),
 		Port:        os.Getenv("PORT"),
-		Env:         os.Getenv("ENV"),
+		Env:         os.Getenv("APP_ENV"),
 	}
 
 	if cfg.DatabaseURL == "" {
