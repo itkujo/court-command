@@ -18,6 +18,8 @@ COPY package.json pnpm-lock.yaml ./
 # Override inline to ensure Vite, TypeScript, etc. are installed for the build.
 RUN NODE_ENV=development pnpm install --frozen-lockfile
 COPY . .
+# Debug: show what Vite will see
+RUN echo "VITE_API_URL=$VITE_API_URL" && echo "node=$(node -v)" && echo "pnpm=$(pnpm -v)"
 RUN NODE_ENV=production pnpm build
 
 FROM nginx:alpine
