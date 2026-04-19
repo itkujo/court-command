@@ -11,6 +11,7 @@ import {
   Upload,
   Key,
   ScrollText,
+  Settings,
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { Card } from '../../components/Card'
@@ -92,6 +93,7 @@ function getStatCards(stats: AdminStats) {
     { label: 'Uploads', value: -1, icon: Upload, to: '/admin/uploads' },
     { label: 'API Keys', value: -1, icon: Key, to: '/admin/api-keys' },
     { label: 'Activity Log', value: -1, icon: ScrollText, to: '/admin/activity' },
+    { label: 'Settings', value: -1, icon: Settings, to: '/admin/settings' },
   ]
 }
 
