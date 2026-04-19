@@ -14,13 +14,11 @@ ARG VITE_API_URL
 ARG VITE_GOOGLE_MAPS_API_KEY
 
 COPY package.json pnpm-lock.yaml ./
-# Force NODE_ENV=development so devDependencies (Vite, TypeScript, etc.) are installed.
-# Coolify injects NODE_ENV=production as a build arg which would skip them.
-ENV NODE_ENV=development
-RUN pnpm install --frozen-lockfile
+# Coolify injects ARG NODE_ENV=production which causes pnpm to skip devDependencies.
+# Override inline to ensure Vite, TypeScript, etc. are installed for the build.
+RUN NODE_ENV=development pnpm install --frozen-lockfile
 COPY . .
-# Vite reads VITE_* env vars at build time — ARGs above are available here
-RUN pnpm build
+RUN NODE_ENV=production pnpm build
 
 FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
