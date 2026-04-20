@@ -18,17 +18,18 @@ interface DivisionFormProps {
   onCancel: () => void
 }
 
+// Values MUST match CHECK constraints in api/db/migrations/00011_create_divisions.sql
 const FORMAT_OPTIONS = [
   { value: 'singles', label: 'Singles' },
   { value: 'doubles', label: 'Doubles' },
   { value: 'mixed_doubles', label: 'Mixed Doubles' },
-  { value: 'team', label: 'Team' },
+  { value: 'team_match', label: 'Team Match' },
 ]
 
 const GENDER_OPTIONS = [
   { value: 'open', label: 'Open' },
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
+  { value: 'mens', label: "Men's" },
+  { value: 'womens', label: "Women's" },
   { value: 'mixed', label: 'Mixed' },
 ]
 
@@ -37,13 +38,12 @@ const BRACKET_OPTIONS = [
   { value: 'double_elimination', label: 'Double Elimination' },
   { value: 'round_robin', label: 'Round Robin' },
   { value: 'pool_play', label: 'Pool Play' },
-  { value: 'swiss', label: 'Swiss' },
+  { value: 'pool_to_bracket', label: 'Pool to Bracket' },
 ]
 
 const REGISTRATION_MODE_OPTIONS = [
-  { value: 'team', label: 'Team' },
-  { value: 'individual', label: 'Individual' },
-  { value: 'pair', label: 'Pair' },
+  { value: 'open', label: 'Open' },
+  { value: 'invite_only', label: 'Invite Only' },
 ]
 
 export function DivisionForm({
@@ -70,7 +70,7 @@ export function DivisionForm({
     entry_fee_amount: division?.entry_fee_amount ?? null as number | null,
     entry_fee_currency: division?.entry_fee_currency ?? 'USD',
     auto_approve: division?.auto_approve ?? false,
-    registration_mode: division?.registration_mode ?? 'team',
+    registration_mode: division?.registration_mode ?? 'open',
     seed_method: division?.seed_method ?? 'manual',
   })
 
