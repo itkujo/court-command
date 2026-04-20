@@ -137,6 +137,14 @@ make restore-db FILE=backups/xxx.sql.gz
 make full             # All services in Docker
 ```
 
+## Source of Truth Rules (Critical)
+
+- **Database schema is the master source of truth.** Frontend forms, API payloads, and TypeScript types MUST match DB CHECK constraints, enum values, and column definitions exactly.
+- When adding/editing forms with enum-like fields (`format`, `status`, `bracket_format`, `registration_mode`, `gender_restriction`, `seed_method`, etc.), open the corresponding migration in `api/db/migrations/` and copy the `CHECK (x IN (...))` values verbatim.
+- If the frontend needs different UX labels (e.g., "Men's" vs `mens`), keep DB values in `value=` and only change the display `label`.
+- Changing DB constraints requires a new migration + `sqlc generate` + updating any code that references the old values.
+- **Do not** "fix" a frontend/backend value mismatch by making the DB loosen its constraints unless the product genuinely needs new values — prefer aligning the caller to the DB.
+
 ## Codebase Patterns (Critical for New Agents)
 
 ### Backend
