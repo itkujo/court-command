@@ -217,10 +217,11 @@ func (h *AdminHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Values MUST match CHECK constraint in api/db/migrations/00030_expand_user_roles.sql
 	validRoles := map[string]bool{
 		"player": true, "platform_admin": true, "tournament_director": true,
 		"head_referee": true, "referee": true, "scorekeeper": true,
-		"broadcast_operator": true, "league_admin": true, "org_admin": true,
+		"broadcast_operator": true, "league_admin": true, "organization_admin": true,
 		"team_coach": true, "api_readonly": true,
 	}
 	if !validRoles[body.Role] {
