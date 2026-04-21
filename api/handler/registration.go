@@ -303,7 +303,9 @@ func (h *RegistrationHandler) WithdrawMidTournament(w http.ResponseWriter, r *ht
 	Success(w, reg)
 }
 
-// BulkNoShow marks all non-checked-in registrations as no-show.
+// BulkNoShow marks the given registration IDs as no-show, scoped to the
+// division in the URL. Callers must supply registration_ids explicitly;
+// there is no "mark everyone" shortcut.
 func (h *RegistrationHandler) BulkNoShow(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
@@ -317,12 +319,20 @@ func (h *RegistrationHandler) BulkNoShow(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.regSvc.BulkNoShow(r.Context(), divisionID); err != nil {
+	var body struct {
+		RegistrationIDs []int64 `json:"registration_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		WriteError(w, http.StatusBadRequest, "INVALID_BODY", "Invalid request body; expected {\"registration_ids\": [1,2,3]}")
+		return
+	}
+
+	if err := h.regSvc.BulkNoShow(r.Context(), divisionID, body.RegistrationIDs); err != nil {
 		HandleServiceError(w, err)
 		return
 	}
 
-	Success(w, map[string]string{"message": "bulk no-show completed"})
+	Success(w, map[string]interface{}{"message": "bulk no-show completed", "count": len(body.RegistrationIDs)})
 }
 
 // ListSeekingPartner lists registrations that are seeking a partner.

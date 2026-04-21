@@ -261,9 +261,18 @@ func (s *RegistrationService) UpdatePlacement(ctx context.Context, id int64, pla
 	return toRegistrationResponse(reg), nil
 }
 
-// BulkNoShow marks all non-checked-in registrations in a division as no_show.
-func (s *RegistrationService) BulkNoShow(ctx context.Context, divisionID int64) error {
-	return s.queries.BulkUpdateNoShow(ctx, divisionID)
+// BulkNoShow marks the given registration IDs as no_show, scoped to the
+// provided division. Passing an empty slice is a no-op (not an error).
+// Registrations already in a terminal or checked-in state are skipped by the
+// query itself.
+func (s *RegistrationService) BulkNoShow(ctx context.Context, divisionID int64, registrationIDs []int64) error {
+	if len(registrationIDs) == 0 {
+		return &ValidationError{Message: "registration_ids must be a non-empty array"}
+	}
+	return s.queries.BulkUpdateNoShow(ctx, generated.BulkUpdateNoShowParams{
+		DivisionID:      divisionID,
+		RegistrationIds: registrationIDs,
+	})
 }
 
 // ListSeekingPartner returns registrations that are seeking a partner.
