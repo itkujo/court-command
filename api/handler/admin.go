@@ -48,8 +48,8 @@ func (h *AdminHandler) Routes() chi.Router {
 	r.Get("/users", h.SearchUsers)
 	r.Post("/users/create-player", h.CreateUnclaimedPlayer)
 	r.Get("/users/{userID}", h.GetUser)
-	r.Put("/users/{userID}/role", h.UpdateUserRole)
-	r.Put("/users/{userID}/status", h.UpdateUserStatus)
+	r.Patch("/users/{userID}/role", h.UpdateUserRole)
+	r.Patch("/users/{userID}/status", h.UpdateUserStatus)
 
 	// Venue management
 	r.Get("/venues/pending", h.ListPendingVenues)
@@ -196,7 +196,7 @@ func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	Success(w, toAdminUserResponse(user))
 }
 
-// UpdateUserRole handles PUT /api/v1/admin/users/{userID}/role
+// UpdateUserRole handles PATCH /api/v1/admin/users/{userID}/role
 func (h *AdminHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
@@ -243,7 +243,7 @@ func (h *AdminHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 	Success(w, toAdminUserResponse(user))
 }
 
-// UpdateUserStatus handles PUT /api/v1/admin/users/{userID}/status
+// UpdateUserStatus handles PATCH /api/v1/admin/users/{userID}/status
 func (h *AdminHandler) UpdateUserStatus(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
@@ -257,7 +257,8 @@ func (h *AdminHandler) UpdateUserStatus(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var body struct {
-		Status string `json:"status"`
+		Status string  `json:"status"`
+		Reason *string `json:"reason"`
 	}
 	if errMsg := DecodeJSON(r, &body); errMsg != "" {
 		BadRequest(w, errMsg)
@@ -284,7 +285,11 @@ func (h *AdminHandler) UpdateUserStatus(w http.ResponseWriter, r *http.Request) 
 		_ = h.sessionStore.DeleteAllForUser(r.Context(), target.ID)
 	}
 
-	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_user_status", "user", &target.ID, map[string]string{"new_status": body.Status}, r.RemoteAddr)
+	activityMeta := map[string]string{"new_status": body.Status}
+	if body.Reason != nil && *body.Reason != "" {
+		activityMeta["reason"] = *body.Reason
+	}
+	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_user_status", "user", &target.ID, activityMeta, r.RemoteAddr)
 
 	Success(w, toAdminUserResponse(user))
 }
