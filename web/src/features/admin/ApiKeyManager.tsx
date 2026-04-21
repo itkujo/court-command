@@ -51,8 +51,8 @@ export function ApiKeyManager() {
       },
       {
         onSuccess: (data) => {
-          if (data.key) {
-            setCreatedKey(data.key)
+          if (data.raw_key) {
+            setCreatedKey(data.raw_key)
           } else {
             toast('success', 'API key created')
             setShowCreate(false)

@@ -566,24 +566,35 @@ func (h *AdminHandler) CreateApiKey(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Name      string   `json:"name"`
 		Scopes    []string `json:"scopes"`
-		ExpiresIn *string  `json:"expires_in"` // e.g. "720h" for 30 days
+		ExpiresAt *string  `json:"expires_at"` // ISO date (YYYY-MM-DD) or RFC3339 timestamp
 	}
 	if errMsg := DecodeJSON(r, &body); errMsg != "" {
 		BadRequest(w, errMsg)
 		return
 	}
 
-	var expiresIn *time.Duration
-	if body.ExpiresIn != nil && *body.ExpiresIn != "" {
-		d, err := time.ParseDuration(*body.ExpiresIn)
+	var expiresAt *time.Time
+	if body.ExpiresAt != nil && *body.ExpiresAt != "" {
+		// Accept either a calendar date (YYYY-MM-DD) or a full RFC3339 timestamp.
+		// Calendar dates are interpreted as end-of-day UTC (23:59:59 UTC).
+		var t time.Time
+		var err error
+		if len(*body.ExpiresAt) == 10 {
+			t, err = time.Parse("2006-01-02", *body.ExpiresAt)
+			if err == nil {
+				t = t.Add(24*time.Hour - time.Second) // end of day
+			}
+		} else {
+			t, err = time.Parse(time.RFC3339, *body.ExpiresAt)
+		}
 		if err != nil {
-			BadRequest(w, "invalid expires_in duration format")
+			BadRequest(w, "invalid expires_at; expected YYYY-MM-DD or RFC3339 timestamp")
 			return
 		}
-		expiresIn = &d
+		expiresAt = &t
 	}
 
-	result, err := h.apiKeySvc.CreateApiKey(r.Context(), sess.UserID, body.Name, body.Scopes, expiresIn)
+	result, err := h.apiKeySvc.CreateApiKey(r.Context(), sess.UserID, body.Name, body.Scopes, expiresAt)
 	if err != nil {
 		HandleServiceError(w, err)
 		return

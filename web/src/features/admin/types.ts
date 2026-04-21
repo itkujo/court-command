@@ -35,11 +35,13 @@ export interface ActivityLogEntry {
   created_at: string
 }
 
+// Shape mirrors api/service/api_key.go ApiKeyResponse / ApiKeyCreateResponse.
+// raw_key is only present on the create response (one-time reveal).
 export interface ApiKey {
   id: number
   name: string
   key_prefix: string
-  key?: string
+  raw_key?: string
   scopes: string[]
   expires_at: string | null
   last_used_at: string | null
