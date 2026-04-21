@@ -67,17 +67,27 @@ func (p *Poller) applyAuth(req *http.Request, authType string, authConfig []byte
 	case "none":
 		return nil
 	case "api_key":
+		// Canonical key for the header name is "header" (matches the
+		// SourceProfileEditor form and the TestConnection validator in
+		// service/source_profile.go applyAuthHeader). "header_name" is
+		// accepted as a legacy alias for any profiles stored before the
+		// key was standardized.
 		var config struct {
-			HeaderName string `json:"header_name"`
+			Header     string `json:"header"`
+			HeaderName string `json:"header_name"` // legacy
 			Key        string `json:"key"`
 		}
 		if err := json.Unmarshal(authConfig, &config); err != nil {
 			return err
 		}
-		if config.HeaderName == "" {
-			config.HeaderName = "X-API-Key"
+		header := config.Header
+		if header == "" {
+			header = config.HeaderName
 		}
-		req.Header.Set(config.HeaderName, config.Key)
+		if header == "" {
+			header = "X-API-Key"
+		}
+		req.Header.Set(header, config.Key)
 	case "bearer":
 		var config struct {
 			Token string `json:"token"`
