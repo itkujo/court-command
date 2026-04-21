@@ -3,7 +3,6 @@ import {
   apiGet,
   apiPost,
   apiPatch,
-  apiPut,
   apiDelete,
   apiGetPaginated,
   type PaginatedData,
@@ -121,7 +120,7 @@ export function useUpdateVenueStatus(id: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (status: string) =>
-      apiPut<Venue>(`/api/v1/admin/venues/${id}/status`, { status }),
+      apiPatch<Venue>(`/api/v1/admin/venues/${id}/status`, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] })
     },
