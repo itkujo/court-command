@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countAnnouncementsByDivision = `-- name: CountAnnouncementsByDivision :one
+SELECT COUNT(*) FROM announcements
+WHERE division_id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) CountAnnouncementsByDivision(ctx context.Context, divisionID pgtype.Int8) (int64, error) {
+	row := q.db.QueryRow(ctx, countAnnouncementsByDivision, divisionID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countAnnouncementsByLeague = `-- name: CountAnnouncementsByLeague :one
 SELECT COUNT(*) FROM announcements
 WHERE league_id = $1 AND deleted_at IS NULL
@@ -25,11 +37,18 @@ func (q *Queries) CountAnnouncementsByLeague(ctx context.Context, leagueID pgtyp
 
 const countAnnouncementsByTournament = `-- name: CountAnnouncementsByTournament :one
 SELECT COUNT(*) FROM announcements
-WHERE tournament_id = $1 AND deleted_at IS NULL
+WHERE tournament_id = $1
+  AND ($2::bigint IS NULL OR division_id = $2::bigint)
+  AND deleted_at IS NULL
 `
 
-func (q *Queries) CountAnnouncementsByTournament(ctx context.Context, tournamentID pgtype.Int8) (int64, error) {
-	row := q.db.QueryRow(ctx, countAnnouncementsByTournament, tournamentID)
+type CountAnnouncementsByTournamentParams struct {
+	TournamentID pgtype.Int8 `json:"tournament_id"`
+	DivisionID   pgtype.Int8 `json:"division_id"`
+}
+
+func (q *Queries) CountAnnouncementsByTournament(ctx context.Context, arg CountAnnouncementsByTournamentParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countAnnouncementsByTournament, arg.TournamentID, arg.DivisionID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -195,19 +214,30 @@ func (q *Queries) ListAnnouncementsByLeague(ctx context.Context, arg ListAnnounc
 
 const listAnnouncementsByTournament = `-- name: ListAnnouncementsByTournament :many
 SELECT id, tournament_id, league_id, division_id, title, body, is_pinned, created_by_user_id, created_at, updated_at, deleted_at FROM announcements
-WHERE tournament_id = $1 AND deleted_at IS NULL
+WHERE tournament_id = $1
+  AND ($2::bigint IS NULL OR division_id = $2::bigint)
+  AND deleted_at IS NULL
 ORDER BY is_pinned DESC, created_at DESC
-LIMIT $2 OFFSET $3
+LIMIT $4 OFFSET $3
 `
 
 type ListAnnouncementsByTournamentParams struct {
 	TournamentID pgtype.Int8 `json:"tournament_id"`
-	Limit        int32       `json:"limit"`
-	Offset       int32       `json:"offset"`
+	DivisionID   pgtype.Int8 `json:"division_id"`
+	PageOffset   int32       `json:"page_offset"`
+	PageLimit    int32       `json:"page_limit"`
 }
 
+// When division_id is NULL the query returns all announcements for the
+// tournament (division-scoped and tournament-wide). When division_id is
+// non-NULL it returns only announcements targeting that division.
 func (q *Queries) ListAnnouncementsByTournament(ctx context.Context, arg ListAnnouncementsByTournamentParams) ([]Announcement, error) {
-	rows, err := q.db.Query(ctx, listAnnouncementsByTournament, arg.TournamentID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listAnnouncementsByTournament,
+		arg.TournamentID,
+		arg.DivisionID,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

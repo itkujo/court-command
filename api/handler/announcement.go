@@ -53,6 +53,7 @@ func (h *AnnouncementHandler) LeagueAnnouncementRoutes() chi.Router {
 }
 
 // CreateTournamentAnnouncement creates an announcement for a tournament.
+// Optionally scoped to a specific division via body.division_id.
 func (h *AnnouncementHandler) CreateTournamentAnnouncement(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
@@ -67,9 +68,10 @@ func (h *AnnouncementHandler) CreateTournamentAnnouncement(w http.ResponseWriter
 	}
 
 	var body struct {
-		Title    string `json:"title"`
-		Body     string `json:"body"`
-		IsPinned *bool  `json:"is_pinned"`
+		Title      string `json:"title"`
+		Body       string `json:"body"`
+		DivisionID *int64 `json:"division_id"`
+		IsPinned   *bool  `json:"is_pinned"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -84,6 +86,9 @@ func (h *AnnouncementHandler) CreateTournamentAnnouncement(w http.ResponseWriter
 		CreatedByUserID: sess.UserID,
 	}
 
+	if body.DivisionID != nil {
+		params.DivisionID = pgtype.Int8{Int64: *body.DivisionID, Valid: true}
+	}
 	if body.IsPinned != nil {
 		params.IsPinned = pgtype.Bool{Bool: *body.IsPinned, Valid: true}
 	}
@@ -142,6 +147,20 @@ func (h *AnnouncementHandler) CreateLeagueAnnouncement(w http.ResponseWriter, r 
 	Created(w, announcement)
 }
 
+// FlatAnnouncementRoutes returns GET/PATCH/DELETE routes for a single
+// announcement at /api/v1/announcements/{announcementID}. These mirror the
+// nested tournament/league routes so frontend code that already holds an
+// announcement ID doesn't need the parent scope in the URL.
+func (h *AnnouncementHandler) FlatAnnouncementRoutes() chi.Router {
+	r := chi.NewRouter()
+
+	r.Get("/{announcementID}", h.GetAnnouncement)
+	r.Patch("/{announcementID}", h.UpdateAnnouncement)
+	r.Delete("/{announcementID}", h.DeleteAnnouncement)
+
+	return r
+}
+
 // GetAnnouncement retrieves an announcement by ID.
 func (h *AnnouncementHandler) GetAnnouncement(w http.ResponseWriter, r *http.Request) {
 	announcementID, err := strconv.ParseInt(chi.URLParam(r, "announcementID"), 10, 64)
@@ -159,7 +178,9 @@ func (h *AnnouncementHandler) GetAnnouncement(w http.ResponseWriter, r *http.Req
 	Success(w, announcement)
 }
 
-// ListTournamentAnnouncements lists announcements for a tournament.
+// ListTournamentAnnouncements lists announcements for a tournament. If the
+// ?division_id=N query param is present, only announcements scoped to that
+// division are returned.
 func (h *AnnouncementHandler) ListTournamentAnnouncements(w http.ResponseWriter, r *http.Request) {
 	tournamentID, err := parseTournamentID(r)
 	if err != nil {
@@ -167,9 +188,19 @@ func (h *AnnouncementHandler) ListTournamentAnnouncements(w http.ResponseWriter,
 		return
 	}
 
+	var divisionID *int64
+	if raw := r.URL.Query().Get("division_id"); raw != "" {
+		did, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid division_id query param")
+			return
+		}
+		divisionID = &did
+	}
+
 	limit, offset := parsePagination(r)
 
-	announcements, total, err := h.announceSvc.ListByTournament(r.Context(), tournamentID, limit, offset)
+	announcements, total, err := h.announceSvc.ListByTournament(r.Context(), tournamentID, divisionID, limit, offset)
 	if err != nil {
 		HandleServiceError(w, err)
 		return

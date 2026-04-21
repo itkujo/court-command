@@ -193,6 +193,13 @@ func New(cfg *Config) chi.Router {
 			})
 		})
 
+		// Flat announcement routes at /api/v1/announcements/{announcementID}
+		// Mirrors the nested tournament/league routes so callers that only hold
+		// an announcement ID don't need the parent scope in the URL.
+		r.Route("/announcements", func(r chi.Router) {
+			r.Mount("/", cfg.AnnouncementHandler.FlatAnnouncementRoutes())
+		})
+
 		// Division sub-resources (registrations and pods — auth checked by handlers)
 		r.Route("/divisions/{divisionID}/registrations", func(r chi.Router) {
 			r.Mount("/", cfg.RegistrationHandler.Routes())

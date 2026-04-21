@@ -97,21 +97,56 @@ func (s *AnnouncementService) GetByID(ctx context.Context, id int64) (Announceme
 	return toAnnouncementResponse(announcement), nil
 }
 
-// ListByTournament returns announcements for a tournament.
-func (s *AnnouncementService) ListByTournament(ctx context.Context, tournamentID int64, limit, offset int32) ([]AnnouncementResponse, int64, error) {
+// ListByTournament returns announcements for a tournament. If divisionID is
+// non-nil, the list is further filtered to that division only (useful for a
+// division feed); nil returns every announcement in the tournament.
+func (s *AnnouncementService) ListByTournament(ctx context.Context, tournamentID int64, divisionID *int64, limit, offset int32) ([]AnnouncementResponse, int64, error) {
 	tid := pgtype.Int8{Int64: tournamentID, Valid: true}
+	did := pgtype.Int8{}
+	if divisionID != nil {
+		did = pgtype.Int8{Int64: *divisionID, Valid: true}
+	}
 	announcements, err := s.queries.ListAnnouncementsByTournament(ctx, generated.ListAnnouncementsByTournamentParams{
 		TournamentID: tid,
-		Limit:        limit,
-		Offset:       offset,
+		DivisionID:   did,
+		PageLimit:    limit,
+		PageOffset:   offset,
 	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list announcements: %w", err)
 	}
 
-	count, err := s.queries.CountAnnouncementsByTournament(ctx, tid)
+	count, err := s.queries.CountAnnouncementsByTournament(ctx, generated.CountAnnouncementsByTournamentParams{
+		TournamentID: tid,
+		DivisionID:   did,
+	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count announcements: %w", err)
+	}
+
+	result := make([]AnnouncementResponse, len(announcements))
+	for i, a := range announcements {
+		result[i] = toAnnouncementResponse(a)
+	}
+
+	return result, count, nil
+}
+
+// ListByDivision returns announcements targeted at a specific division.
+func (s *AnnouncementService) ListByDivision(ctx context.Context, divisionID int64, limit, offset int32) ([]AnnouncementResponse, int64, error) {
+	did := pgtype.Int8{Int64: divisionID, Valid: true}
+	announcements, err := s.queries.ListAnnouncementsByDivision(ctx, generated.ListAnnouncementsByDivisionParams{
+		DivisionID: did,
+		Limit:      limit,
+		Offset:     offset,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list division announcements: %w", err)
+	}
+
+	count, err := s.queries.CountAnnouncementsByDivision(ctx, did)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count division announcements: %w", err)
 	}
 
 	result := make([]AnnouncementResponse, len(announcements))
