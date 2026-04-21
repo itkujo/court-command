@@ -104,7 +104,7 @@ export function useMatchSeries(publicId: string | undefined) {
   return useQuery<MatchSeriesSummary>({
     queryKey: ['match-series', publicId],
     queryFn: () =>
-      apiGet<MatchSeriesSummary>(`/api/v1/match-series/${publicId}`),
+      apiGet<MatchSeriesSummary>(`/api/v1/match-series/public/${publicId}`),
     enabled: !!publicId,
     staleTime: 2 * 60 * 1000,
   })
