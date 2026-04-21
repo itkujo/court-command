@@ -1,5 +1,9 @@
 // web/src/features/scoring/types.ts
 
+// Values MUST match the CHECK constraint in
+// api/db/migrations/00018_create_matches.sql on matches.status.
+// Note: 'bye' is NOT a valid matches.status value \u2014 it's an overlay-display
+// state only (see web/src/features/overlay/contract.ts MATCH_STATUS).
 export type MatchStatus =
   | 'scheduled'
   | 'warmup'
@@ -8,7 +12,12 @@ export type MatchStatus =
   | 'completed'
   | 'cancelled'
   | 'forfeited'
-  | 'bye'
+
+// Values MUST match the CHECK constraint on matches.match_type.
+export type MatchType = 'tournament' | 'quick' | 'pickup' | 'practice' | 'league'
+
+// Values MUST match the CHECK constraint on matches.win_reason.
+export type WinReason = 'score' | 'forfeit' | 'retirement' | 'dq' | 'bye'
 
 export type ScoringType = 'side_out' | 'rally'
 
@@ -83,7 +92,7 @@ export interface Match {
   set_scores: CompletedGame[]
   is_paused: boolean
   is_quick_match: boolean
-  match_type?: string
+  match_type?: MatchType
   division_id?: number | null
   division_name?: string | null
   tournament_id?: number | null
@@ -101,11 +110,18 @@ export interface Match {
   updated_at: string
 }
 
+// Shape mirrors api/service/match.go ScoreSnapshot (JSON tags). This is the
+// value on MatchEvent.score_snapshot \u2014 a historical snapshot of match state at
+// the moment an event was recorded. The Go contract is tested in
+// api/service/match_contract_test.go; do not add fields here that aren't in
+// that test.
+// NOTE: team_1_games_won / team_2_games_won are emitted on the MATCH response
+// (api/service/match.go MatchResponse), not on the snapshot. They were
+// previously typed here and read by no one \u2014 see audit Agent 5 #26.
 export interface ScoreSnapshot {
   team_1_score: number
   team_2_score: number
-  team_1_games_won: number
-  team_2_games_won: number
+  current_set: number
   current_game: number
   serving_team: number | null
   server_number: number | null

@@ -26,6 +26,8 @@ func NewMatchSeriesService(queries *generated.Queries, pool *pgxpool.Pool, ps *p
 }
 
 // MatchSeriesResponse is the public representation of a match series.
+// Team1 and Team2 nested objects are populated on the single-series endpoints
+// (Get, GetByPublicID). List endpoints leave them nil to avoid N+1.
 type MatchSeriesResponse struct {
 	ID              int64           `json:"id"`
 	PublicID        string          `json:"public_id"`
@@ -34,6 +36,8 @@ type MatchSeriesResponse struct {
 	CreatedByUserID int64           `json:"created_by_user_id"`
 	Team1ID         *int64          `json:"team1_id,omitempty"`
 	Team2ID         *int64          `json:"team2_id,omitempty"`
+	Team1           *TeamSummary    `json:"team1"`
+	Team2           *TeamSummary    `json:"team2"`
 	SeriesFormat    string          `json:"series_format"`
 	GamesToWin      int32           `json:"games_to_win"`
 	SeriesConfig    json.RawMessage `json:"series_config"`
@@ -195,32 +199,35 @@ func (s *MatchSeriesService) Create(ctx context.Context, userID int64, input Cre
 	return toMatchSeriesResponse(series), nil
 }
 
-// Get returns a match series by ID with child matches.
-func (s *MatchSeriesService) Get(ctx context.Context, id int64) (MatchSeriesResponse, error) {
-	series, err := s.queries.GetMatchSeries(ctx, id)
+// loadTeamSummaryLite fetches a minimal TeamSummary (no roster) for use in
+// MatchSeriesResponse enrichment. Returns nil on not-found or error so callers
+// can just leave the field unset on the response.
+func (s *MatchSeriesService) loadTeamSummaryLite(ctx context.Context, teamID int64) *TeamSummary {
+	team, err := s.queries.GetTeamByID(ctx, teamID)
 	if err != nil {
-		return MatchSeriesResponse{}, &NotFoundError{Message: "match series not found"}
+		return nil
 	}
-
-	resp := toMatchSeriesResponse(series)
-	matches, err := s.queries.ListMatchesBySeriesID(ctx, pgtype.Int8{Int64: id, Valid: true})
-	if err == nil {
-		for _, m := range matches {
-			resp.Matches = append(resp.Matches, toMatchResponse(m))
-		}
+	return &TeamSummary{
+		ID:           team.ID,
+		Name:         team.Name,
+		ShortName:    team.ShortName,
+		PrimaryColor: team.PrimaryColor,
+		LogoURL:      team.LogoUrl,
 	}
-
-	return resp, nil
 }
 
-// GetByPublicID returns a match series by public ID with child matches.
-func (s *MatchSeriesService) GetByPublicID(ctx context.Context, publicID string) (MatchSeriesResponse, error) {
-	series, err := s.queries.GetMatchSeriesByPublicID(ctx, publicID)
-	if err != nil {
-		return MatchSeriesResponse{}, &NotFoundError{Message: "match series not found"}
+// enrichSeriesResponse populates Team1/Team2 nested summaries and child matches.
+// Best-effort: any failure leaves the field nil / empty rather than erroring.
+func (s *MatchSeriesService) enrichSeriesResponse(ctx context.Context, series generated.MatchSeries) MatchSeriesResponse {
+	resp := toMatchSeriesResponse(series)
+
+	if series.Team1ID.Valid {
+		resp.Team1 = s.loadTeamSummaryLite(ctx, series.Team1ID.Int64)
+	}
+	if series.Team2ID.Valid {
+		resp.Team2 = s.loadTeamSummaryLite(ctx, series.Team2ID.Int64)
 	}
 
-	resp := toMatchSeriesResponse(series)
 	matches, err := s.queries.ListMatchesBySeriesID(ctx, pgtype.Int8{Int64: series.ID, Valid: true})
 	if err == nil {
 		for _, m := range matches {
@@ -228,7 +235,25 @@ func (s *MatchSeriesService) GetByPublicID(ctx context.Context, publicID string)
 		}
 	}
 
-	return resp, nil
+	return resp
+}
+
+// Get returns a match series by ID with child matches + nested team summaries.
+func (s *MatchSeriesService) Get(ctx context.Context, id int64) (MatchSeriesResponse, error) {
+	series, err := s.queries.GetMatchSeries(ctx, id)
+	if err != nil {
+		return MatchSeriesResponse{}, &NotFoundError{Message: "match series not found"}
+	}
+	return s.enrichSeriesResponse(ctx, series), nil
+}
+
+// GetByPublicID returns a match series by public ID with child matches + nested team summaries.
+func (s *MatchSeriesService) GetByPublicID(ctx context.Context, publicID string) (MatchSeriesResponse, error) {
+	series, err := s.queries.GetMatchSeriesByPublicID(ctx, publicID)
+	if err != nil {
+		return MatchSeriesResponse{}, &NotFoundError{Message: "match series not found"}
+	}
+	return s.enrichSeriesResponse(ctx, series), nil
 }
 
 // ListByDivision returns paginated match series for a division.

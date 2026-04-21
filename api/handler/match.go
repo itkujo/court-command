@@ -418,6 +418,16 @@ func (h *MatchHandler) CompleteMatch(w http.ResponseWriter, r *http.Request) {
 	if body.WinReason == "" {
 		body.WinReason = "score"
 	}
+	// Values MUST match CHECK constraint in
+	// api/db/migrations/00018_create_matches.sql on matches.win_reason.
+	validWinReasons := map[string]bool{
+		"score": true, "forfeit": true, "retirement": true, "dq": true, "bye": true,
+	}
+	if !validWinReasons[body.WinReason] {
+		WriteError(w, http.StatusBadRequest, "INVALID_WIN_REASON",
+			"win_reason must be one of: score, forfeit, retirement, dq, bye")
+		return
+	}
 
 	match, err := h.service.CompleteMatch(r.Context(), id, body.WinnerTeamID, body.LoserTeamID, body.WinReason)
 	if err != nil {
@@ -1114,9 +1124,10 @@ func (h *MatchHandler) HandleDeclareForfeit(w http.ResponseWriter, r *http.Reque
 	}
 
 	var body struct {
-		ForfeitingTeam int32 `json:"forfeiting_team"`
-		WinnerTeamID   int64 `json:"winner_team_id"`
-		LoserTeamID    int64 `json:"loser_team_id"`
+		ForfeitingTeam int32  `json:"forfeiting_team"`
+		WinnerTeamID   int64  `json:"winner_team_id"`
+		LoserTeamID    int64  `json:"loser_team_id"`
+		Reason         string `json:"reason"`
 	}
 	if errMsg := DecodeJSON(r, &body); errMsg != "" {
 		WriteError(w, http.StatusBadRequest, "INVALID_BODY", errMsg)
@@ -1127,7 +1138,7 @@ func (h *MatchHandler) HandleDeclareForfeit(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	result, err := h.service.DeclareForfeit(r.Context(), matchID, body.ForfeitingTeam, body.WinnerTeamID, body.LoserTeamID, userID)
+	result, err := h.service.DeclareForfeit(r.Context(), matchID, body.ForfeitingTeam, body.WinnerTeamID, body.LoserTeamID, body.Reason, userID)
 	if err != nil {
 		HandleServiceError(w, err)
 		return

@@ -1917,8 +1917,10 @@ func (s *MatchService) ResumeMatch(ctx context.Context, matchID int64, userID in
 	}, nil
 }
 
-// DeclareForfeit forfeits the match for a team.
-func (s *MatchService) DeclareForfeit(ctx context.Context, matchID int64, forfeitingTeam int32, winnerTeamID, loserTeamID int64, userID int64) (ScoringActionResult, error) {
+// DeclareForfeit forfeits the match for a team. The reason argument is
+// optional free text that's recorded in the forfeit_declared event payload
+// for audit purposes; an empty string is allowed.
+func (s *MatchService) DeclareForfeit(ctx context.Context, matchID int64, forfeitingTeam int32, winnerTeamID, loserTeamID int64, reason string, userID int64) (ScoringActionResult, error) {
 	match, err := s.queries.GetMatch(ctx, matchID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -1936,7 +1938,11 @@ func (s *MatchService) DeclareForfeit(ctx context.Context, matchID int64, forfei
 		return ScoringActionResult{}, &ValidationError{Message: result.ErrorMessage}
 	}
 
-	payload, _ := json.Marshal(map[string]interface{}{"forfeiting_team": forfeitingTeam})
+	payloadMap := map[string]interface{}{"forfeiting_team": forfeitingTeam}
+	if reason != "" {
+		payloadMap["reason"] = reason
+	}
+	payload, _ := json.Marshal(payloadMap)
 	_, event, resp, err := s.applyEngineResult(ctx, matchID, result, EventTypeForfeitDeclared, payload, userID)
 	if err != nil {
 		return ScoringActionResult{}, err
