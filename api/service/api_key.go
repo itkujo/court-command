@@ -64,7 +64,8 @@ func toApiKeyResponse(k generated.ApiKey) ApiKeyResponse {
 }
 
 // CreateApiKey generates a new API key for the given user.
-func (s *ApiKeyService) CreateApiKey(ctx context.Context, userID int64, name string, scopes []string, expiresIn *time.Duration) (*ApiKeyCreateResponse, error) {
+// expiresAt, if non-nil, is the absolute UTC time the key expires.
+func (s *ApiKeyService) CreateApiKey(ctx context.Context, userID int64, name string, scopes []string, expiresAt *time.Time) (*ApiKeyCreateResponse, error) {
 	if name == "" {
 		return nil, NewValidation("name is required")
 	}
@@ -90,9 +91,12 @@ func (s *ApiKeyService) CreateApiKey(ctx context.Context, userID int64, name str
 	hash := sha256.Sum256([]byte(rawKey))
 	keyHash := hex.EncodeToString(hash[:])
 
-	var expiresAt pgtype.Timestamptz
-	if expiresIn != nil {
-		expiresAt = pgtype.Timestamptz{Time: time.Now().Add(*expiresIn), Valid: true}
+	var expiresAtPg pgtype.Timestamptz
+	if expiresAt != nil {
+		if expiresAt.Before(time.Now()) {
+			return nil, NewValidation("expires_at must be in the future")
+		}
+		expiresAtPg = pgtype.Timestamptz{Time: *expiresAt, Valid: true}
 	}
 
 	if scopes == nil {
@@ -105,7 +109,7 @@ func (s *ApiKeyService) CreateApiKey(ctx context.Context, userID int64, name str
 		KeyHash:   keyHash,
 		KeyPrefix: prefix,
 		Scopes:    scopes,
-		ExpiresAt: expiresAt,
+		ExpiresAt: expiresAtPg,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("creating api key: %w", err)

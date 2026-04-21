@@ -98,11 +98,11 @@ export function PlayerList() {
       className: 'hidden lg:table-cell',
     },
     {
-      key: 'rating',
-      header: 'Rating',
+      key: 'dupr',
+      header: 'DUPR',
       render: (p: (typeof players)[0]) => (
         <span className="text-(--color-text-secondary)">
-          {p.skill_rating != null ? p.skill_rating.toFixed(2) : '\u2014'}
+          {p.dupr_id ?? '\u2014'}
         </span>
       ),
       className: 'hidden md:table-cell',

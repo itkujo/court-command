@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/service"
@@ -48,12 +49,12 @@ func (h *AdminHandler) Routes() chi.Router {
 	r.Get("/users", h.SearchUsers)
 	r.Post("/users/create-player", h.CreateUnclaimedPlayer)
 	r.Get("/users/{userID}", h.GetUser)
-	r.Put("/users/{userID}/role", h.UpdateUserRole)
-	r.Put("/users/{userID}/status", h.UpdateUserStatus)
+	r.Patch("/users/{userID}/role", h.UpdateUserRole)
+	r.Patch("/users/{userID}/status", h.UpdateUserStatus)
 
 	// Venue management
 	r.Get("/venues/pending", h.ListPendingVenues)
-	r.Put("/venues/{venueID}/status", h.UpdateVenueStatus)
+	r.Patch("/venues/{venueID}/status", h.UpdateVenueStatus)
 
 	// System stats
 	r.Get("/stats", h.GetSystemStats)
@@ -196,7 +197,7 @@ func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	Success(w, toAdminUserResponse(user))
 }
 
-// UpdateUserRole handles PUT /api/v1/admin/users/{userID}/role
+// UpdateUserRole handles PATCH /api/v1/admin/users/{userID}/role
 func (h *AdminHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
@@ -217,10 +218,11 @@ func (h *AdminHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Values MUST match CHECK constraint in api/db/migrations/00030_expand_user_roles.sql
 	validRoles := map[string]bool{
 		"player": true, "platform_admin": true, "tournament_director": true,
 		"head_referee": true, "referee": true, "scorekeeper": true,
-		"broadcast_operator": true, "league_admin": true, "org_admin": true,
+		"broadcast_operator": true, "league_admin": true, "organization_admin": true,
 		"team_coach": true, "api_readonly": true,
 	}
 	if !validRoles[body.Role] {
@@ -242,7 +244,7 @@ func (h *AdminHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 	Success(w, toAdminUserResponse(user))
 }
 
-// UpdateUserStatus handles PUT /api/v1/admin/users/{userID}/status
+// UpdateUserStatus handles PATCH /api/v1/admin/users/{userID}/status
 func (h *AdminHandler) UpdateUserStatus(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
@@ -256,7 +258,8 @@ func (h *AdminHandler) UpdateUserStatus(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var body struct {
-		Status string `json:"status"`
+		Status string  `json:"status"`
+		Reason *string `json:"reason"`
 	}
 	if errMsg := DecodeJSON(r, &body); errMsg != "" {
 		BadRequest(w, errMsg)
@@ -283,12 +286,35 @@ func (h *AdminHandler) UpdateUserStatus(w http.ResponseWriter, r *http.Request) 
 		_ = h.sessionStore.DeleteAllForUser(r.Context(), target.ID)
 	}
 
-	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_user_status", "user", &target.ID, map[string]string{"new_status": body.Status}, r.RemoteAddr)
+	activityMeta := map[string]string{"new_status": body.Status}
+	if body.Reason != nil && *body.Reason != "" {
+		activityMeta["reason"] = *body.Reason
+	}
+	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_user_status", "user", &target.ID, activityMeta, r.RemoteAddr)
 
 	Success(w, toAdminUserResponse(user))
 }
 
 // --- Venue Management ---
+
+// pendingVenueResponse is the DTO for the admin venue approval queue.
+// It enriches the base venue row with owner_email and court_count so the
+// admin UI can render each card without extra round-trips.
+type pendingVenueResponse struct {
+	ID               int64   `json:"id"`
+	Name             string  `json:"name"`
+	Slug             string  `json:"slug"`
+	Status           string  `json:"status"`
+	City             *string `json:"city"`
+	StateProvince    *string `json:"state_province"`
+	Country          *string `json:"country"`
+	FormattedAddress *string `json:"formatted_address"`
+	OwnerID          int64   `json:"owner_id"`
+	OwnerEmail       *string `json:"owner_email"`
+	CourtCount       int64   `json:"court_count"`
+	CreatedAt        string  `json:"created_at"`
+	UpdatedAt        string  `json:"updated_at"`
+}
 
 // ListPendingVenues handles GET /api/v1/admin/venues/pending
 func (h *AdminHandler) ListPendingVenues(w http.ResponseWriter, r *http.Request) {
@@ -309,10 +335,42 @@ func (h *AdminHandler) ListPendingVenues(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	Paginated(w, venues, total, int(limit), int(offset))
+	// Enrich each venue with owner email + court count. The pending queue is
+	// small (admin-only, typically <20 rows per page) so N+1 lookups are fine.
+	items := make([]pendingVenueResponse, len(venues))
+	for i, v := range venues {
+		courtCount, cErr := h.queries.GetVenueCourtCount(r.Context(), pgtype.Int8{Int64: v.ID, Valid: true})
+		if cErr != nil {
+			// Log but don't fail the list — default to 0.
+			courtCount = 0
+		}
+
+		var ownerEmail *string
+		if owner, oErr := h.queries.GetUserByID(r.Context(), v.CreatedByUserID); oErr == nil {
+			ownerEmail = owner.Email
+		}
+
+		items[i] = pendingVenueResponse{
+			ID:               v.ID,
+			Name:             v.Name,
+			Slug:             v.Slug,
+			Status:           v.Status,
+			City:             v.City,
+			StateProvince:    v.StateProvince,
+			Country:          v.Country,
+			FormattedAddress: v.FormattedAddress,
+			OwnerID:          v.CreatedByUserID,
+			OwnerEmail:       ownerEmail,
+			CourtCount:       courtCount,
+			CreatedAt:        v.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:        v.UpdatedAt.Format(time.RFC3339),
+		}
+	}
+
+	Paginated(w, items, total, int(limit), int(offset))
 }
 
-// UpdateVenueStatus handles PUT /api/v1/admin/venues/{venueID}/status
+// UpdateVenueStatus handles PATCH /api/v1/admin/venues/{venueID}/status
 func (h *AdminHandler) UpdateVenueStatus(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
@@ -327,10 +385,18 @@ func (h *AdminHandler) UpdateVenueStatus(w http.ResponseWriter, r *http.Request)
 	}
 
 	var body struct {
-		Status string `json:"status"`
+		Status   string  `json:"status"`
+		Feedback *string `json:"feedback"`
 	}
 	if errMsg := DecodeJSON(r, &body); errMsg != "" {
 		BadRequest(w, errMsg)
+		return
+	}
+
+	// Values MUST match CHECK constraint in api/db/migrations/00005_create_venues.sql
+	validStatuses := map[string]bool{"draft": true, "pending_review": true, "published": true, "archived": true}
+	if !validStatuses[body.Status] {
+		BadRequest(w, "invalid status; must be 'draft', 'pending_review', 'published', or 'archived'")
 		return
 	}
 
@@ -343,7 +409,11 @@ func (h *AdminHandler) UpdateVenueStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_venue_status", "venue", &venueID, map[string]string{"new_status": body.Status}, r.RemoteAddr)
+	activityMeta := map[string]string{"new_status": body.Status}
+	if body.Feedback != nil && *body.Feedback != "" {
+		activityMeta["feedback"] = *body.Feedback
+	}
+	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_venue_status", "venue", &venue.ID, activityMeta, r.RemoteAddr)
 
 	Success(w, venue)
 }
@@ -496,24 +566,35 @@ func (h *AdminHandler) CreateApiKey(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Name      string   `json:"name"`
 		Scopes    []string `json:"scopes"`
-		ExpiresIn *string  `json:"expires_in"` // e.g. "720h" for 30 days
+		ExpiresAt *string  `json:"expires_at"` // ISO date (YYYY-MM-DD) or RFC3339 timestamp
 	}
 	if errMsg := DecodeJSON(r, &body); errMsg != "" {
 		BadRequest(w, errMsg)
 		return
 	}
 
-	var expiresIn *time.Duration
-	if body.ExpiresIn != nil && *body.ExpiresIn != "" {
-		d, err := time.ParseDuration(*body.ExpiresIn)
+	var expiresAt *time.Time
+	if body.ExpiresAt != nil && *body.ExpiresAt != "" {
+		// Accept either a calendar date (YYYY-MM-DD) or a full RFC3339 timestamp.
+		// Calendar dates are interpreted as end-of-day UTC (23:59:59 UTC).
+		var t time.Time
+		var err error
+		if len(*body.ExpiresAt) == 10 {
+			t, err = time.Parse("2006-01-02", *body.ExpiresAt)
+			if err == nil {
+				t = t.Add(24*time.Hour - time.Second) // end of day
+			}
+		} else {
+			t, err = time.Parse(time.RFC3339, *body.ExpiresAt)
+		}
 		if err != nil {
-			BadRequest(w, "invalid expires_in duration format")
+			BadRequest(w, "invalid expires_at; expected YYYY-MM-DD or RFC3339 timestamp")
 			return
 		}
-		expiresIn = &d
+		expiresAt = &t
 	}
 
-	result, err := h.apiKeySvc.CreateApiKey(r.Context(), sess.UserID, body.Name, body.Scopes, expiresIn)
+	result, err := h.apiKeySvc.CreateApiKey(r.Context(), sess.UserID, body.Name, body.Scopes, expiresAt)
 	if err != nil {
 		HandleServiceError(w, err)
 		return
