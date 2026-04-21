@@ -124,7 +124,7 @@ export function useActivityLogs(filters: {
     queryKey: ['admin', 'activity', filters],
     queryFn: () =>
       apiGetPaginated<ActivityLogEntry>(
-        `/api/v1/admin/activity${buildQueryString(filters)}`,
+        `/api/v1/admin/activity-logs${buildQueryString(filters)}`,
       ),
   })
 }
