@@ -58,13 +58,18 @@ export interface Upload {
   created_at: string
 }
 
+// Shape mirrors api/handler/admin.go pendingVenueResponse.
+// The venues table has no public_id column (see api/db/migrations/00005),
+// so the URL segment for status updates must use the numeric id.
 export interface VenueApprovalItem {
   id: number
-  public_id: string
   name: string
-  city: string
-  state: string
+  slug: string
   status: string
+  city: string | null
+  state_province: string | null
+  country: string | null
+  formatted_address: string | null
   owner_id: number
   owner_email: string | null
   court_count: number

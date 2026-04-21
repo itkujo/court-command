@@ -101,10 +101,14 @@ export function useUpdateVenueStatus() {
       status,
       feedback,
     }: {
-      venueId: string
+      venueId: number
       status: string
       feedback?: string
-    }) => apiPatch<void>(`/api/v1/admin/venues/${venueId}/status`, { status, feedback }),
+    }) =>
+      apiPatch<void>(`/api/v1/admin/venues/${venueId}/status`, {
+        status,
+        feedback,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'venues'] })
     },

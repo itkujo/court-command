@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/court-command/court-command/db/generated"
 	"github.com/court-command/court-command/service"
@@ -53,7 +54,7 @@ func (h *AdminHandler) Routes() chi.Router {
 
 	// Venue management
 	r.Get("/venues/pending", h.ListPendingVenues)
-	r.Put("/venues/{venueID}/status", h.UpdateVenueStatus)
+	r.Patch("/venues/{venueID}/status", h.UpdateVenueStatus)
 
 	// System stats
 	r.Get("/stats", h.GetSystemStats)
@@ -296,6 +297,25 @@ func (h *AdminHandler) UpdateUserStatus(w http.ResponseWriter, r *http.Request) 
 
 // --- Venue Management ---
 
+// pendingVenueResponse is the DTO for the admin venue approval queue.
+// It enriches the base venue row with owner_email and court_count so the
+// admin UI can render each card without extra round-trips.
+type pendingVenueResponse struct {
+	ID               int64   `json:"id"`
+	Name             string  `json:"name"`
+	Slug             string  `json:"slug"`
+	Status           string  `json:"status"`
+	City             *string `json:"city"`
+	StateProvince    *string `json:"state_province"`
+	Country          *string `json:"country"`
+	FormattedAddress *string `json:"formatted_address"`
+	OwnerID          int64   `json:"owner_id"`
+	OwnerEmail       *string `json:"owner_email"`
+	CourtCount       int64   `json:"court_count"`
+	CreatedAt        string  `json:"created_at"`
+	UpdatedAt        string  `json:"updated_at"`
+}
+
 // ListPendingVenues handles GET /api/v1/admin/venues/pending
 func (h *AdminHandler) ListPendingVenues(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
@@ -315,10 +335,42 @@ func (h *AdminHandler) ListPendingVenues(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	Paginated(w, venues, total, int(limit), int(offset))
+	// Enrich each venue with owner email + court count. The pending queue is
+	// small (admin-only, typically <20 rows per page) so N+1 lookups are fine.
+	items := make([]pendingVenueResponse, len(venues))
+	for i, v := range venues {
+		courtCount, cErr := h.queries.GetVenueCourtCount(r.Context(), pgtype.Int8{Int64: v.ID, Valid: true})
+		if cErr != nil {
+			// Log but don't fail the list — default to 0.
+			courtCount = 0
+		}
+
+		var ownerEmail *string
+		if owner, oErr := h.queries.GetUserByID(r.Context(), v.CreatedByUserID); oErr == nil {
+			ownerEmail = owner.Email
+		}
+
+		items[i] = pendingVenueResponse{
+			ID:               v.ID,
+			Name:             v.Name,
+			Slug:             v.Slug,
+			Status:           v.Status,
+			City:             v.City,
+			StateProvince:    v.StateProvince,
+			Country:          v.Country,
+			FormattedAddress: v.FormattedAddress,
+			OwnerID:          v.CreatedByUserID,
+			OwnerEmail:       ownerEmail,
+			CourtCount:       courtCount,
+			CreatedAt:        v.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:        v.UpdatedAt.Format(time.RFC3339),
+		}
+	}
+
+	Paginated(w, items, total, int(limit), int(offset))
 }
 
-// UpdateVenueStatus handles PUT /api/v1/admin/venues/{venueID}/status
+// UpdateVenueStatus handles PATCH /api/v1/admin/venues/{venueID}/status
 func (h *AdminHandler) UpdateVenueStatus(w http.ResponseWriter, r *http.Request) {
 	sess := session.SessionData(r.Context())
 	if sess == nil {
@@ -333,10 +385,18 @@ func (h *AdminHandler) UpdateVenueStatus(w http.ResponseWriter, r *http.Request)
 	}
 
 	var body struct {
-		Status string `json:"status"`
+		Status   string  `json:"status"`
+		Feedback *string `json:"feedback"`
 	}
 	if errMsg := DecodeJSON(r, &body); errMsg != "" {
 		BadRequest(w, errMsg)
+		return
+	}
+
+	// Values MUST match CHECK constraint in api/db/migrations/00005_create_venues.sql
+	validStatuses := map[string]bool{"draft": true, "pending_review": true, "published": true, "archived": true}
+	if !validStatuses[body.Status] {
+		BadRequest(w, "invalid status; must be 'draft', 'pending_review', 'published', or 'archived'")
 		return
 	}
 
@@ -349,7 +409,11 @@ func (h *AdminHandler) UpdateVenueStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_venue_status", "venue", &venueID, map[string]string{"new_status": body.Status}, r.RemoteAddr)
+	activityMeta := map[string]string{"new_status": body.Status}
+	if body.Feedback != nil && *body.Feedback != "" {
+		activityMeta["feedback"] = *body.Feedback
+	}
+	h.activityLogSvc.LogActivity(r.Context(), sess.UserID, "admin_update_venue_status", "venue", &venue.ID, activityMeta, r.RemoteAddr)
 
 	Success(w, venue)
 }

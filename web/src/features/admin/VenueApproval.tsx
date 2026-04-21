@@ -33,7 +33,7 @@ export function VenueApproval() {
 
   function handleApprove(venue: VenueApprovalItem) {
     updateStatus.mutate(
-      { venueId: venue.public_id, status: 'published' },
+      { venueId: venue.id, status: 'published' },
       {
         onSuccess: () => toast('success', `${venue.name} approved`),
         onError: () => toast('error', `Failed to approve ${venue.name}`),
@@ -49,7 +49,7 @@ export function VenueApproval() {
   function handleReject() {
     if (!rejectTarget) return
     updateStatus.mutate(
-      { venueId: rejectTarget.public_id, status: 'draft', feedback },
+      { venueId: rejectTarget.id, status: 'draft', feedback },
       {
         onSuccess: () => {
           toast('success', `${rejectTarget.name} rejected`)
@@ -63,7 +63,7 @@ export function VenueApproval() {
   function handleArchive() {
     if (!archiveTarget) return
     updateStatus.mutate(
-      { venueId: archiveTarget.public_id, status: 'archived' },
+      { venueId: archiveTarget.id, status: 'archived' },
       {
         onSuccess: () => {
           toast('success', `${archiveTarget.name} archived`)
@@ -209,7 +209,7 @@ function VenueCard({ venue, onApprove, onReject, onArchive, loading }: VenueCard
           </button>
         </div>
         <p className="text-sm text-(--color-text-secondary)">
-          {venue.city}, {venue.state}
+          {[venue.city, venue.state_province].filter(Boolean).join(', ') || '—'}
         </p>
         <div className="flex items-center gap-4 text-xs text-(--color-text-muted)">
           <span>{venue.court_count} court{venue.court_count !== 1 ? 's' : ''}</span>
