@@ -51,24 +51,29 @@ export interface Tournament {
   updated_at: string
 }
 
+// Shape mirrors api/db/migrations/00011_create_divisions.sql + api/service/division.go
+// DivisionResponse. See audit report for the nullability reasoning:
+// docs/superpowers/audits/2026-04-20-db-schema-alignment.md (D-02, D-08, D-10).
 export interface Division {
   id: number
   name: string
   slug: string
   tournament_id: number
-  format: string
-  gender_restriction: string
-  bracket_format: string
+  format: string              // NOT NULL, CHECK enum
+  bracket_format: string      // NOT NULL, CHECK enum
+  status: string              // NOT NULL DEFAULT 'draft', CHECK enum
+  // The following columns are all nullable in the DB schema even when they
+  // have a DEFAULT; UI must null-guard. See D-02/D-08/D-10 in the audit.
+  gender_restriction: string | null
   scoring_format: string | null
-  status: string
   max_teams: number | null
   max_roster_size: number | null
   entry_fee_amount: number | null
-  entry_fee_currency: string
-  auto_approve: boolean
-  registration_mode: string
-  seed_method: string
-  sort_order: number
+  entry_fee_currency: string | null
+  auto_approve: boolean | null
+  registration_mode: string | null
+  seed_method: string | null
+  sort_order: number | null
   created_at: string
   updated_at: string
 }
