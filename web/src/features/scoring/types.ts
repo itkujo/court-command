@@ -101,11 +101,18 @@ export interface Match {
   updated_at: string
 }
 
+// Shape mirrors api/service/match.go ScoreSnapshot (JSON tags). This is the
+// value on MatchEvent.score_snapshot \u2014 a historical snapshot of match state at
+// the moment an event was recorded. The Go contract is tested in
+// api/service/match_contract_test.go; do not add fields here that aren't in
+// that test.
+// NOTE: team_1_games_won / team_2_games_won are emitted on the MATCH response
+// (api/service/match.go MatchResponse), not on the snapshot. They were
+// previously typed here and read by no one \u2014 see audit Agent 5 #26.
 export interface ScoreSnapshot {
   team_1_score: number
   team_2_score: number
-  team_1_games_won: number
-  team_2_games_won: number
+  current_set: number
   current_game: number
   serving_team: number | null
   server_number: number | null
