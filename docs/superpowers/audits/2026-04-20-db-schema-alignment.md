@@ -727,3 +727,56 @@ One or more commits, lowest priority. Can be deferred to a follow-up branch if b
 4. Verify (`go build/vet/test`, `pnpm tsc`, `pnpm build`, manual smoke test of fixed flows)
 5. Merge to `main` per v0.1.0+ branching rules
 6. Tag a new patch release (v0.1.1) documenting the audit batch(es)
+
+---
+
+## Execution Log
+
+### 2026-04-20 — Batches A, B, C, D, H shipped
+
+All five batches merged to `main` across 26 commits. Full build green. ~23 S1 blockers resolved.
+
+**Batches merged:**
+- `cabee8a` Merge Batch A (admin/player/venue/API key fixes — 6 S1s)
+- `823a6b1` Merge Batch B (tournament/division/registration — 5 S1s)
+- `f065cfc` Merge Batch C (match-series/scoring/match-events — 5 S1s)
+- `20a4ba4` Merge Batch D (overlay/upload/announcements — 6 S1s)
+- `0b96f89` Merge Batch H (Postgres constraint error reporting — feature)
+
+**Follow-up fixes (discovered during testing):**
+- `391676d` A5 follow-up: second `useUpdateVenueStatus` hook in `registry/venues/hooks.ts` still used `apiPut`. Venue status changes from `/venues/{id}` detail page were 405'ing. Fixed to `apiPatch`.
+- `6b77997` B4 follow-up: `isAdmin` check in DivisionDetail/DivisionOverview/TournamentDetail tested against `role === 'admin'` which isn't a valid DB value. platform_admins saw no admin tabs. Fixed to `platform_admin`. Added TODO pointing at Batch I (Scoped Authorization) since the global-role check is still not correct for per-entity admins.
+
+### Testing progress
+
+| Batch | Status | Notes |
+|---|---|---|
+| A | ✅ Confirmed in production | A1, A2, A3, A4, A5, A6 all verified by user. A3 + A5 needed follow-up fixes (cache + second hook). |
+| B | 🟡 Partial | B1, B2, B3 confirmed. B5 (bulk no-show) skipped — division page "Register Now" button routes to tournament home (no player-side registration flow exists yet). See Known Product Gaps below. |
+| C | ⏸ Paused | User identified product-flow gaps during testing. Suspended to pivot to Logto integration first, then walk full site flow, then resume. |
+| D | ⏸ Paused | Same. |
+| H | ⏸ Paused | Same. |
+| Regression | ⏸ Paused | Same. |
+
+### Known Product Gaps (not audit findings — feature work)
+
+Discovered during audit testing. These are missing/incomplete product behavior, not alignment bugs:
+
+1. **Player-side registration flow absent.** Division detail page shows a "Register Now" button when `tournament.status === 'registration_open'`, but the button links to the tournament home page with no registration action. There's no UI path for a player to register themselves for a division. API path exists (`POST /api/v1/divisions/{id}/registrations`) but no UI surface.
+2. **Scoped authorization not wired.** Current `isAdmin` checks are global-role-based. A user who should be tournament_director of ONE tournament (not all tournaments globally) has no way to be granted that. Schema has `tournament_staff`, `org_memberships`, `venue_managers` tables ready for this but no `CanManageTournament`-style authorization service consumes them. Tracked as "Batch I: Scoped Authorization" in the backlog.
+3. **PWA cache staleness creates debugging pain.** Multiple fixes required user cache-clearing to verify (A3, A5). Should add `vite-plugin-pwa` update prompt (`registerType: 'prompt'`) with user-facing "new version available, reload" toast.
+
+### Remaining Audit Work (still on the backlog)
+
+- **Batch E** — Implement season_confirmations handler (currently frontend hooks call nonexistent routes). Full new feature implementation.
+- **Batch F** — S2 data integrity sweep (~65 findings: NOT NULL additions, FK cascade fixes, state-machine gaps).
+- **Batch G** — S3 unreachable columns (~20 findings: DB columns that neither create bodies, update bodies, nor response DTOs touch).
+- **Batch I** — Scoped Authorization (new, surfaced during testing — see Known Product Gaps #2).
+
+### Current pivot (2026-04-20)
+
+User has recognized that remaining audit items are entangled with product-flow gaps that need to be resolved at a higher level than single-point fixes. Pivoting to:
+
+1. Logto integration (auth platform replacement, easier NOW since no registered users)
+2. Full site-flow walkthrough with user, documenting what's implemented vs. gaps
+3. Resume audit + feature work on the post-Logto codebase
