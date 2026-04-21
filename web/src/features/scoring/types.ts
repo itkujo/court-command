@@ -1,5 +1,9 @@
 // web/src/features/scoring/types.ts
 
+// Values MUST match the CHECK constraint in
+// api/db/migrations/00018_create_matches.sql on matches.status.
+// Note: 'bye' is NOT a valid matches.status value \u2014 it's an overlay-display
+// state only (see web/src/features/overlay/contract.ts MATCH_STATUS).
 export type MatchStatus =
   | 'scheduled'
   | 'warmup'
@@ -8,7 +12,12 @@ export type MatchStatus =
   | 'completed'
   | 'cancelled'
   | 'forfeited'
-  | 'bye'
+
+// Values MUST match the CHECK constraint on matches.match_type.
+export type MatchType = 'tournament' | 'quick' | 'pickup' | 'practice' | 'league'
+
+// Values MUST match the CHECK constraint on matches.win_reason.
+export type WinReason = 'score' | 'forfeit' | 'retirement' | 'dq' | 'bye'
 
 export type ScoringType = 'side_out' | 'rally'
 
@@ -83,7 +92,7 @@ export interface Match {
   set_scores: CompletedGame[]
   is_paused: boolean
   is_quick_match: boolean
-  match_type?: string
+  match_type?: MatchType
   division_id?: number | null
   division_name?: string | null
   tournament_id?: number | null
