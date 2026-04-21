@@ -142,11 +142,33 @@ func (s *TournamentService) generateUniqueSlug(ctx context.Context, name string)
 	return "", &ConflictError{Message: "unable to generate unique slug, try a different name"}
 }
 
-// Create creates a new tournament.
+// DivisionCreateInput is the shape the wizard sends for each nested division
+// on the initial POST /tournaments request. Fields mirror the DB columns in
+// api/db/migrations/00011_create_divisions.sql; enum values must match the
+// CHECK constraints there.
+type DivisionCreateInput struct {
+	Name              string   `json:"name"`
+	Format            string   `json:"format"`
+	BracketFormat     string   `json:"bracket_format"`
+	GenderRestriction *string  `json:"gender_restriction"`
+	ScoringFormat     *string  `json:"scoring_format"`
+	MaxTeams          *int32   `json:"max_teams"`
+	MaxRosterSize     *int32   `json:"max_roster_size"`
+	EntryFeeAmount    *float64 `json:"entry_fee_amount"`
+	EntryFeeCurrency  *string  `json:"entry_fee_currency"`
+	AutoApprove       *bool    `json:"auto_approve"`
+	RegistrationMode  *string  `json:"registration_mode"`
+	SeedMethod        *string  `json:"seed_method"`
+}
+
+// Create creates a new tournament, its auto-generated staff accounts, and any
+// nested divisions the wizard included in the request. Everything happens in
+// a single transaction so a partial failure rolls back the tournament too.
+//
 // The caller may set params.Status to either "draft" (default) or "published"
 // to publish immediately. All other statuses are only reachable through the
 // state machine (UpdateStatus) and are rejected here as ValidationErrors.
-func (s *TournamentService) Create(ctx context.Context, params generated.CreateTournamentParams) (TournamentResponse, error) {
+func (s *TournamentService) Create(ctx context.Context, params generated.CreateTournamentParams, divisions []DivisionCreateInput) (TournamentResponse, error) {
 	if params.Name == "" {
 		return TournamentResponse{}, &ValidationError{Message: "name is required"}
 	}
@@ -170,17 +192,109 @@ func (s *TournamentService) Create(ctx context.Context, params generated.CreateT
 		}
 	}
 
-	tournament, err := s.queries.CreateTournament(ctx, params)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return TournamentResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	tournament, err := qtx.CreateTournament(ctx, params)
 	if err != nil {
 		return TournamentResponse{}, fmt.Errorf("failed to create tournament: %w", err)
 	}
 
-	// Auto-create staff accounts (ref + scorekeeper)
-	if err := s.staffService.CreateStaffAccounts(ctx, tournament.ID); err != nil {
+	// Auto-create staff accounts (ref + scorekeeper) within the same tx so a
+	// failure rolls back the tournament rather than leaving an orphan row.
+	if err := s.staffService.CreateStaffAccountsTx(ctx, qtx, tournament.ID); err != nil {
 		return TournamentResponse{}, fmt.Errorf("creating staff accounts: %w", err)
 	}
 
+	// Create any nested divisions the wizard included. Slug generation also
+	// happens against the tx-scoped queries so collisions within this request
+	// see each other.
+	for i, d := range divisions {
+		if d.Name == "" {
+			return TournamentResponse{}, &ValidationError{Message: fmt.Sprintf("division %d: name is required", i+1)}
+		}
+		if d.Format == "" {
+			return TournamentResponse{}, &ValidationError{Message: fmt.Sprintf("division %q: format is required", d.Name)}
+		}
+		if d.BracketFormat == "" {
+			return TournamentResponse{}, &ValidationError{Message: fmt.Sprintf("division %q: bracket_format is required", d.Name)}
+		}
+
+		divSlug, err := uniqueDivisionSlugTx(ctx, qtx, tournament.ID, d.Name)
+		if err != nil {
+			return TournamentResponse{}, err
+		}
+
+		divParams := generated.CreateDivisionParams{
+			TournamentID:      tournament.ID,
+			Name:              d.Name,
+			Slug:              divSlug,
+			Format:            d.Format,
+			BracketFormat:     d.BracketFormat,
+			GenderRestriction: d.GenderRestriction,
+			ScoringFormat:     d.ScoringFormat,
+			EntryFeeCurrency:  d.EntryFeeCurrency,
+			RegistrationMode:  d.RegistrationMode,
+			SeedMethod:        d.SeedMethod,
+			Status:            "draft",
+		}
+		if d.MaxTeams != nil {
+			divParams.MaxTeams = pgtype.Int4{Int32: *d.MaxTeams, Valid: true}
+		}
+		if d.MaxRosterSize != nil {
+			divParams.MaxRosterSize = pgtype.Int4{Int32: *d.MaxRosterSize, Valid: true}
+		}
+		if d.AutoApprove != nil {
+			divParams.AutoApprove = pgtype.Bool{Bool: *d.AutoApprove, Valid: true}
+		}
+		if d.EntryFeeAmount != nil {
+			// Numeric column accepts strings via pgtype.Numeric.Scan — format to 2dp.
+			var num pgtype.Numeric
+			if err := num.Scan(fmt.Sprintf("%.2f", *d.EntryFeeAmount)); err != nil {
+				return TournamentResponse{}, &ValidationError{Message: fmt.Sprintf("division %q: invalid entry_fee_amount", d.Name)}
+			}
+			divParams.EntryFeeAmount = num
+		}
+
+		if _, err := qtx.CreateDivision(ctx, divParams); err != nil {
+			return TournamentResponse{}, fmt.Errorf("create division %q: %w", d.Name, err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return TournamentResponse{}, fmt.Errorf("commit tournament create: %w", err)
+	}
+
 	return toTournamentResponse(tournament), nil
+}
+
+// uniqueDivisionSlugTx finds an unused slug for a division within the given
+// tx-scoped queries. Mirrors DivisionService.generateUniqueSlug but reuses the
+// tx so slugs inserted in the same request see each other.
+func uniqueDivisionSlugTx(ctx context.Context, q *generated.Queries, tournamentID int64, name string) (string, error) {
+	base := generateSlug(name)
+	for i := 0; i < 100; i++ {
+		candidate := base
+		if i > 0 {
+			candidate = fmt.Sprintf("%s-%d", base, i)
+		}
+		exists, err := q.SlugExistsDivision(ctx, generated.SlugExistsDivisionParams{
+			TournamentID: tournamentID,
+			Slug:         candidate,
+		})
+		if err != nil {
+			return "", fmt.Errorf("check division slug: %w", err)
+		}
+		if !exists {
+			return candidate, nil
+		}
+	}
+	return "", &ConflictError{Message: "unable to generate unique division slug"}
 }
 
 // GetByID retrieves a tournament by ID.
