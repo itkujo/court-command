@@ -43,7 +43,9 @@ export function DivisionOverview({
 }: DivisionOverviewProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const isAdmin = user?.role === 'tournament_director' || user?.role === 'admin'
+  // TODO: replace with scoped authorization (Batch I) once that lands.
+  const isAdmin =
+    user?.role === 'platform_admin' || user?.role === 'tournament_director'
   const { toast } = useToast()
   const statusMutation = useUpdateDivisionStatus(tournamentId, divisionId)
   const deleteMutation = useDeleteDivision(tournamentId, divisionId)

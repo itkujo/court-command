@@ -25,7 +25,11 @@ export function DivisionDetail({
 }: DivisionDetailProps) {
   const [activeTab, setActiveTab] = useState('overview')
   const { user } = useAuth()
-  const isAdmin = user?.role === 'tournament_director' || user?.role === 'admin'
+  // TODO: replace with scoped authorization (Batch I) once that lands.
+  // Today this only checks global roles; a user who is TD of *this specific*
+  // tournament but role=player globally will not be treated as admin here.
+  const isAdmin =
+    user?.role === 'platform_admin' || user?.role === 'tournament_director'
   const { data: tournament } = useGetTournament(tournamentId)
   const {
     data: division,
