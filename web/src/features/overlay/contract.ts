@@ -233,13 +233,14 @@ export type AuthType = (typeof AUTH_TYPE)[keyof typeof AUTH_TYPE]
 
 // ---------------------------------------------------------------------------
 // Idle display values (CourtOverlayConfig.idle_display)
+// Values MUST match CHECK constraint in
+// api/db/migrations/00023_create_court_overlay_configs.sql on idle_display.
 // ---------------------------------------------------------------------------
 
 export const IDLE_DISPLAY = {
   COURT_NAME: 'court_name',
-  NEXT_MATCH: 'next_match',
-  SPONSOR: 'sponsor',
-  BLANK: 'blank',
+  BRANDING: 'branding',
+  NONE: 'none',
 } as const
 
 export type IdleDisplay = (typeof IDLE_DISPLAY)[keyof typeof IDLE_DISPLAY]

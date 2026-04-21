@@ -9,14 +9,25 @@ RETURNING *;
 SELECT * FROM announcements WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: ListAnnouncementsByTournament :many
+-- When division_id is NULL the query returns all announcements for the
+-- tournament (division-scoped and tournament-wide). When division_id is
+-- non-NULL it returns only announcements targeting that division.
 SELECT * FROM announcements
-WHERE tournament_id = $1 AND deleted_at IS NULL
+WHERE tournament_id = @tournament_id
+  AND (sqlc.narg('division_id')::bigint IS NULL OR division_id = sqlc.narg('division_id')::bigint)
+  AND deleted_at IS NULL
 ORDER BY is_pinned DESC, created_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT @page_limit OFFSET @page_offset;
 
 -- name: CountAnnouncementsByTournament :one
 SELECT COUNT(*) FROM announcements
-WHERE tournament_id = $1 AND deleted_at IS NULL;
+WHERE tournament_id = @tournament_id
+  AND (sqlc.narg('division_id')::bigint IS NULL OR division_id = sqlc.narg('division_id')::bigint)
+  AND deleted_at IS NULL;
+
+-- name: CountAnnouncementsByDivision :one
+SELECT COUNT(*) FROM announcements
+WHERE division_id = $1 AND deleted_at IS NULL;
 
 -- name: ListAnnouncementsByLeague :many
 SELECT * FROM announcements

@@ -412,12 +412,25 @@ function EditorForm({ mode, profileID, initial }: FormProps) {
               placeholder="Used to verify incoming payloads"
             />
           </FormField>
-          <div className="text-xs text-(--color-text-secondary) p-3 rounded border border-(--color-border) bg-(--color-bg-secondary)">
-            Once saved, send POST requests to{' '}
-            <code className="font-mono">
-              /api/v1/overlay/webhook/{'{courtID}'}
-            </code>{' '}
-            with the shared secret in the <code>X-Webhook-Secret</code> header.
+          <div className="text-xs text-(--color-text-secondary) p-3 rounded border border-(--color-border) bg-(--color-bg-secondary) space-y-2">
+            <p>
+              Once saved, send POST requests to{' '}
+              <code className="font-mono">
+                /api/v1/overlay/webhook/{'{courtID}'}
+              </code>
+              .
+            </p>
+            <p>
+              If a shared secret is configured, each request must be signed:
+              compute <code>HMAC-SHA256(body, secret)</code>, hex-encode the
+              digest, and send it in the{' '}
+              <code>X-Webhook-Signature</code> header. Requests with no
+              signature or a mismatched signature are rejected with 403.
+            </p>
+            <p>
+              If no secret is configured the endpoint accepts unsigned
+              requests (a warning is logged on each call).
+            </p>
           </div>
         </section>
       )}

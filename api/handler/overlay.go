@@ -261,8 +261,12 @@ func (h *OverlayHandler) SetSourceProfile(w http.ResponseWriter, r *http.Request
 
 // UpdateDataOverrides handles PUT /api/v1/overlay/court/{courtID}/config/data-overrides
 // Allows Broadcast Operators to override any canonical overlay field per-court
-// without modifying the underlying tournament/team/match data.
+// without modifying the underlying tournament/team/match data. Authenticated.
 func (h *OverlayHandler) UpdateDataOverrides(w http.ResponseWriter, r *http.Request) {
+	if sess := h.requireSession(w, r); sess == nil {
+		return
+	}
+
 	courtID, err := h.parseCourtID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid court ID")
@@ -287,8 +291,12 @@ func (h *OverlayHandler) UpdateDataOverrides(w http.ResponseWriter, r *http.Requ
 }
 
 // ClearDataOverrides handles DELETE /api/v1/overlay/court/{courtID}/config/data-overrides
-// Resets all per-court data overrides to empty.
+// Resets all per-court data overrides to empty. Authenticated.
 func (h *OverlayHandler) ClearDataOverrides(w http.ResponseWriter, r *http.Request) {
+	if sess := h.requireSession(w, r); sess == nil {
+		return
+	}
+
 	courtID, err := h.parseCourtID(r)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid court ID")
