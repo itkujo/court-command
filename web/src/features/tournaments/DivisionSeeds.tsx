@@ -87,7 +87,7 @@ export function DivisionSeeds({ divisionId }: DivisionSeedsProps) {
 
   function autoSeedByRating() {
     // Placeholder: sort by registration id (stable). Real implementation
-    // would pull rating from player.skill_rating and sort descending.
+    // would pull rating from player.dupr_id / vair_id and sort descending.
     const next: Record<number, number | null> = {}
     combinedRegs.forEach((r, i) => {
       next[r.id] = i + 1

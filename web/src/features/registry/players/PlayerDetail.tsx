@@ -69,7 +69,8 @@ export function PlayerDetail({ playerId }: PlayerDetailProps) {
           <InfoRow label="Email" value={player.email} />
           <InfoRow label="Date of Birth" value={formatDate(player.date_of_birth)} />
           <InfoRow label="Handedness" value={player.handedness} />
-          <InfoRow label="Skill Rating" value={player.skill_rating?.toFixed(2)} />
+          <InfoRow label="DUPR ID" value={player.dupr_id} />
+          <InfoRow label="VAIR ID" value={player.vair_id} />
           <InfoRow label="Gender" value={player.gender} />
           <InfoRow
             label="Location"

@@ -13,8 +13,10 @@ import { EmptyState } from '../../../components/EmptyState'
 import { ArrowLeft, User } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
+// Values MUST match CHECK constraint in api/db/migrations/00002_add_player_profile.sql
+// The empty value ('') sends null on submit — kept as the "not set" default.
 const GENDER_OPTIONS = [
-  { value: '', label: 'Prefer not to say' },
+  { value: '', label: 'Not specified' },
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
   { value: 'non_binary', label: 'Non-binary' },
@@ -63,7 +65,7 @@ export function PlayerForm() {
     setDisplayName(profile.display_name ?? '')
     setGender(profile.gender ?? '')
     setHandedness(profile.handedness ?? '')
-    setAvatarUrl(null) // avatar_url not on Player interface yet
+    setAvatarUrl(profile.avatar_url ?? null)
     setBio(profile.bio ?? '')
     setCity(profile.city ?? '')
     setStateProvince(profile.state_province ?? '')
@@ -71,14 +73,14 @@ export function PlayerForm() {
     setPostalCode(profile.postal_code ?? '')
     setAddressLine1(profile.address_line_1 ?? '')
     setAddressLine2(profile.address_line_2 ?? '')
-    setPhone('')
+    setPhone(profile.phone ?? '')
     setPaddleBrand(profile.paddle_brand ?? '')
     setPaddleModel(profile.paddle_model ?? '')
-    setDuprId('')
-    setVairId('')
-    setEmergencyContactName('')
-    setEmergencyContactPhone('')
-    setMedicalNotes('')
+    setDuprId(profile.dupr_id ?? '')
+    setVairId(profile.vair_id ?? '')
+    setEmergencyContactName(profile.emergency_contact_name ?? '')
+    setEmergencyContactPhone(profile.emergency_contact_phone ?? '')
+    setMedicalNotes(profile.medical_notes ?? '')
     setIsProfileHidden(profile.is_profile_hidden)
     setInitialized(true)
   }
