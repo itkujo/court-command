@@ -143,6 +143,9 @@ func (s *TournamentService) generateUniqueSlug(ctx context.Context, name string)
 }
 
 // Create creates a new tournament.
+// The caller may set params.Status to either "draft" (default) or "published"
+// to publish immediately. All other statuses are only reachable through the
+// state machine (UpdateStatus) and are rejected here as ValidationErrors.
 func (s *TournamentService) Create(ctx context.Context, params generated.CreateTournamentParams) (TournamentResponse, error) {
 	if params.Name == "" {
 		return TournamentResponse{}, &ValidationError{Message: "name is required"}
@@ -153,7 +156,19 @@ func (s *TournamentService) Create(ctx context.Context, params generated.CreateT
 		return TournamentResponse{}, err
 	}
 	params.Slug = slug
-	params.Status = "draft"
+
+	// Initial status is draft unless the caller explicitly asks to publish.
+	// Values mirror the CHECK constraint in api/db/migrations/00010_create_tournaments.sql.
+	switch params.Status {
+	case "":
+		params.Status = "draft"
+	case "draft", "published":
+		// allowed at create time
+	default:
+		return TournamentResponse{}, &ValidationError{
+			Message: fmt.Sprintf("initial status must be 'draft' or 'published' (got %q); use the status workflow for other transitions", params.Status),
+		}
+	}
 
 	tournament, err := s.queries.CreateTournament(ctx, params)
 	if err != nil {

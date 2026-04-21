@@ -59,6 +59,7 @@ func (h *TournamentHandler) CreateTournament(w http.ResponseWriter, r *http.Requ
 		Name             string          `json:"name"`
 		StartDate        string          `json:"start_date"`
 		EndDate          string          `json:"end_date"`
+		Status           string          `json:"status"` // "draft" (default) or "published"
 		VenueID          *int64          `json:"venue_id"`
 		LeagueID         *int64          `json:"league_id"`
 		SeasonID         *int64          `json:"season_id"`
@@ -100,6 +101,7 @@ func (h *TournamentHandler) CreateTournament(w http.ResponseWriter, r *http.Requ
 
 	params := generated.CreateTournamentParams{
 		Name:             body.Name,
+		Status:           body.Status, // validated by TournamentService.Create
 		StartDate:        startDate,
 		EndDate:          endDate,
 		Description:      body.Description,
