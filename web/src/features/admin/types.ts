@@ -49,14 +49,18 @@ export interface ApiKey {
   is_active: boolean
 }
 
+// Shape mirrors api/service/upload.go UploadResponse.
+// filename is the random-hex storage name; original_name is what the user saw
+// on disk when they uploaded. UIs should prefer original_name for display.
 export interface Upload {
   id: number
   filename: string
+  original_name: string
   content_type: string
-  size: number
+  size_bytes: number
   url: string
   entity_type: string | null
-  entity_id: string | null
+  entity_id: number | null
   created_at: string
 }
 

@@ -43,10 +43,11 @@ export function UploadBrowser() {
     if (!deleteTarget) return
     deleteUpload.mutate(deleteTarget.id, {
       onSuccess: () => {
-        toast('success', `${deleteTarget.filename} deleted`)
+        toast('success', `${deleteTarget.original_name} deleted`)
         setDeleteTarget(null)
       },
-      onError: () => toast('error', `Failed to delete ${deleteTarget.filename}`),
+      onError: () =>
+        toast('error', `Failed to delete ${deleteTarget.original_name}`),
     })
   }
 
@@ -116,7 +117,7 @@ export function UploadBrowser() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Delete Upload"
-        message={`Are you sure you want to delete "${deleteTarget?.filename}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete "${deleteTarget?.original_name}"? This action cannot be undone.`}
         confirmText="Delete"
         variant="danger"
         loading={deleteUpload.isPending}
@@ -141,7 +142,7 @@ function UploadCard({
         {isImageType(upload.content_type) ? (
           <img
             src={upload.url}
-            alt={upload.filename}
+            alt={upload.original_name}
             className="h-full w-full object-cover"
           />
         ) : (
@@ -154,9 +155,9 @@ function UploadCard({
         <div>
           <p
             className="truncate text-sm font-medium text-(--color-text-primary)"
-            title={upload.filename}
+            title={upload.original_name}
           >
-            {upload.filename}
+            {upload.original_name}
           </p>
           <div className="mt-1 flex items-center gap-2 text-xs text-(--color-text-muted)">
             {isImageType(upload.content_type) ? (
@@ -167,7 +168,7 @@ function UploadCard({
             <span>{upload.content_type}</span>
           </div>
           <div className="mt-0.5 flex items-center gap-3 text-xs text-(--color-text-muted)">
-            <span>{formatFileSize(upload.size)}</span>
+            <span>{formatFileSize(upload.size_bytes)}</span>
             <span>{formatDate(upload.created_at)}</span>
           </div>
         </div>
