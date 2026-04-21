@@ -55,6 +55,9 @@ func generatePassword() (string, error) {
 	return string(result), nil
 }
 
+// CreateStaffAccounts creates the ref + scorekeeper staff accounts for a
+// tournament in its own transaction. Use this when the caller does not already
+// have a transaction scope; otherwise prefer CreateStaffAccountsTx.
 func (s *TournamentStaffService) CreateStaffAccounts(ctx context.Context, tournamentID int64) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -63,7 +66,17 @@ func (s *TournamentStaffService) CreateStaffAccounts(ctx context.Context, tourna
 	defer tx.Rollback(ctx)
 
 	qtx := s.queries.WithTx(tx)
+	if err := s.CreateStaffAccountsTx(ctx, qtx, tournamentID); err != nil {
+		return err
+	}
 
+	return tx.Commit(ctx)
+}
+
+// CreateStaffAccountsTx performs the staff-accounts creation against an
+// existing tx-scoped Queries handle. Used by TournamentService.Create so
+// the staff rows land in the same transaction as the tournament itself.
+func (s *TournamentStaffService) CreateStaffAccountsTx(ctx context.Context, qtx *generated.Queries, tournamentID int64) error {
 	roles := []struct {
 		emailPrefix string
 		role        string
@@ -109,7 +122,7 @@ func (s *TournamentStaffService) CreateStaffAccounts(ctx context.Context, tourna
 		}
 	}
 
-	return tx.Commit(ctx)
+	return nil
 }
 
 func (s *TournamentStaffService) GetStaff(ctx context.Context, tournamentID int64) ([]StaffMemberResponse, error) {

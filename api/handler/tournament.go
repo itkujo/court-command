@@ -56,24 +56,26 @@ func (h *TournamentHandler) CreateTournament(w http.ResponseWriter, r *http.Requ
 	}
 
 	var body struct {
-		Name             string          `json:"name"`
-		StartDate        string          `json:"start_date"`
-		EndDate          string          `json:"end_date"`
-		VenueID          *int64          `json:"venue_id"`
-		LeagueID         *int64          `json:"league_id"`
-		SeasonID         *int64          `json:"season_id"`
-		Description      *string         `json:"description"`
-		LogoURL          *string         `json:"logo_url"`
-		BannerURL        *string         `json:"banner_url"`
-		ContactEmail     *string         `json:"contact_email"`
-		ContactPhone     *string         `json:"contact_phone"`
-		WebsiteURL       *string         `json:"website_url"`
-		MaxParticipants  *int32          `json:"max_participants"`
-		RulesDocumentURL *string         `json:"rules_document_url"`
-		Notes            *string         `json:"notes"`
-		TdUserID         *int64          `json:"td_user_id"`
-		SocialLinks      json.RawMessage `json:"social_links"`
-		SponsorInfo      json.RawMessage `json:"sponsor_info"`
+		Name             string                        `json:"name"`
+		StartDate        string                        `json:"start_date"`
+		EndDate          string                        `json:"end_date"`
+		Status           string                        `json:"status"` // "draft" (default) or "published"
+		VenueID          *int64                        `json:"venue_id"`
+		LeagueID         *int64                        `json:"league_id"`
+		SeasonID         *int64                        `json:"season_id"`
+		Description      *string                       `json:"description"`
+		LogoURL          *string                       `json:"logo_url"`
+		BannerURL        *string                       `json:"banner_url"`
+		ContactEmail     *string                       `json:"contact_email"`
+		ContactPhone     *string                       `json:"contact_phone"`
+		WebsiteURL       *string                       `json:"website_url"`
+		MaxParticipants  *int32                        `json:"max_participants"`
+		RulesDocumentURL *string                       `json:"rules_document_url"`
+		Notes            *string                       `json:"notes"`
+		TdUserID         *int64                        `json:"td_user_id"`
+		SocialLinks      json.RawMessage               `json:"social_links"`
+		SponsorInfo      json.RawMessage               `json:"sponsor_info"`
+		Divisions        []service.DivisionCreateInput `json:"divisions"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -100,6 +102,7 @@ func (h *TournamentHandler) CreateTournament(w http.ResponseWriter, r *http.Requ
 
 	params := generated.CreateTournamentParams{
 		Name:             body.Name,
+		Status:           body.Status, // validated by TournamentService.Create
 		StartDate:        startDate,
 		EndDate:          endDate,
 		Description:      body.Description,
@@ -131,7 +134,7 @@ func (h *TournamentHandler) CreateTournament(w http.ResponseWriter, r *http.Requ
 		params.TdUserID = pgtype.Int8{Int64: *body.TdUserID, Valid: true}
 	}
 
-	tournament, err := h.tournamentSvc.Create(r.Context(), params)
+	tournament, err := h.tournamentSvc.Create(r.Context(), params, body.Divisions)
 	if err != nil {
 		HandleServiceError(w, err)
 		return

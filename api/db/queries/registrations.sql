@@ -75,8 +75,12 @@ WHERE id = $1
 RETURNING *;
 
 -- name: BulkUpdateNoShow :exec
+-- Marks the given registration IDs as no-show, scoped to a division so callers
+-- cannot cross-division-mutate by ID. Only registrations that haven't checked
+-- in and aren't already in a terminal state are eligible.
 UPDATE registrations SET status = 'no_show'
-WHERE division_id = $1
+WHERE division_id = @division_id
+  AND id = ANY(@registration_ids::bigint[])
   AND status NOT IN ('checked_in', 'withdrawn', 'rejected', 'withdrawn_mid_tournament');
 
 -- name: GetNextWaitlisted :one

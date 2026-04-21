@@ -57,10 +57,10 @@ const BRACKET_FORMAT_OPTIONS = [
   { value: 'pool_to_bracket', label: 'Pool to Bracket' },
 ]
 
+// Values MUST match CHECK constraint in api/db/migrations/00011_create_divisions.sql
 const REGISTRATION_MODE_OPTIONS = [
-  { value: 'team', label: 'Team' },
-  { value: 'individual', label: 'Individual' },
-  { value: 'partner', label: 'Partner' },
+  { value: 'open', label: 'Open' },
+  { value: 'invite_only', label: 'Invite Only' },
 ]
 
 const SEED_METHOD_OPTIONS = [
@@ -99,7 +99,7 @@ const EMPTY_DIVISION: DivisionDraft = {
   entry_fee_amount: '',
   entry_fee_currency: 'USD',
   auto_approve: false,
-  registration_mode: 'team',
+  registration_mode: 'open',
   seed_method: 'manual',
 }
 
@@ -115,7 +115,7 @@ function templateToDraft(t: DivisionTemplate): DivisionDraft {
     entry_fee_amount: t.entry_fee_amount ?? '',
     entry_fee_currency: t.entry_fee_currency || 'USD',
     auto_approve: t.auto_approve,
-    registration_mode: t.registration_mode || 'team',
+    registration_mode: t.registration_mode || 'open',
     seed_method: t.seed_method || 'manual',
   }
 }

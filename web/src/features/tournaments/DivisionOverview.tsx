@@ -90,19 +90,19 @@ export function DivisionOverview({
           />
           <InfoRow
             label="Gender"
-            value={division.gender_restriction.replace(/_/g, ' ')}
+            value={division.gender_restriction?.replace(/_/g, ' ') ?? 'Open'}
           />
           <InfoRow
             label="Registration Mode"
-            value={division.registration_mode}
+            value={division.registration_mode ?? 'open'}
           />
           <InfoRow
             label="Auto-Approve"
-            value={division.auto_approve ? 'Yes' : 'No'}
+            value={division.auto_approve === false ? 'No' : 'Yes'}
           />
           <InfoRow
             label="Seed Method"
-            value={division.seed_method}
+            value={division.seed_method ?? '—'}
           />
           <InfoRow label="Max Teams" value={division.max_teams ?? '—'} />
           <InfoRow
@@ -113,7 +113,7 @@ export function DivisionOverview({
             label="Entry Fee"
             value={
               division.entry_fee_amount != null
-                ? `${division.entry_fee_amount} ${division.entry_fee_currency}`
+                ? `${division.entry_fee_amount} ${division.entry_fee_currency ?? 'USD'}`
                 : '—'
             }
           />
